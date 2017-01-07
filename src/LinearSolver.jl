@@ -5,7 +5,7 @@ using ProgressMeter, IterativeSolvers
 import Base.LinAlg: A_mul_B!, Ac_mul_B!, At_mul_B!, length
 using Base.LinAlg: BlasFloat
 
-export createLinearSolver, init, deinit, solve, linearSolverList
+export createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
 
 abstract AbstractLinearSolver
 
@@ -21,6 +21,19 @@ include("CGNR.jl")
 include("Direct.jl")
 include("LSQR.jl")
 include("FusedLasso.jl")
+
+"""
+Return a list of all available linear solvers
+"""
+function linearSolverList()
+  Any["kaczmarz","cgnr"] # These are those passing the tests
+    #, "fusedlasso"]
+end
+
+function linearSolverListReal()
+  Any["kaczmarz","cgnr","daxkaczmarz","daxconstrained"] # These are those passing the tests
+    #, "fusedlasso"]
+end
 
 
 @doc """
@@ -58,12 +71,5 @@ function createLinearSolver(solver::AbstractString, A; kargs...)
   end
 end
 
-"""
-Return a list of all available linear solvers
-"""
-function linearSolverList()
-  Any["kaczmarz","cgnr"] # These are those passing the tests
-    #, "fusedlasso"]
-end
 
 end

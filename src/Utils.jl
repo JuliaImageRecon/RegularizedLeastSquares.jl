@@ -77,6 +77,7 @@ function dot_with_matrix_row_simd{T<:Complex,S<:DenseMatrix}(B::MatrixTranspose{
   BLAS.dotu(length(x), pointer(A,sub2ind(size(A),1,k)), 1, pointer(x,1), 1)
 end
 
+
 @doc "This funtion calculates ∑ᵢ Aᵢₖxᵢ for dense matrices." ->
 function dot_with_matrix_row_simd{T<:Real}(A::DenseMatrix{T}, x::Vector{T}, k::Int64)
   BLAS.dot(length(x), pointer(A,sub2ind(size(A),k,1)), size(A,1), pointer(x,1), 1)
@@ -87,6 +88,7 @@ function dot_with_matrix_row_simd{T<:Real,S<:DenseMatrix}(B::MatrixTranspose{T,S
   A = B.data
   BLAS.dot(length(x), pointer(A,sub2ind(size(A),1,k)), 1, pointer(x,1), 1)
 end
+
 
 @doc "This funtion calculates ∑ᵢ Aᵢₖxᵢ for sparse matrices." ->
 function dot_with_matrix_row_simd{T,S<:SparseMatrixCSC}(B::MatrixTranspose{T,S}, x::Vector{T}, k::Int64)

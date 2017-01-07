@@ -19,21 +19,10 @@ end
 
 DaxConstrained(A; kargs...) = DaxConstrained(A,kargs)
 
-function init(solver::DaxConstrained)
-  nothing
-end
-
-function deinit(solver::DaxConstrained)
-  nothing
-end
 
 function solve(solver::DaxConstrained, u::Vector)
   return daxconstrained(solver.A, u; solver.params... )
 end
-
-
-
-
 
 
 @doc "This funtion saves the denominators to compute αl in denom and the rowindices, which lead to an update of cl in rowindex." ->
@@ -121,7 +110,7 @@ function daxrand{T}(S::AbstractMatrix{T}, u::Vector, iterations::Int, inneritera
   for k=1:iterations #could be replaced by a while loop based on errorbound if smallest singular value of A is known
     # bk = u-S'*zk
     copy!(bk,u)
-    At_mul_B!(-1.0,S,zk,1.0,bk)
+    A_mul_B!(-1.0,S,zk,1.0,bk)
 
     # solve min ɛ|x|²+|W*A*x-W*bk|² with weightingmatrix W=diag(wᵢ), i=1,...,M.
     for l=1:length(rowindex)*inneriterations
@@ -200,14 +189,14 @@ Returns an approximate solution to Sᵀx = u s.t. Bx>=0 (each component >=0).
 function daxconstrained{T<:Real}(S::AbstractMatrix{T}, u::Vector;
  iterations=3, inneriterations=2, lambd=1e-1, solverInfo=nothing, weights=nothing, sparseTrafo=nothing, kargs...)
   lambd = convert(T,lambd)
-  sparseTrafo==nothing ? B=speye(T,size(S,2)) : B=sparseTrafo #search for positive solution as default
+  sparseTrafo==nothing ? B=eye(T,size(S,2)) : B=sparseTrafo #search for positive solution as default
   weights==nothing ? weights=ones(T,size(S,1)) : nothing #search for positive solution as default
   return daxcon(S, u, B, iterations, inneriterations, lambd, solverInfo, weights)
 end
 
 #function daxcon{T<:Real}(S::AbstractMatrix{T}, u::Vector, B, iterations::Int, inneriterations::Int, lambd::Number, solverInfo, weights::Vector{T})
 #  error("This function still contains an error and needs fixing!")
-#  #TODO fix bug. Constraints are impelemented correctly, but algorithm does not converge to the correct solution.
+#  #TODO fix bug. Constraints are implemented correctly, but algorithm does not converge to the correct solution.
 #  M = size(S,2)       #number of equations
 #  M%2 == 0 ? nothing : error("number of equations must be even")
 #  N = size(S,1)       #number of unknowns
@@ -321,7 +310,7 @@ function daxcon{T<:Real}(S::AbstractMatrix{T}, u::Vector, B::RealBasisTrafo, ite
   for k=1:iterations
     # bk = u-S'*zk
     copy!(bk,u)
-    At_mul_B!(-1.0,S,zk,1.0,bk)
+    A_mul_B!(-1.0,S,zk,1.0,bk)
 
     # solve min ɛ|x|²+|W*A*x-W*bk|² with weightingmatrix W=diag(wᵢ), i=1,...,M.
     for l=1:inneriterations
@@ -384,7 +373,7 @@ function daxcon{T<:Real}(S::AbstractMatrix{T}, u::Vector, B::AbstractMatrix, ite
   for k=1:iterations
     # bk = u-S'*zk
     copy!(bk,u)
-    At_mul_B!(-1.0,S,zk,1.0,bk)
+    A_mul_B!(-1.0,S,zk,1.0,bk)
 
     # solve min ɛ|x|²+|W*A*x-W*bk|² with weightingmatrix W=diag(wᵢ), i=1,...,M.
     for l=1:inneriterations
