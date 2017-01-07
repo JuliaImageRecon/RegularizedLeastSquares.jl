@@ -1,3 +1,0 @@
-# Linear Operator Interface
-
-TODO
