@@ -1,42 +1,5 @@
-#using MATLAB
+export FusedLasso
 export fusedlasso
-export getLibPath
-export compileLib
-
-#==============================================================================#
-# Public tools
-#==============================================================================#
-
-function getLibPath(lib::AbstractString)
-
-    if lib == "opencl"
-      return string(dirname(@__FILE__),"/clGradientLib/build/libclGradientLib.so")
-    elseif lib == "cuda"
-      return string(dirname(@__FILE__),"/cuGradientLib/build/libcuGradientLib.so")
-    else
-      return nothing
-    end
-
-end
-
-function compileLib(libpath,;forceCompilation=false)
-
-  if isfile(libpath) && forceCompilation == false
-    return
-  end
-
-  curdir = pwd()
-  filepath = dirname(libpath)
-  if isdir(filepath)
-    rm(filepath;recursive=true)
-  end
-  mkdir(filepath)
-  cd(filepath)
-  run(`cmake ../`)
-  run(`make`)
-  cd(curdir)
-
-end
 
 
 #==============================================================================#
@@ -67,21 +30,22 @@ end
 #==============================================================================#
 # User Parameter
 #==============================================================================#
-type FusedLassoUserParams
+
+type FusedLassoUserParams{T}
     verbose::Bool
     cached::Bool
     maxIter::Int64
     nhood::Array{Int64,2}
-    omega::Vector{Float32}
-    gamma::Float32
-    lambda::Float32
-    alpha::Float32
-    beta::Float32
+    omega::Vector{T}
+    gamma::T
+    lambda::T
+    alpha::T
+    beta::T
     lib::AbstractString
     recompile::Bool
 end
 
-function FusedLassoUserParams(;
+function FusedLassoUserParams(T::Type;
                                 # Flag for info prints
                                 verbose = false,
                                 # Flag for using the cached version of fused lasso
@@ -91,13 +55,13 @@ function FusedLassoUserParams(;
                                 # Number of proximal mapping directions
                                 directions = 3,
                                 # Weight for update steps
-                                kappa = Float32(0.5),
+                                kappa = T(0.5),
                                 # Weight for proximal mapping
-                                alpha = Float32(0.0002),
+                                alpha = T(0.0002),
                                 # Weight for soft thresholding
-                                beta = Float32(0.0016),
+                                beta = T(0.0016),
                                 # Weight for gradient descent step, proximal mapping and soft thresholding
-                                gamma = Float32(10.0^-3),
+                                gamma = T(10.0^-3),
                                 # Library for gradient calculation
                                 lib = "",
                                 # Flag to recompile selected gradient library
@@ -109,7 +73,7 @@ function FusedLassoUserParams(;
   # Determine direction vectors and weights for proximal mapping
 	if directions == 3
             nhood = Int64[1 0 0;0 1 0; 0 0 1]
-            omega = Float32[1,1,1]
+            omega = T[1,1,1]
 
 	elseif directions == 13
 		 nhood = Int64[
@@ -127,7 +91,7 @@ function FusedLassoUserParams(;
 		    1 -1 -1;
 		    -1 1 -1
 		   ]
-		omega = Float32[
+		omega = T[
 		(2/sqrt(3) - 1)
 		(2/sqrt(3) - 1)
 		(2/sqrt(3) - 1)
@@ -145,7 +109,7 @@ function FusedLassoUserParams(;
         else
             warn("No corresponding neighbourhood for direction number. 3 directions will be used!")
             nhood = Int64[1 0 0;0 1 0; 0 0 1]
-            omega = Float32[1,1,1]
+            omega = T[1,1,1]
 
 	end
 
@@ -155,28 +119,28 @@ end
 #==============================================================================#
 # Linear Problem
 #==============================================================================#
-type FusedLassoProblem
+type FusedLassoProblem{T}
     # System matrix
-    A::Array{Float32,2}
+    A::Array{T,2}
     # Solution
-    x::Vector{Float32}
+    x::Vector{T}
     # Measurement vector
-    b::Vector{Float32}
+    b::Vector{T}
     # 3D dimensions of solution
     shape::Array{Int64,1}
 end
 
-type FusedLassoProblemCached
+type FusedLassoProblemCached{T}
     # System matrix
-    A::Array{Float32,2}
+    A::Array{T,2}
     # Precalculation for gradient descent step
-    ATA::Array{Float32,2}
+    ATA::Array{T,2}
     # Precalculation for gradient descent step
-    ATb::Vector{Float32}
+    ATb::Vector{T}
     # Solution vector
-    x::Vector{Float32}
+    x::Vector{T}
     # Measurement vector
-    b::Vector{Float32}
+    b::Vector{T}
     # 3D dimensions of solution
     shape::Array{Int64,1}
 end
@@ -185,8 +149,6 @@ end
 #==============================================================================#
 
 type FusedLassoTempParams
-    # Handle of gradient library
-    soHandle
     # Row energies of system matrix
     rowEnergy
     # Temporary vector
@@ -204,14 +166,14 @@ type FusedLasso{T} <: AbstractLinearSolver
     tempParams::FusedLassoTempParams
 end
 
-function FusedLasso(S::Matrix; shape::Array{Int64,1}=[1], kwargs...)
-    userParams = FusedLassoUserParams(;kwargs...)
+function FusedLasso{T}(S::Matrix{T}; shape::Array{Int64,1}=[size(S,2),1,1], kwargs...)
+    userParams = FusedLassoUserParams(T;kwargs...)
 
     # Create linear problem for cached or non cached fused lasso
     if userParams.cached == false
-      linearProblem = FusedLassoProblem(S',zeros(eltype(S),shape[1]*shape[2]*shape[3]),zeros(eltype(S), div(length(S),shape[1]*shape[2]*shape[3])),shape)
+      linearProblem = FusedLassoProblem(S,zeros(eltype(S),shape[1]*shape[2]*shape[3]),zeros(eltype(S), div(length(S),shape[1]*shape[2]*shape[3])),shape)
     else
-      linearProblem = FusedLassoProblemCached(S',
+      linearProblem = FusedLassoProblemCached(S,
                                               zeros(eltype(S),shape[1]*shape[2]*shape[3],shape[1]*shape[2]*shape[3]),
                                               zeros(eltype(S),shape[1]*shape[2]*shape[3]),
                                               zeros(eltype(S),shape[1]*shape[2]*shape[3]),
@@ -231,7 +193,6 @@ function FusedLasso(linearProblem,userParams::FusedLassoUserParams)
 
     # Create object for temporary parameters
     tempParams = FusedLassoTempParams(
-                     nothing,
                      zeros(eltype(linearProblem.A),size(linearProblem.A,1)),
                      zeros(eltype(linearProblem.x),size(linearProblem.A,linearProblem.shape[1],linearProblem.shape[2],linearProblem.shape[3]))
                      )
@@ -243,44 +204,19 @@ function FusedLasso(linearProblem,userParams::FusedLassoUserParams)
                  tempParams
                  )
 
-    return solver
-
-end
-
-#==============================================================================#
-# Global initialization
-#==============================================================================#
-
-function init(linearSolver::FusedLasso)
-
     # Create shorthand notations for parameters
-    S = linearSolver.linearProblem.A
-    shape = linearSolver.linearProblem.shape
-    u = linearSolver.linearProblem.b
-    energy = linearSolver.tempParams.rowEnergy
+    S = solver.linearProblem.A
+    shape = solver.linearProblem.shape
+    u = solver.linearProblem.b
+    energy = solver.tempParams.rowEnergy
 
     # Store row energies and normalize rows of system matrix
     normalize!(S,u,energy)
 
     #linearSolver.linearProblem.x = zeros(eltype(linearSolver.linearProblem.x),shape[1]*shape[2]*shape[3])
-    linearSolver.linearProblem.A = S
+    solver.linearProblem.A = S
 
-    # Initialize gpu library depending parameters
-    initGPU!(linearSolver)
-
-end
-
-function initGPU!(linearSolver::FusedLasso)
-    # Shorthandnotation for libray
-    lib = linearSolver.userParams.lib
-
-    # Determine absolute path to selected library
-    libpath = getLibPath(lib)
-
-    # Check if a valid path was returned
-    if libpath == nothing
-      warn("No correct GPU library specified. CPU functions will be used.")
-      if linearSolver.userParams.cached == true
+    if solver.userParams.cached == true
         println("Calculating ATA")
         #=
 	BLAS.gemm!('T','N',
@@ -290,73 +226,15 @@ function initGPU!(linearSolver::FusedLasso)
                    zero(eltype(linearSolver.linearProblem.A)),
                    linearSolver.linearProblem.ATA)
         =#
-        BLAS.syrk!('U','T',linearSolver.userParams.gamma,
-                    linearSolver.linearProblem.A,
-                    zero(eltype(linearSolver.linearProblem.A)),
-                    linearSolver.linearProblem.ATA)
-      end
-      return
+        BLAS.syrk!('U','T',solver.userParams.gamma,
+                    solver.linearProblem.A,
+                    zero(eltype(solver.linearProblem.A)),
+                    solver.linearProblem.ATA)
     end
 
-    # Recompile libraries if selected or if no compiled version exists
-    compileLib(libpath;forceCompilation=linearSolver.userParams.recompile)
-
-    # Open gradient library
-    linearSolver.tempParams.soHandle = Libdl.dlopen(libpath)
-    # Call init function of library
-    err = ccall(Libdl.dlsym(linearSolver.tempParams.soHandle,:init),
-                Int32,
-                (Ptr{Float32},Ptr{Float32},Ptr{Float32},Ptr{Float32},Int32,Int32,Float32,Int16,Int16),
-                linearSolver.linearProblem.A,
-                linearSolver.linearProblem.b,
-                linearSolver.linearProblem.x,
-                linearSolver.tempParams.y,
-                size(linearSolver.linearProblem.A,1),
-                size(linearSolver.linearProblem.A,2),
-                linearSolver.userParams.gamma,0,0)
-    if err != 0
-      Libdl.dlclose(linearSolver.tempParams.soHandle)
-      error("Error init C library!")
-    end
-
-    # Call additional init function for cached version of library
-    if linearSolver.userParams.cached == true
-      err = ccall(Libdl.dlsym(linearSolver.tempParams.soHandle,:initCached),
-                  Int32,
-                  (Ptr{Float32},),linearSolver.linearProblem.ATA)
-
-      if err != 0
-        ccall(Libdl.dlsym(linearSolver.tempParams.soHandle,:deinit),Int32,())
-        Libdl.dlclose(linearSolver.tempParams.soHandle)
-        error("Error init cached C library!")
-      end
-    end
-
+    return solver
 end
 
-
-
-#==============================================================================#
-# Global deinitialization
-#==============================================================================#
-
-function deinit(linearSolver::FusedLasso)
-
-    # If no gradient library was opened, return
-    if linearSolver.tempParams.soHandle == nothing
-      return
-    end
-
-    # Call deinit function of gradient library
-    ccall(Libdl.dlsym(linearSolver.tempParams.soHandle,:deinit),Int32,())
-
-    # Close gradient library
-    Libdl.dlclose(linearSolver.tempParams.soHandle)
-
-    # Delete gradient library handle
-    linearSolver.tempParams.soHandle = nothing
-
-end
 
 #==============================================================================#
 # Parameter Settings
@@ -376,34 +254,11 @@ function setParameter!(linearSolver::FusedLasso,parameter::AbstractString,data)
 end
 
 function setMeasurement!(linearSolver::FusedLasso,measurement::Vector)
-
+   m = copy(measurement)
    # Multiply measurement vector with row energies of system matrix
-   normalize!(measurement,linearSolver.tempParams.rowEnergy)
+   normalize!(m,linearSolver.tempParams.rowEnergy)
    # Store result
-   linearSolver.linearProblem.b = measurement
-
-   # Copy measurement vector to gpu, if a library was selected
-   if linearSolver.tempParams.soHandle != nothing
-        err = ccall(Libdl.dlsym(linearSolver.tempParams.soHandle,:setMeasurement),
-                    Int32,
-                    (Ptr{Float32},),
-                    linearSolver.linearProblem.b)
-        if err != 0
-          ccall(Libdl.dlsym(linearSolver.tempParams.soHandle,:deinit),Int32,())
-          Libdl.dlclose(linearSolver.tempParams.soHandle)
-          error("Error write measurement to gpu!")
-        end
-    else
-        # Precalculation for cached fused lasso without a gpu
-        if linearSolver.userParams.cached == true
-          BLAS.gemv!('T',
-                   -linearSolver.userParams.gamma,
-                   linearSolver.linearProblem.A,
-                   linearSolver.linearProblem.b,
-                   zero(eltype(linearSolver.linearProblem.b)),
-                   linearSolver.linearProblem.ATb)
-        end
-    end
+   linearSolver.linearProblem.b = m
 end
 
 #==============================================================================#
@@ -412,33 +267,13 @@ end
 
 function solve(linearSolver::FusedLasso, measurement::Vector)
     setMeasurement!(linearSolver,measurement)
-    if linearSolver.userParams.lib!="matlab"
-      solve(linearSolver.linearProblem,linearSolver.userParams,linearSolver.tempParams)
-    else
-      # If matlab was selected as a library, fused lasso will not be performed,
-      # but linear problem and user parameters will be stored in a .mat file
-      if isdir("matlabData")
-        rm("matlabData";recursive=true)
-      end
-      mkdir("matlabData")
-
-      mf = matopen("matlabData/Data.mat","w")
-      write(mf,"mS",linearSolver.linearProblem.A)
-      write(mf,"mb",linearSolver.linearProblem.b)
-      write(mf,"mmaxIter",linearSolver.userParams.maxIter)
-      write(mf,"malpha",linearSolver.userParams.alpha)
-      write(mf,"mbeta",linearSolver.userParams.beta)
-      write(mf,"mgamma",linearSolver.userParams.gamma)
-      write(mf,"mlambda",linearSolver.userParams.lambda)
-      write(mf,"mshape",linearSolver.linearProblem.shape)
-      close(mf)
-    end
-
+    solve(linearSolver.linearProblem,linearSolver.userParams,linearSolver.tempParams)
 end
 
 function solve(linearProblem::FusedLassoProblem,userParams::FusedLassoUserParams,tempParams::FusedLassoTempParams)
       S = linearProblem.A
       shape = linearProblem.shape
+      linearProblem.x[:] = 0.0
       #linearProblem.x = zeros(eltype(linearProblem.x),shape[1]*shape[2]*shape[3])
       linearProblem.x = reshape(fusedlasso(
                 reshape(S,size(S,1),shape[1],shape[2],shape[3]),
@@ -451,7 +286,6 @@ function solve(linearProblem::FusedLassoProblem,userParams::FusedLassoUserParams
                 alpha=userParams.alpha,
                 beta=userParams.beta,
                 gamma=userParams.gamma,
-                soHandle=tempParams.soHandle,
                 verbose=userParams.verbose),
                 shape[1]*shape[2]*shape[3]
                 )
@@ -473,7 +307,6 @@ function solve(linearProblem::FusedLassoProblemCached,userParams::FusedLassoUser
                 alpha=userParams.alpha,
                 beta=userParams.beta,
                 gamma=userParams.gamma,
-                soHandle=tempParams.soHandle,
                 verbose=userParams.verbose),shape[1]*shape[2]*shape[3])
 end
 
@@ -502,19 +335,17 @@ Base.getindex(R::StartRange,i::Int) = if i==1 R.x elseif i==2 R.y elseif i==3 R.
 * 'alpha::Float32' Weight of the tv term.
 * 'beta::Float32' Weight of the l1 term.
 * 'gamma::Float32' Weight for the gradient descent step.
-* 'soHandle' Handle for the GradientLib library
 * 'verbose' Flag for extended information output
 """ ->
 function fusedlasso{T}(S::Array{T,4},u::Vector{T},c::Array{T,3};
   maxIter = Int64(50),
-  tol = Float32(5.0*10.0^-6),
+  tol = T(5.0*10.0^-6),
   nhood = Int64[1 0 0;0 1 0; 0 0 1],
-  omega = Float32[1 1 1],
-  lambda = Float32(1),
-  alpha = Float32(0.000017),
-  beta = Float32(0.001),
-  gamma = Float32(10.0^-3),
-  soHandle = nothing,
+  omega = T[1 1 1],
+  lambda = T(1),
+  alpha = T(0.000017),
+  beta = T(0.001),
+  gamma = T(10.0^-3),
   verbose = false,
   kargs...
   )
@@ -526,11 +357,7 @@ function fusedlasso{T}(S::Array{T,4},u::Vector{T},c::Array{T,3};
   println(beta)
   println(gamma)
   =#
-  if soHandle == nothing
-     gradientFunc! = gradient_base!
-  else
-     gradientFunc! = gradient_parallel!
-  end
+  gradientFunc! = gradient_base!
 
   cSize = size(c)
   N = size(collect(omega),1)
@@ -538,7 +365,7 @@ function fusedlasso{T}(S::Array{T,4},u::Vector{T},c::Array{T,3};
 
   y = zeros(eltype(c),cSize[1],cSize[2],cSize[3])
 
-  t = ones(Float32,N+1)/(N+1)
+  t = ones(T,N+1)/(N+1)
   yTemp = Array(eltype(y),size(y))
   #cOld = copy(c)
   zTemp = Array(eltype(yTemp),size(yTemp))
@@ -551,7 +378,7 @@ function fusedlasso{T}(S::Array{T,4},u::Vector{T},c::Array{T,3};
   for i=1:maxIter
 
       # Calculate gradient
-      gradientFunc!(c,S,u,y,gamma,soHandle)
+      gradientFunc!(c,S,u,y,gamma)
       next!(p)
 
       # Proximal mapping
@@ -588,14 +415,13 @@ end
 
 function fusedlassoCached{T}(S::Array{T,4},STS::Array{T,2},u::Vector{T},STu::Vector{T},c::Array{T,3};
   maxIter = Int64(50),
-  tol = Float32(5.0*10.0^-6),
+  tol = T(5.0*10.0^-6),
   nhood = Int64[1 0 0;0 1 0; 0 0 1],
-  omega = Float32[1 1 1],
-  lambda = Float32(1),
-  alpha = Float32(0.000017),
-  beta = Float32(0.001),
-  gamma = Float32(10.0^-3),
-  soHandle = nothing,
+  omega = T[1 1 1],
+  lambda = T(1),
+  alpha = T(0.000017),
+  beta = T(0.001),
+  gamma = T(10.0^-3),
   verbose = false,
   kargs...
   )
@@ -607,17 +433,13 @@ function fusedlassoCached{T}(S::Array{T,4},STS::Array{T,2},u::Vector{T},STu::Vec
   println(beta)
   println(gamma)
   =#
-  if soHandle == nothing
-     gradientFuncCached! = gradient_base_cached!
-  else
-     gradientFuncCached! = gradient_parallel_cached!
-  end
+  gradientFuncCached! = gradient_base_cached!
 
   cSize = size(c)
   N = size(collect(omega),1)
   z = zeros(eltype(c),N+1,cSize[1],cSize[2],cSize[3])
   y = zeros(eltype(c),cSize[1],cSize[2],cSize[3])
-  t = ones(Float32,N+1)/(N+1)
+  t = ones(T,N+1)/(N+1)
   yTemp = Array(eltype(y),size(y))
   #cOld = copy(c)
   zTemp = Array(eltype(yTemp),size(yTemp))
@@ -631,7 +453,7 @@ function fusedlassoCached{T}(S::Array{T,4},STS::Array{T,2},u::Vector{T},STu::Vec
   for i=1:maxIter
 
       # Calculate gradient
-      gradientFuncCached!(c,STS,STu,y,soHandle)
+      gradientFuncCached!(c,STS,STu,y)
       #gradient!(c,S,u,y,gamma)
       next!(p)
 
@@ -668,7 +490,7 @@ end
 
 
 @doc "This function calculates the error gradient according to y = γA*(Ac-u)." ->
-function gradient_base!{T}(c::Array{T,3},A::Array{T,4},u::Array{T,1},y::Array{T,3},α::T,soHandle)
+function gradient_base!{T}(c::Array{T,3},A::Array{T,4},u::Array{T,1},y::Array{T,3},α::T)
 
   aSize = size(A)
   cSize = size(c)
@@ -688,7 +510,7 @@ function gradient_base!{T}(c::Array{T,3},A::Array{T,4},u::Array{T,1},y::Array{T,
 
 end
 
-function gradient_base_cached!{T<:Real}(c::Array{T,3},ATA::Array{T,2},ATu::Array{T,1},y::Array{T,3},soHandle)
+function gradient_base_cached!{T<:Real}(c::Array{T,3},ATA::Array{T,2},ATu::Array{T,1},y::Array{T,3})
 
   aSize = size(ATA)
   cSize = size(c)
@@ -702,40 +524,6 @@ function gradient_base_cached!{T<:Real}(c::Array{T,3},ATA::Array{T,2},ATu::Array
   BLAS.symv!('U',one(T),ATA,c,one(T),y)
 
 end
-
-function gradient_parallel!{T<:Real}(c::Array{T,3},A::Array{T,4},u::Array{T,1},y::Array{T,3},α::T,soHandle)
-
-
-cSize = size(c)
-ySize = size(y)
-
-c  = reshape(c,cSize[1]*cSize[2]*cSize[3])
-y  = reshape(y,ySize[1]*ySize[2]*ySize[3])
-
-err = ccall(Libdl.dlsym(soHandle,:runGradient),Int32,(Ptr{Float32},Ptr{Float32},Float32),c,y,α)
-if err != 0
-  println("Error run!!!")
-end
-
-end
-
-
-function gradient_parallel_cached!{T<:Real}(c::Array{T,3},ATA::Array{T,2},ATu::Array{T,1},y::Array{T,3},soHandle)
-
-
-cSize = size(c)
-ySize = size(y)
-
-c  = reshape(c,cSize[1]*cSize[2]*cSize[3])
-y  = reshape(y,ySize[1]*ySize[2]*ySize[3])
-
-err = ccall(Libdl.dlsym(soHandle,:runGradientCached),Int32,(Ptr{Float32},Ptr{Float32}),c,y)
-if err != 0
-  println("Error run!!!")
-end
-
-end
-
 
 @doc "This function performs the proximal mapping." ->
 function proxmap!{T<:Real}(y::Array{T,3},yTemp::Array{T,3},z::Array{T,4},c::Array{T,3},N,nhood,alpha,beta,gamma,omega,lambda,t)
@@ -800,7 +588,7 @@ function tv_push_onedim_data!{T<:Real}(tvData::Array{T,3},tvOneDim::Array{T,1},a
 end
 
 @doc "This function extracts 1d problems from the 3d data and starts the 1d tv function." ->
-function tv_denoise_3d_condat!{T<:Real}(tvData::Array{T,3},nhood::Array{Int64,1},lambda::Float32)
+function tv_denoise_3d_condat!{T<:Real}(tvData::Array{T,3},nhood::Array{Int64,1},lambda)
 
   tvSize = size(tvData)
   cartRange = get_startrange(tvSize,nhood[:])
@@ -953,7 +741,7 @@ function update!{T<:Real}(z::Array{T,4},s::Int64,y::Array{T,3},c::Array{T,3},lam
   y = reshape(y,flatSize)
   c = reshape(c,flatSize)
   yTemp = Array(T,flatSize)
-  zTemp = slice(z,s,:)
+  zTemp = view(z,s,:)
 
   broadcast!(.-,yTemp,y,c)
 
@@ -1017,7 +805,7 @@ function pointwise_max!{T<:Real}(c::Array{T,3},z::Array{T,4},s::Int64,y::Array{T
 
   y = reshape(y,ySize[1]*ySize[2]*ySize[3])
   c = reshape(c,cSize[1]*cSize[2]*cSize[3])
-  zTemp = slice(z,s,:)
+  zTemp = view(z,s,:)
   out = reshape(out,cSize[1]*cSize[2]*cSize[3])
 
   yTemp = 2*c-zTemp-y;
@@ -1036,7 +824,7 @@ function weighted_sum!{T<:Real}(weights::Array{T,1},z::Array{T,4},c::Array{T,3})
   cTemp = zeros(eltype(c),zSize[1]*zSize[2]*zSize[3])
 
   for i=1:length(weights)
-  zTemp = slice(z,i,:)
+  zTemp = view(z,i,:)
   cTemp[:] = cTemp[:] + weights[i]*zTemp
   end
 
