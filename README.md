@@ -7,7 +7,7 @@
 [![codecov.io](http://codecov.io/github/tknopp/LinearSolver.jl/coverage.svg?branch=master)](http://codecov.io/github/tknopp/LinearSolver.jl?branch=master)
 
 # Documentation
-
+ 
 Read the documentation here:
 
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://tknopp.github.io/LinearSolver.jl/stable)
