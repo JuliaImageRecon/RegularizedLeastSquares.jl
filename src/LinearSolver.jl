@@ -2,10 +2,10 @@ module LinearSolver
 
 using ProgressMeter, IterativeSolvers
 
-import Base.LinAlg: A_mul_B!, Ac_mul_B!, At_mul_B! #import to add new method
+import Base.LinAlg: A_mul_B!, Ac_mul_B!, At_mul_B!, length
 using Base.LinAlg: BlasFloat
 
-export linearSolver
+export createLinearSolver, init, deinit, solve, linearSolverList
 
 abstract AbstractLinearSolver
 
@@ -58,29 +58,12 @@ function createLinearSolver(solver::AbstractString, A; kargs...)
   end
 end
 
-function linearSolver(solver::AbstractString)
-  depwarn("function linearSolver is deprectated use createLinearSolver instead", :linearSolver)
-  if solver == "cgnr"
-    return cgnr
-  elseif solver == "direct"
-    return directSolver
-  elseif solver == "kaczmarzold"
-    return kaczmarzold
-  elseif solver == "tobitestcgnr"
-    return tobitestcgnr
-  elseif solver == "daxkaczmarz"
-    return daxrandkaczmarz
-  elseif solver == "daxconstrained"
-    return daxconstrained
-  elseif solver == "kaczmarz"
-    return kaczmarz
-  elseif solver == "lsqr"
-    return lsqr_
-  elseif solver == "pseudoinverse"
-    return pseudoinverse
-  else
-    error("Solver ",solver," not found.")
-  end
+"""
+Return a list of all available linear solvers
+"""
+function linearSolverList()
+  Any["kaczmarz", "cgnr"] # These are those passing the tests
+    #, "fusedlasso"]
 end
 
 end

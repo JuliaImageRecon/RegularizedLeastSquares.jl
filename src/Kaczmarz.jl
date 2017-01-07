@@ -40,6 +40,13 @@ end
 ### kaczmarz_update_simd! ###
 
 @doc "This funtion updates x during the kaczmarz algorithm for dense matrices." ->
+function kaczmarz_update_simd!{T}(A::DenseMatrix{T}, x::Vector, k::Integer, beta)
+  @simd for n=1:size(A,2)
+    @inbounds x[n] += beta*A[k,n]
+  end
+end
+
+@doc "This funtion updates x during the kaczmarz algorithm for dense matrices." ->
 function kaczmarz_update_simd!{T,S<:DenseMatrix}(B::MatrixTranspose{T,S}, x::Vector, k::Integer, beta)
   A = B.data
   @simd for n=1:size(A,1)
