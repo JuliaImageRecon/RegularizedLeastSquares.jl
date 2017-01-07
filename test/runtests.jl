@@ -1,6 +1,8 @@
 using LinearSolver
 using Base.Test
 
+srand(3)
+
 @testset "Linear Solver" begin
 
 A = rand(3,2);
