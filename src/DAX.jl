@@ -7,14 +7,6 @@ end
 
 DaxKaczmarz(A; kargs...) = DaxKaczmarz(A,kargs)
 
-function init(solver::DaxKaczmarz)
-  nothing
-end
-
-function deinit(solver::DaxKaczmarz)
-  nothing
-end
-
 function solve(solver::DaxKaczmarz, u::Vector)
   return daxrandkaczmarz(solver.A, u; solver.params... )
 end

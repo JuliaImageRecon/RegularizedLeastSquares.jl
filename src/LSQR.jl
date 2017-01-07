@@ -6,18 +6,9 @@ end
 
 LSQR(A; kargs...) = LSQR(A,kargs)
 
-function init(solver::LSQR)
-  nothing
-end
-
-function deinit(solver::LSQR)
-  nothing
-end
-
 function solve(solver::LSQR, u::Vector)
   return lsqr_(solver.A, u; solver.params... )
 end
-
 
 function lsqr_(S, u::Vector;
  iterations=10, lambd=0.0, weights=nothing, enforceReal=true, enforcePositive=true, sparseTrafo=nothing, startVector=nothing, solverInfo=nothing, verbose = true ,kargs...)

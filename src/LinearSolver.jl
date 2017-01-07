@@ -62,8 +62,7 @@ end
 Return a list of all available linear solvers
 """
 function linearSolverList()
-  Any["kaczmarz"]
-    #, "cgnr"] # These are those passing the tests
+  Any["kaczmarz","cgnr"] # These are those passing the tests
     #, "fusedlasso"]
 end
 

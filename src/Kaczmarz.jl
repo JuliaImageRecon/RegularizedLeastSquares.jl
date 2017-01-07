@@ -7,14 +7,6 @@ end
 
 Kaczmarz(A; kargs...) = Kaczmarz(A,kargs)
 
-function init(solver::Kaczmarz)
-  nothing
-end
-
-function deinit(solver::Kaczmarz)
-  nothing
-end
-
 function solve(solver::Kaczmarz, u::Vector)
   return kaczmarz(solver.A, u; solver.params... )
 end

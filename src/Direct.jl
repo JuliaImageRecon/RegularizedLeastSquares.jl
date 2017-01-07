@@ -10,14 +10,6 @@ end
 
 DirectSolver(A; kargs...) = DirectSolver(A,kargs)
 
-function init(solver::DirectSolver)
-  nothing
-end
-
-function deinit(solver::DirectSolver)
-  nothing
-end
-
 function solve(solver::DirectSolver, u::Vector)
   return directSolver(solver.A, u; solver.params... )
 end
@@ -58,14 +50,6 @@ type PseudoInverse <: AbstractLinearSolver
 end
 
 PseudoInverse(A; kargs...) = PseudoInverse(A,kargs)
-
-function init(solver::PseudoInverse)
-  nothing
-end
-
-function deinit(solver::PseudoInverse)
-  nothing
-end
 
 function solve(solver::PseudoInverse, u::Vector)
   return pseudoinverse(solver.A, u; solver.params... )

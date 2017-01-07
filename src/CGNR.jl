@@ -8,14 +8,6 @@ end
 
 CGNR(A; kargs...) = CGNR(A,kargs)
 
-function init(solver::CGNR)
-  nothing
-end
-
-function deinit(solver::CGNR)
-  nothing
-end
-
 function solve(solver::CGNR, u::Vector)
   return cgnr(solver.A, u; solver.params... )
 end
@@ -60,7 +52,7 @@ iterations = 10, lambd::Real = 0.0, startVector = nothing, weights = nothing, en
   copy!(pl,zl)
   #start iteration
   p = Progress(iterations, 1, "CGNR Iteration...")
-  for l=1:iterations
+  for l=1:min(iterations,size(S,2))
     #vₗ = Sᵗ*pₗ
     A_mul_B!(one(T), S, pl, zero(T), vl)
     #At_mul_B!(vl,S,pl)
