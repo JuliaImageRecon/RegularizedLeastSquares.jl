@@ -42,7 +42,7 @@ end
 @doc "This funtion updates x during the kaczmarz algorithm for dense matrices." ->
 function kaczmarz_update_simd!{T}(A::DenseMatrix{T}, x::Vector, k::Integer, beta)
   @simd for n=1:size(A,2)
-    @inbounds x[n] += beta*A[k,n]
+    @inbounds x[n] += beta*conj(A[k,n])
   end
 end
 
@@ -50,7 +50,7 @@ end
 function kaczmarz_update_simd!{T,S<:DenseMatrix}(B::MatrixTranspose{T,S}, x::Vector, k::Integer, beta)
   A = B.data
   @simd for n=1:size(A,1)
-    @inbounds x[n] += beta*A[n,k]
+    @inbounds x[n] += beta*conj(A[n,k])
   end
 end
 
@@ -66,7 +66,7 @@ function kaczmarz_update_simd!{T,S<:SparseMatrixCSC}(B::MatrixTranspose{T,S}, x:
   A = B.data
   N = A.colptr[k+1]-A.colptr[k]
   for n=A.colptr[k]:N-1+A.colptr[k]
-    @inbounds x[A.rowval[n]] += beta*A.nzval[n]
+    @inbounds x[A.rowval[n]] += beta*conj(A.nzval[n])
   end
 end
 
@@ -87,7 +87,7 @@ This funtion implements the kaczmarz algorithm.
 * `enforcePositive::Bool`: Enable projection of solution onto positive halfplane during iteration.
 """ ->
 function kaczmarz(S, u::Vector;
- iterations=10, lambd=0.0, weights=nothing, enforceReal=true, enforcePositive=true, sparseTrafo=nothing, startVector=nothing, solverInfo=nothing, verbose = true ,kargs...)
+ iterations=10, lambd=0.0, weights=nothing, enforceReal=false, enforcePositive=false, sparseTrafo=nothing, startVector=nothing, solverInfo=nothing, verbose = true ,kargs...)
   T = typeof(real(u[1]))
   lambd = convert(T,lambd)
   weights==nothing ? weights=ones(T,size(S,1)) : nothing #search for positive solution as default
