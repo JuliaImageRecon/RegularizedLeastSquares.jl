@@ -10,5 +10,4 @@
  
 Read the documentation here:
 
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://tknopp.github.io/LinearSolver.jl/stable)
 [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://tknopp.github.io/LinearSolver.jl/latest)
