@@ -116,9 +116,9 @@ function daxrand{T}(S::AbstractMatrix{T}, u::Vector, iterations::Int, inneritera
     for l=1:length(rowindex)*inneriterations
       i::Int64 = getrandindex(sumrowweights,rand()*sumrowweights[end])  #choose row with propability proportional to its weight.
       j = rowindex[i]
-      τl = dot_with_matrix_row_simd(S,xl,j)
+      τl = dot_with_matrix_row(S,xl,j)
       αl = denom[i]*(bk[j]-τl-ɛw[i]*yl[j])
-      kaczmarz_update_simd!(S,xl,j,αl)
+      kaczmarz_update!(S,xl,j,αl)
       yl[j] += αl*ɛw[i]
     end
 
@@ -316,9 +316,9 @@ function daxcon{T<:Real}(S::AbstractMatrix{T}, u::Vector, B::RealBasisTrafo, ite
     for l=1:inneriterations
       for i=1:length(rowindex) # perform kaczmarz for all rows, which receive an update.
         j = rowindex[i]
-        τl = dot_with_matrix_row_simd(S,xl,j)
+        τl = dot_with_matrix_row(S,xl,j)
         αl = denom[i]*(bk[j]-τl-ɛw[i]*yl[j])
-        kaczmarz_update_simd!(S,xl,j,αl)
+        kaczmarz_update!(S,xl,j,αl)
         yl[j] += αl*ɛw[i]
       end
 
@@ -379,9 +379,9 @@ function daxcon{T<:Real}(S::AbstractMatrix{T}, u::Vector, B::AbstractMatrix, ite
     for l=1:inneriterations
       for i=1:length(rowindex) # perform kaczmarz for all rows, which receive an update.
         j = rowindex[i]
-        τl = dot_with_matrix_row_simd(S,xl,j)
+        τl = dot_with_matrix_row(S,xl,j)
         αl = denom[i]*(bk[j]-τl-ɛw[i]*yl[j])
-        kaczmarz_update_simd!(S,xl,j,αl)
+        kaczmarz_update!(S,xl,j,αl)
         yl[j] += αl*ɛw[i]
       end
 
@@ -391,11 +391,11 @@ function daxcon{T<:Real}(S::AbstractMatrix{T}, u::Vector, B::AbstractMatrix, ite
       BLAS.axpy!(1.0,xl,bc)
 
       for i=1:K
-        δ = dot_with_matrix_row_simd(B,bc,i)/Bnorm²[i]
+        δ = dot_with_matrix_row(B,bc,i)/Bnorm²[i]
         δ = δ<yc[i] ? -δ : -yc[i]
         yc[i] += δ
-        kaczmarz_update_simd!(B,xl,i,δ)  # update xl
-        kaczmarz_update_simd!(B,bc,i,δ)  # update bc
+        kaczmarz_update!(B,xl,i,δ)  # update xl
+        kaczmarz_update!(B,bc,i,δ)  # update bc
       end
     end
     BLAS.axpy!(1.0,xl,zk)  # zk += xl

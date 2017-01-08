@@ -56,7 +56,7 @@ end
 
 
 
-### dot_with_matrix_row_simd ###
+### dot_with_matrix_row ###
 
 @doc "This funtion calculates ∑ᵢ Aᵢₖxᵢ for dense matrices." ->
 # Fallback implementation
@@ -68,30 +68,30 @@ end
   return res
 end=#
 
-function dot_with_matrix_row_simd{T<:Complex}(A::DenseMatrix{T}, x::Vector{T}, k::Int64)
+function dot_with_matrix_row{T<:Complex}(A::DenseMatrix{T}, x::Vector{T}, k::Int64)
   BLAS.dotu(length(x), pointer(A,sub2ind(size(A),k,1)), size(A,1), pointer(x,1), 1)
 end
 
-function dot_with_matrix_row_simd{T<:Complex,S<:DenseMatrix}(B::MatrixTranspose{T,S}, x::Vector{T}, k::Int64)
+function dot_with_matrix_row{T<:Complex,S<:DenseMatrix}(B::MatrixTranspose{T,S}, x::Vector{T}, k::Int64)
   A = B.data
   BLAS.dotu(length(x), pointer(A,sub2ind(size(A),1,k)), 1, pointer(x,1), 1)
 end
 
 
 @doc "This funtion calculates ∑ᵢ Aᵢₖxᵢ for dense matrices." ->
-function dot_with_matrix_row_simd{T<:Real}(A::DenseMatrix{T}, x::Vector{T}, k::Int64)
+function dot_with_matrix_row{T<:Real}(A::DenseMatrix{T}, x::Vector{T}, k::Int64)
   BLAS.dot(length(x), pointer(A,sub2ind(size(A),k,1)), size(A,1), pointer(x,1), 1)
 end
 
 @doc "This funtion calculates ∑ᵢ Aᵢₖxᵢ for dense matrices." ->
-function dot_with_matrix_row_simd{T<:Real,S<:DenseMatrix}(B::MatrixTranspose{T,S}, x::Vector{T}, k::Int64)
+function dot_with_matrix_row{T<:Real,S<:DenseMatrix}(B::MatrixTranspose{T,S}, x::Vector{T}, k::Int64)
   A = B.data
   BLAS.dot(length(x), pointer(A,sub2ind(size(A),1,k)), 1, pointer(x,1), 1)
 end
 
 
 @doc "This funtion calculates ∑ᵢ Aᵢₖxᵢ for sparse matrices." ->
-function dot_with_matrix_row_simd{T,S<:SparseMatrixCSC}(B::MatrixTranspose{T,S}, x::Vector{T}, k::Int64)
+function dot_with_matrix_row{T,S<:SparseMatrixCSC}(B::MatrixTranspose{T,S}, x::Vector{T}, k::Int64)
   A = B.data
   tmp = zero(T)
   N = A.colptr[k+1]-A.colptr[k]

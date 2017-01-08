@@ -11,10 +11,10 @@ function solve(solver::Kaczmarz, u::Vector)
   return kaczmarz(solver.A, u; solver.params... )
 end
 
-### initkaczmarzfast ###
+### initkaczmarz ###
 
 @doc "This funtion saves the denominators to compute αl in denom and the rowindices, which lead to an update of cl in rowindex." ->
-function initkaczmarzfast(S::AbstractMatrix,λ,weights::Vector)
+function initkaczmarz(S::AbstractMatrix,λ,weights::Vector)
   T = typeof(real(S[1]))
   denom = T[]
   rowindex = Int64[]
@@ -29,17 +29,17 @@ function initkaczmarzfast(S::AbstractMatrix,λ,weights::Vector)
   denom, rowindex
 end
 
-### kaczmarz_update_simd! ###
+### kaczmarz_update! ###
 
 @doc "This funtion updates x during the kaczmarz algorithm for dense matrices." ->
-function kaczmarz_update_simd!{T}(A::DenseMatrix{T}, x::Vector, k::Integer, beta)
+function kaczmarz_update!{T}(A::DenseMatrix{T}, x::Vector, k::Integer, beta)
   @simd for n=1:size(A,2)
     @inbounds x[n] += beta*conj(A[k,n])
   end
 end
 
 @doc "This funtion updates x during the kaczmarz algorithm for dense matrices." ->
-function kaczmarz_update_simd!{T,S<:DenseMatrix}(B::MatrixTranspose{T,S}, x::Vector, k::Integer, beta)
+function kaczmarz_update!{T,S<:DenseMatrix}(B::MatrixTranspose{T,S}, x::Vector, k::Integer, beta)
   A = B.data
   @simd for n=1:size(A,1)
     @inbounds x[n] += beta*conj(A[n,k])
@@ -48,13 +48,13 @@ end
 
 #=
 @doc "This funtion updates x during the kaczmarz algorithm for dense matrices." ->
-function kaczmarz_update_simd!{T}(A::Matrix{T}, x::Vector{T}, k::Integer, beta::T)
+function kaczmarz_update!{T}(A::Matrix{T}, x::Vector{T}, k::Integer, beta::T)
   BLAS.axpy!(length(x), beta, pointer(A,sub2ind(size(A),1,k)), 1, pointer(x), 1)
 end
 =#
 
 @doc "This funtion updates x during the kaczmarz algorithm for sparse matrices." ->
-function kaczmarz_update_simd!{T,S<:SparseMatrixCSC}(B::MatrixTranspose{T,S}, x::Vector, k::Integer, beta)
+function kaczmarz_update!{T,S<:SparseMatrixCSC}(B::MatrixTranspose{T,S}, x::Vector, k::Integer, beta)
   A = B.data
   N = A.colptr[k+1]-A.colptr[k]
   for n=A.colptr[k]:N-1+A.colptr[k]
@@ -91,7 +91,7 @@ function kaczmarz{T}(S, u::Vector{T}, startVector, iterations, lambd, weights, e
   # fast implementation of kaczmarz using SIMD instructions
   M::Int64 = size(S,1)      #number of rows of system matrix
   N::Int64 = size(S,2)      #number of cols of system matrix
-  denom, rowindex = initkaczmarzfast(S,lambd,weights) #denom necessary to update αl, if rownorm ≠ 0. rowindex contains the indeces of nonzero rows.
+  denom, rowindex = initkaczmarz(S,lambd,weights) #denom necessary to update αl, if rownorm ≠ 0. rowindex contains the indeces of nonzero rows.
   rowIndexCycle = collect(1:length(rowindex))
 
   cl = startVector     #solution vector
@@ -107,9 +107,9 @@ function kaczmarz{T}(S, u::Vector{T}, startVector, iterations, lambd, weights, e
   for l=1:iterations
     for i in rowIndexCycle
       j = rowindex[i]
-      τl = dot_with_matrix_row_simd(S,cl,j)
+      τl = dot_with_matrix_row(S,cl,j)
       αl = denom[i]*(u[j]-τl-ɛw[i]*vl[j])
-      kaczmarz_update_simd!(S,cl,j,αl)
+      kaczmarz_update!(S,cl,j,αl)
       vl[j] += αl*ɛw[i]
     end
 
