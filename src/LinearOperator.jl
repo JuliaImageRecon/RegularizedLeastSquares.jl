@@ -2,7 +2,9 @@
 
 import Base: *,\, A_mul_B!, At_mul_B!, size #does not exactly fit
 
-export FFTOperator, SparseFFTOperator, MatrixProduct, SparseDCTOperator, linearOperator, RealBasisTrafo, ComplexBasisTrafo, BasisTrafo, DCTOperator
+export FFTOperator, DSTOperator, SparseFFTOperator, MatrixProduct,
+       SparseDCTOperator, linearOperator, RealBasisTrafo, ComplexBasisTrafo,
+       BasisTrafo, DCTOperator
 
 abstract BasisTrafo
 abstract ComplexBasisTrafo <: BasisTrafo
@@ -17,6 +19,8 @@ function linearOperator(op::AbstractString, shape)
     trafo = FFTOperator(shape)
   elseif op == "DCT"
     trafo = DCTOperator(shape)
+  elseif op == "Cheb"
+    trafo = DSTOperator(shape)
   else
     error("Unknown transformation")
   end
@@ -72,11 +76,36 @@ function At_mul_B!{T}(A::DCTOperator, x::DenseArray{T})
   scale!(x,α)
 end
 
+### DST Operator
+
+type DSTOperator <: RealBasisTrafo
+    shape
+end
+
+function weights(s)
+    w=ones(s...)./sqrt(8*prod(s))
+    w[s[1],:,:]./=sqrt(2)
+    w[:,s[2],:]./=sqrt(2)
+    w[:,:,s[3]]./=sqrt(2)
+    return reshape(w,prod(s))
+end
+
+function A_mul_B!{T}(A::DSTOperator, x::DenseArray{T})
+        FFTW.r2r!(reshape(x,A.shape...),FFTW.RODFT10)
+    x.*=weights(A.shape)
+end
+
+function At_mul_B!{T}(A::DSTOperator, x::DenseArray{T})
+        x./=weights(A.shape)
+    FFTW.r2r!(reshape(x,A.shape...),FFTW.RODFT01)
+    x./=8*prod(A.shape)
+end
+
 ### SparseFFTOperator
 
 #TODO -> inplace
 
-type SparseFFTOperator{T} <: ComplexBasisTrafo 
+type SparseFFTOperator{T} <: ComplexBasisTrafo
   shape::Tuple
   indices::Vector{Int64}
   buffer::Vector{T}
@@ -160,7 +189,3 @@ function test()
 end
 
 # end # module
-
-
-
-
