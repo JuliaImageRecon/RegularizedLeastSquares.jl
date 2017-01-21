@@ -4,7 +4,7 @@ import Base: *,\, A_mul_B!, At_mul_B!, size #does not exactly fit
 
 export FFTOperator, DSTOperator, SparseFFTOperator, MatrixProduct,
        SparseDCTOperator, linearOperator, RealBasisTrafo, ComplexBasisTrafo,
-       BasisTrafo, DCTOperator
+       BasisTrafo, DCTOperator, linearOperatorList
 
 abstract BasisTrafo
 abstract ComplexBasisTrafo <: BasisTrafo
@@ -13,6 +13,10 @@ abstract RealBasisTrafo <: BasisTrafo
 size(A::BasisTrafo,i::Int) = prod(A.shape)
 
 linearOperator(op::Void,shape) = nothing
+
+function linearOperatorList()
+  return ["DCT", "Cheb", "FFT"]
+end
 
 function linearOperator(op::AbstractString, shape)
   if op == "FFT"
