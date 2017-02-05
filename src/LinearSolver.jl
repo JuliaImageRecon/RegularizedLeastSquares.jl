@@ -19,20 +19,20 @@ include("Kaczmarz.jl")
 include("DAX.jl")
 include("CGNR.jl")
 include("Direct.jl")
-include("LSQR.jl")
 include("FusedLasso.jl")
+include("FISTA.jl")
 
 """
 Return a list of all available linear solvers
 """
 function linearSolverList()
-  Any["kaczmarz","cgnr"] # These are those passing the tests
+  Any["kaczmarz","fista"] #"cgnr"  # These are those passing the tests
     #, "fusedlasso"]
 end
 
 function linearSolverListReal()
-  Any["kaczmarz","cgnr","daxkaczmarz","daxconstrained"] # These are those passing the tests
-    #, "fusedlasso"]
+  Any["kaczmarz","daxkaczmarz","daxconstrained"] # These are those passing the tests
+    #, "fusedlasso"] "cgnr"
 end
 
 
@@ -66,6 +66,8 @@ function createLinearSolver(solver::AbstractString, A; kargs...)
     return PseudoInverse(A; kargs...)
   elseif solver == "fusedlasso"
     return FusedLasso(A; kargs...)
+  elseif solver == "fista"
+    return FISTA(A; kargs...)
   else
     error("Solver $solver not found.")
   end

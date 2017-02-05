@@ -132,3 +132,53 @@ function enfPos!{T<:Real}(x::Vector{T})
     @inbounds x[i] < 0 && (x[i] = zero(T))
   end
 end
+
+
+### soft threashold ###
+
+export softThreshold, groupSoftThreshold, svt_distinct, svt_sliding
+
+
+function softThresholdComplex(z,T)
+  #handle the size
+  if T>0
+    size_z=size(z)
+    z=vec(z)
+
+    # This soft thresholding function supports complex numbers
+    sz = max(abs(z)-T,0)./(max(abs(z)-T,0)+T).*z
+
+    # Handle the size
+    sz=reshape(sz,size_z)
+  else
+    sz = z;
+  end
+  return sz
+end
+
+
+#
+# soft-thresholding for the Lasso problem
+#
+function softThreshold(x, lambd,slices::Int64=1)
+  soft = copy(x)
+  idx = [abs(x[n]) > lambd for n=1:length(x)]
+  idxN = [abs(x[n]) <= lambd for n=1:length(x)]
+  soft[idxN] = 0.0
+  soft[idx] .*= (abs(x[idx]) - lambd) ./ abs(x[idx])
+  return soft
+end
+
+#
+# group-soft-thresholding for l1/l2-regularization
+#
+function groupSoftThreshold(x, lambd,slices::Int64=1)
+  sliceSize = floor(Int,length(x)/slices)
+  soft = reshape(x,sliceSize,slices)
+  idx = [norm(soft[n,:]) > lambd for n=1:sliceSize]
+  idxN = [norm(soft[n,:]) <= lambd for n=1:sliceSize]
+  soft[idxN,:] = 0
+  xNorm = [norm(soft[n,:]) for n=1:sliceSize]
+  soft[idx,:] = soft[idx,:] .* (xNorm[idx] - lambd) ./ xNorm[idx]
+  return vec(soft)
+end
