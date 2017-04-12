@@ -96,7 +96,7 @@ function dot_with_matrix_row{T,S<:SparseMatrixCSC}(B::MatrixTranspose{T,S}, x::V
   tmp = zero(T)
   N = A.colptr[k+1]-A.colptr[k]
   for n=A.colptr[k]:N-1+A.colptr[k]
-    @inbounds tmp += conj(A.nzval[n])*x[A.rowval[n]]
+    @inbounds tmp += A.nzval[n]*x[A.rowval[n]]
   end
   tmp
 end
