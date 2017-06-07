@@ -12,6 +12,7 @@ abstract AbstractLinearSolver
 # Fallback function
 setlambda(S::AbstractMatrix, λ::Real) = nothing
 
+include("Regularization.jl")
 include("LazyMatrixTranspose.jl")
 include("LinearOperator.jl")
 include("Utils.jl")
@@ -49,23 +50,26 @@ All solvers return an approximate solution to Sᵀx = u.
 
 Function returns choosen solver.
 """ ->
-function createLinearSolver(solver::AbstractString, A; kargs...)
+function createLinearSolver(solver::AbstractString, regParams, solverParams)
+
+  reg = Regularization(;regParams...)
+
   if solver == "kaczmarz"
-    return Kaczmarz(A; kargs...)
+    return Kaczmarz(A; regularizer=reg, solverParams...)
   elseif solver == "cgnr"
-    return CGNR(A; kargs...)
+    return CGNR(A; regularizer=reg, solverParams...)
   elseif solver == "direct"
-    return DirectSolver(A; kargs...)
+    return DirectSolver(A; solverParams...)
   elseif solver == "daxkaczmarz"
-    return DaxKaczmarz(A; kargs...)
+    return DaxKaczmarz(A; solverParams...)
   elseif solver == "daxconstrained"
-    return DaxConstrained(A; kargs...)
+    return DaxConstrained(A; solverParams...)
   elseif solver == "lsqr"
-    return LSQR(A; kargs...)
+    return LSQR(A; solverParams...)
   elseif solver == "pseudoinverse"
-    return PseudoInverse(A; kargs...)
+    return PseudoInverse(A; solverParams...)
   elseif solver == "fusedlasso"
-    return FusedLasso(A; kargs...)
+    return FusedLasso(A; regularizer=reg, solverParams...)
   else
     error("Solver $solver not found.")
   end

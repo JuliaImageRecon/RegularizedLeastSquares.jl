@@ -38,3 +38,8 @@ end
 
 
 end
+
+
+
+
+# build 4x4 Fourier matrix A=[ 1/sqrt(4)*exp(2*pi*im*j*k/4.0) for j=0:3, k=0:3 ]
