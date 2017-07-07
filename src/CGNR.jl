@@ -3,13 +3,14 @@ export cgnr
 
 type CGNR <: AbstractLinearSolver
   A
+  reg::Regularization
   params
 end
 
-CGNR(A; kargs...) = CGNR(A,kargs)
+CGNR(A, reg; kargs...) = CGNR(A,reg,kargs)
 
 function solve(solver::CGNR, u::Vector)
-  return cgnr(solver.A, u; solver.params... )
+  return cgnr(solver.A, u; lambd=solver.reg.params[:lambdL2], solver.params... )
 end
 
 

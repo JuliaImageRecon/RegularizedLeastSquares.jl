@@ -2,13 +2,14 @@ export kaczmarz
 
 type Kaczmarz <: AbstractLinearSolver
   A
+  reg::Regularization
   params
 end
 
-Kaczmarz(A; kargs...) = Kaczmarz(A,kargs)
+Kaczmarz(A, reg; kargs...) = Kaczmarz(A,reg,kargs)
 
 function solve(solver::Kaczmarz, u::Vector)
-  return kaczmarz(solver.A, u; solver.params... )
+  return kaczmarz(solver.A, u; lambd=solver.reg.params[:lambdL2], solver.params... )
 end
 
 ### initkaczmarz ###
