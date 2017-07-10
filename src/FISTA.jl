@@ -38,12 +38,14 @@ function fista{T}(A, b::Vector{T}, reg::Regularization
   for l=1:iterations
     xᵒˡᵈ[:] = x[:]
 
-    # x[:] = x[:] - ρ*Ac_mul_B(A, res)
-    x[:] = x[:] - ρ*Ac_mul_B(A, A*x-b)
+    x[:] = x[:] - ρ*Ac_mul_B(A, res)
 
-    sparseTrafo != nothing ? xˢᵖᵃʳˢᵉ = sparseTrafo*x[:] : xˢᵖᵃʳˢᵉ = x[:]
-    prox!(reg, xˢᵖᵃʳˢᵉ)
-    sparseTrafo != nothing ? x = Ac_mul_B(sparseTrafo,xˢᵖᵃʳˢᵉ[:]) : x[:] = xˢᵖᵃʳˢᵉ[:]
+    if sparseTrafo != nothing
+      Ac_mul_B( sparseTrafo, prox!( reg, sparseTrafo*x ) )
+    else
+      prox!( reg, x)
+    end
+
 
     tᵒˡᵈ = t
 

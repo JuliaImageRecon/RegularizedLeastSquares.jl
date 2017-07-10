@@ -10,22 +10,18 @@ proximal map for LLR regularization using singular-value-thresholding" ->
 * blockSize::Tuple{Int}: size of patches to perform singluar value thresholding on
 """ ->
 function proxLLR!(reg, x)
-  proxLLR!(x, reg.params[:lambdLLR]; reg.params...)
-end
-
-function proxLLR!{T}(x::Vector{T}, λ::Float64=1e-6; shape::NTuple=[], L=1, blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...)
-  x[:] = proxLLR(x, λ; shape=shape, L=L, blockSize=blockSize, randshift=randshift, kargs...)
+  x[:] = proxLLR(x, reg.params[:lambdLLR]; reg.params...)
 end
 
 function proxLLR{T}(x::Vector{T}, λ::Float64=1e-6; shape::NTuple=[], L=1, blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...)
-  res = zeros(T,size(x))
+  xᵖʳᵒˣ = zeros(T,size(x))
   N = prod(shape)
   K = floor(Int,length(x)/(N*L))
   for i = 1:L
-    res[(i-1)*N*K+1:i*N*K] = vec( svt(x[(i-1)*N*K+1:i*N*K], shape, λ; blockSize=blockSize, randshift=randshift, kargs...) )
+    xᵖʳᵒˣ[(i-1)*N*K+1:i*N*K] = vec( svt(x[(i-1)*N*K+1:i*N*K], shape, λ; blockSize=blockSize, randshift=randshift, kargs...) )
   end
 
-  return res
+  return xᵖʳᵒˣ
 end
 
 function svt{T}(x::Vector{T}, shape::Tuple, λ::Float64=1e-6; blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...)

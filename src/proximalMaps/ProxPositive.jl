@@ -5,7 +5,7 @@ function proxPositive!(reg::Regularization, x)
   proxPositive!(x)
 end
 
-function proxPositive(x)
+function proxPositive!(x)
   enfReal!(x)
   enfPos!(x)
 end
