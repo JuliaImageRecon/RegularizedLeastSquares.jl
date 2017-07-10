@@ -41,7 +41,9 @@ function fista{T}(A, b::Vector{T}, reg::Regularization
     x[:] = x[:] - ρ*Ac_mul_B(A, res)
 
     if sparseTrafo != nothing
-      Ac_mul_B( sparseTrafo, prox!( reg, sparseTrafo*x ) )
+      xˢᵖᵃʳˢᵉ = sparseTrafo*x[:]
+      prox!(reg, xˢᵖᵃʳˢᵉ)
+      x = sparseTrafo\xˢᵖᵃʳˢᵉ[:]
     else
       prox!( reg, x)
     end

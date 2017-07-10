@@ -55,8 +55,9 @@ function admm(A, b::Vector, reg::Regularization
 
   op = A'*A+ρ*opEye(length(x))
 
-  p = Progress(iterations,dt=0.1,desc="Doing ADMM...";barglyphs=BarGlyphs("[=> ]"),barlen=50)
+  reg.params[:lambdL1] /= ρ
 
+  p = Progress(iterations,dt=0.1,desc="Doing ADMM...";barglyphs=BarGlyphs("[=> ]"),barlen=50)
   for k=1:iterations
     # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 ||x+u-z||²
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
@@ -64,9 +65,15 @@ function admm(A, b::Vector, reg::Regularization
 
     # 2. update z using the proximal map of 1/ρ*g(x)
     zᵒˡᵈ = z
-    sparseTrafo != nothing ? zˢᵖᵃʳˢᵉ = sparseTrafo*z : zˢᵖᵃʳˢᵉ= z
-    prox!(reg, zˢᵖᵃʳˢᵉ)
-    sparseTrafo != nothing ? z = Ac_mul_B(sparseTrafo,zˢᵖᵃʳˢᵉ) : z =zˢᵖᵃʳˢᵉ
+
+    if sparseTrafo != nothing
+      zˢᵖᵃʳˢᵉ = sparseTrafo*(x[:]+u[:])
+      prox!(reg, zˢᵖᵃʳˢᵉ)
+      z = sparseTrafo\zˢᵖᵃʳˢᵉ[:]
+    else
+      z=x[:]+u[:]
+      prox!( reg, z)
+    end
 
     # 3. update u
     u=u+x-z
