@@ -12,15 +12,27 @@ abstract AbstractLinearSolver
 # Fallback function
 setlambda(S::AbstractMatrix, λ::Real) = nothing
 
+include("Regularization.jl")
+
+include("proximalMaps/ProxL1.jl")
+include("proximalMaps/ProxL2.jl")
+include("proximalMaps/ProxL21.jl")
+include("proximalMaps/ProxLLR.jl")
+include("proximalMaps/ProxPositive.jl")
+include("proximalMaps/ProxTV.jl")
+
 include("LazyMatrixTranspose.jl")
 include("LinearOperator.jl")
 include("Utils.jl")
 include("Kaczmarz.jl")
 include("DAX.jl")
 include("CGNR.jl")
+include("CG.jl")
 include("Direct.jl")
 include("LSQR.jl")
 include("FusedLasso.jl")
+include("FISTA.jl")
+include("ADMM.jl")
 
 """
 Return a list of all available linear solvers
@@ -50,10 +62,23 @@ All solvers return an approximate solution to Sᵀx = u.
 Function returns choosen solver.
 """ ->
 function createLinearSolver(solver::AbstractString, A; kargs...)
+
+  reg = Regularization(;kargs...)
+
   if solver == "kaczmarz"
-    return Kaczmarz(A; kargs...)
+    for regEntry in RegularizationList()
+      regEntry == "L2" ? continue : nothing
+      getfield(reg, Symbol(regEntry)) ? error("Regularization $regularizer not supported by solver $solver.") : nothing
+    end
+    return Kaczmarz(A, reg; kargs...)
   elseif solver == "cgnr"
-    return CGNR(A; kargs...)
+    for regEntry in RegularizationList()
+      regEntry == "L2" ? continue : nothing
+      getfield(reg, Symbol(regEntry)) ? error("Regularization $regularizer not supported by solver $solver.") : nothing
+    end
+    return CGNR(A, reg; kargs...)
+  elseif solver== "cg"
+    return CG(A;kargs...)
   elseif solver == "direct"
     return DirectSolver(A; kargs...)
   elseif solver == "daxkaczmarz"
@@ -66,10 +91,13 @@ function createLinearSolver(solver::AbstractString, A; kargs...)
     return PseudoInverse(A; kargs...)
   elseif solver == "fusedlasso"
     return FusedLasso(A; kargs...)
+  elseif solver == "fista"
+    return FISTA(A, reg;kargs...)
+  elseif solver == "admm"
+    return ADMM(A, reg;kargs...)
   else
     error("Solver $solver not found.")
   end
 end
-
 
 end
