@@ -57,9 +57,9 @@ function FusedLassoUserParams(T::Type;
                                 # Weight for update steps
                                 kappa = T(0.5),
                                 # Weight for proximal mapping
-                                alpha = T(0.0002),
+                                lambdaTV = T(0.0002),
                                 # Weight for soft thresholding
-                                beta = T(0.0016),
+                                lambdaL1 = T(0.0016),
                                 # Weight for gradient descent step, proximal mapping and soft thresholding
                                 gamma = T(10.0^-3),
                                 # Library for gradient calculation
@@ -113,7 +113,7 @@ function FusedLassoUserParams(T::Type;
 
 	end
 
-    return FusedLassoUserParams(verbose,cached,iterations,nhood,omega,gamma,kappa,alpha,beta,lib,recompile)
+    return FusedLassoUserParams(verbose,cached,iterations,nhood,omega,gamma,kappa,T(lambdaTV),T(lambdaL1),lib,recompile)
 end
 
 #==============================================================================#
@@ -171,9 +171,9 @@ function FusedLasso{T}(S::Matrix{T}; shape::Array{Int64,1}=[size(S,2),1,1], kwar
 
     # Create linear problem for cached or non cached fused lasso
     if userParams.cached == false
-      linearProblem = FusedLassoProblem(S,zeros(eltype(S),shape[1]*shape[2]*shape[3]),zeros(eltype(S), div(length(S),shape[1]*shape[2]*shape[3])),shape)
+      linearProblem = FusedLassoProblem(copy(S),zeros(eltype(S),shape[1]*shape[2]*shape[3]),zeros(eltype(S), div(length(S),shape[1]*shape[2]*shape[3])),shape)
     else
-      linearProblem = FusedLassoProblemCached(S,
+      linearProblem = FusedLassoProblemCached(copy(S),
                                               zeros(eltype(S),shape[1]*shape[2]*shape[3],shape[1]*shape[2]*shape[3]),
                                               zeros(eltype(S),shape[1]*shape[2]*shape[3]),
                                               zeros(eltype(S),shape[1]*shape[2]*shape[3]),
