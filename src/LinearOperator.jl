@@ -1,14 +1,12 @@
-#module LinearOperator
-
 import Base: *,\, A_mul_B!, At_mul_B!, size #does not exactly fit
 
 export FFTOperator, DSTOperator, SparseFFTOperator, MatrixProduct,
        SparseDCTOperator, linearOperator, RealBasisTrafo, ComplexBasisTrafo,
        BasisTrafo, DCTOperator, linearOperatorList
 
-abstract BasisTrafo
-abstract ComplexBasisTrafo <: BasisTrafo
-abstract RealBasisTrafo <: BasisTrafo
+@compat abstract type BasisTrafo end
+@compat abstract type ComplexBasisTrafo <: BasisTrafo end
+@compat abstract type RealBasisTrafo <: BasisTrafo end
 
 size(A::BasisTrafo,i::Int) = prod(A.shape)
 
@@ -191,5 +189,3 @@ function test()
 
   println(y)
 end
-
-# end # module

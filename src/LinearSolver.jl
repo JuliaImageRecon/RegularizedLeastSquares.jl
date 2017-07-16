@@ -1,13 +1,14 @@
+__precompile__()
 module LinearSolver
 
-using ProgressMeter, IterativeSolvers
+using ProgressMeter, IterativeSolvers, Compat
 
 import Base.LinAlg: A_mul_B!, Ac_mul_B!, At_mul_B!, length
 using Base.LinAlg: BlasFloat
 
 export createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
 
-abstract AbstractLinearSolver
+@compat abstract type AbstractLinearSolver end
 
 # Fallback function
 setlambda(S::AbstractMatrix, λ::Real) = nothing
