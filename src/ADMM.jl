@@ -18,11 +18,10 @@ A_mul_B{T}(A::AbstractLinearOperator{T}, x::Vector{T}) = A*x
 """
  Alternating Direction Method of Multipliers
 
- Solve the problem: X = arg min_x || Ax-b||² + λ*g(X) where:
+ Solve the problem: X = arg min_x 1/2*|| Ax-b||² + λ*g(X) where:
     x: variable (vector)
     b: measured data
     A: a general linear operator
-    AHA: A left-multiplied by its hermitian conjugate
     g(X): a convex but not necessarily a smooth function
 
   For details see:
@@ -55,13 +54,13 @@ function admm(A, b::Vector, reg::Regularization
 
   op = A'*A+ρ*opEye(length(x))
 
-  reg.params[:lambdL1] /= ρ
+  A_mul_B!(reg,1./ρ)
 
   p = Progress(iterations,dt=0.1,desc="Doing ADMM...";barglyphs=BarGlyphs("[=> ]"),barlen=50)
   for k=1:iterations
     # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 ||x+u-z||²
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
-    x = cg(op, x,  Ac_mul_B(A,b)+ρ*(z-u), iterations=10, verbose=false, verboseRes=false )
+    x = cg(op, x,  Ac_mul_B(A,b)+ρ*(z-u), iterations=10, verbose=false, solverInfo=solverInfo )
 
     # 2. update z using the proximal map of 1/ρ*g(x)
     zᵒˡᵈ = z
@@ -86,7 +85,7 @@ function admm(A, b::Vector, reg::Regularization
 
     next!(p)
 
-    solverInfo != nothing && storeInfo(solverInfo,norm(rᵏ),norm(x))
+    solverInfo != nothing && storeRegularization(solverInfo,norm(reg,z))
 
     if (rᵏ < ɛᵖʳⁱ) && (sᵏ < ɛᴰᵘᵃˡ)
       break;

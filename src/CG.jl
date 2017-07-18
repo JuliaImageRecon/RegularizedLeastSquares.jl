@@ -21,7 +21,7 @@ function cg(A
             , b::Vector
             ; iterations::Int = 30
             , verbose::Bool=true
-            , verboseRes::Bool=true)
+            , solverInfo = nothing)
 
   r = b-A_mul_B(A,x)
   p = r
@@ -54,9 +54,9 @@ function cg(A
     if verbose==true
       next!(progr)
     end
-    if verboseRes==true
-      println("Norm of residual " ,sqrt(abs(rsnew)))
-    end
   end
+
+  solverInfo != nothing && storeResidual(solverInfo, sqrt(abs(rsnew)) ) 
+
   return x
 end

@@ -12,7 +12,13 @@ function solve(solver::FISTA, b::Vector)
   return fista(solver.A, b, solver.regularizer; solver.params...)
 end
 
-@doc "This funtion implements the fista algorithm." ->
+@doc """This funtion implements the fista algorithm.
+Solve the problem: X = arg min_x 1/2*|| Ax-b||² + λ*g(X) where:
+   x: variable (vector)
+   b: measured data
+   A: a general linear operator
+   g(X): a convex but not necessarily a smooth function
+""" ->
 function fista{T}(A, b::Vector{T}, reg::Regularization
                 ; sparseTrafo=nothing
                 , startVector=nothing
@@ -35,6 +41,8 @@ function fista{T}(A, b::Vector{T}, reg::Regularization
 
   xᵒˡᵈ = copy(x)
 
+  A_mul_B!(reg,ρ)
+
   for l=1:iterations
     xᵒˡᵈ[:] = x[:]
 
@@ -55,7 +63,7 @@ function fista{T}(A, b::Vector{T}, reg::Regularization
     x[:] = x + (tᵒˡᵈ-1)/t*(x-xᵒˡᵈ)
 
     res = A*x-b
-    solverInfo != nothing && storeInfo(solverInfo,norm(res),norm(x))
+    solverInfo != nothing && storeInfo(solverInfo,norm(res),norm(reg,x))
 
     next!(p)
   end

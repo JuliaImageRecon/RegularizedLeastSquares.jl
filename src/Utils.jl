@@ -21,6 +21,16 @@ function storeInfo(solverinfo::SolverInfo,res,x)
   return nothing
 end
 
+function storeResidual(solverinfo::SolverInfo,res)
+  push!( solverinfo.resNorm, res)
+  return nothing
+end
+
+function storeRegularization(solverinfo::SolverInfo,regNorm)
+  push!( solverinfo.xNorm, regNorm)
+  return nothing
+end
+
 ### applying sparse trafo ###
 
 A_mul_B!(sparseTrafo::Void, cl) = nothing

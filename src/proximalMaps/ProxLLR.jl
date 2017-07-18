@@ -1,4 +1,4 @@
-export proxLLR!
+export proxLLR!, normLLR
 
 @doc """
 proximal map for LLR regularization using singular-value-thresholding" ->
@@ -32,6 +32,7 @@ function svt{T}(x::Vector{T}, shape::Tuple, λ::Float64=1e-6; blockSize::Array{I
   Wz = blockSize[2]
 
   if randshift
+    srand(1234)
     shift_idx = [rand(1:Wy) rand(1:Wz) 0]
     x = circshift(x, shift_idx)
   end
@@ -72,4 +73,52 @@ function svt{T}(x::Vector{T}, shape::Tuple, λ::Float64=1e-6; blockSize::Array{I
   end
 
   return xᵗʰʳᵉˢʰ
+end
+
+@doc "return the value of the LLR-regularization term" ->
+normLLR(reg::Regularization,x) = normLLR(x; reg.params...)
+
+function normLLR(x::Vector; shape::NTuple=[], L=1, blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...)
+
+  N = prod(shape)
+  K = floor(Int,length(x)/(N*L))
+  normᴸᴸᴿ = 0.
+  for i = 1:L
+    normᴸᴸᴿ +=  blockNuclearNorm(x[(i-1)*N*K+1:i*N*K], shape; blockSize=blockSize, randshift=randshift, kargs...)
+  end
+
+  return normᴸᴸᴿ
+end
+
+function blockNuclearNorm{T}(x::Vector{T}, shape::Tuple; blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...)
+    x = reshape( x, tuple( shape...,floor(Int64, length(x)/prod(shape)) ) )
+
+    Wy = blockSize[1]
+    Wz = blockSize[2]
+
+    if randshift
+      srand(1234)
+      shift_idx = [rand(1:Wy) rand(1:Wz) 0]
+      x = circshift(x, shift_idx)
+    end
+
+    ny, nz, K = size(x)
+
+    # reshape into patches
+    L = floor(Int,ny*nz/Wy/Wz) # number of patches, assumes that image dimensions are divisble by the blocksizes
+
+    xᴸᴸᴿ = zeros(T,Wy*Wz,L,K)
+    for i=1:K
+      xᴸᴸᴿ[:,:,i] = im2colDistinct(x[:,:,i], (Wy,Wz))
+    end
+    xᴸᴸᴿ = permutedims(xᴸᴸᴿ,[1 3 2])
+
+    # L1-norm of singular values
+    normᴸᴸᴿ = 0.
+    for i = 1:L
+      SVDec = svdfact(xᴸᴸᴿ[:,:,i])
+      normᴸᴸᴿ += norm(SVDec[:S],1)
+    end
+
+    return normᴸᴸᴿ
 end

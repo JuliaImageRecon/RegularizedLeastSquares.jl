@@ -1,4 +1,5 @@
-export Regularization
+import Base.A_mul_B!, Base.norm
+export Regularization, lambdList #, norm
 
 type Regularization
   L2::Bool
@@ -15,6 +16,13 @@ Return a list of all available Regularizations
 """
 function RegularizationList()
   Any["L2", "L1", "L21", "TV", "LLR", "Positive"]
+end
+
+"""
+Return a list of all parameters determining regularization strength
+"""
+function lambdList()
+  Any["lambdL2", "lambdL1", "lambdL21", "lambdTV", "lambdLLR"]
 end
 
 """
@@ -42,7 +50,6 @@ function Regularization(;L1=false,L2=false,L21=false,TV=false,LLR=false,Positive
   return Regularization(L2,L1,L21,TV,LLR,Positive,params)
 end
 
-
 function prox!(reg::Regularization, x)
 
   # prepend dedicated proximal maps for combined regularizations and end with break
@@ -66,4 +73,32 @@ function prox!(reg::Regularization, x)
     proxPositive!(reg,x)
   end
 
+end
+
+function A_mul_B!(reg::Regularization, x::Real)
+  for lambd in lambdList()
+    reg.params[Symbol(lambd)] *= x
+  end
+end
+
+function norm(reg::Regularization,x)
+  res = 0.
+
+  if reg.L2
+    res += normL2(reg,x)
+  end
+  if reg.L1
+    res += normL1(reg,x)
+  end
+  if reg.L21
+    res += normL21(reg,x)
+  end
+  if reg.TV
+    res += normTV(reg,x)
+  end
+  if reg.LLR
+    res += normLLR(reg,x)
+  end
+
+  return res
 end
