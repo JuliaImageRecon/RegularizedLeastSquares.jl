@@ -76,7 +76,7 @@ function svt{T}(x::Vector{T}, shape::Tuple, λ::Float64=1e-6; blockSize::Array{I
 end
 
 @doc "return the value of the LLR-regularization term" ->
-normLLR(reg::Regularization,x) = normLLR(x; reg.params...)
+normLLR(reg::Regularization,x) = reg.params[:lambdLLR]*normLLR(x; reg.params...)
 
 function normLLR(x::Vector; shape::NTuple=[], L=1, blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...)
 

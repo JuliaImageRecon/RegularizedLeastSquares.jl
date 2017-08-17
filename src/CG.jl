@@ -26,6 +26,7 @@ function cg(A
   r = b-A_mul_B(A,x)
   p = r
   rsold = BLAS.dot(r,r)
+  rsnew = rsold
 
   if verbose==true
     #progr = Progress(iterations, 1, "Iterating Conjugate Gradient...")
@@ -56,7 +57,7 @@ function cg(A
     end
   end
 
-  solverInfo != nothing && storeResidual(solverInfo, sqrt(abs(rsnew)) ) 
+  solverInfo != nothing && storeResidual(solverInfo, sqrt(abs(rsnew)) )
 
   return x
 end
