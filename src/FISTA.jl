@@ -25,6 +25,7 @@ function fista{T}(A, b::Vector{T}, reg::Regularization
                 , iterations::Int64=50
                 , ρ::Float64=1.0
                 , t::Float64=1.0
+                , ɛ::Float64=1.e-4
                 , solverInfo = nothing
                 , kargs...)
 
@@ -42,6 +43,7 @@ function fista{T}(A, b::Vector{T}, reg::Regularization
   xᵒˡᵈ = copy(x)
 
   A_mul_B!(reg,ρ)
+  costFunc = 0.5*norm(res)^2+norm(reg,x)
 
   for l=1:iterations
     xᵒˡᵈ[:] = x[:]
@@ -63,7 +65,14 @@ function fista{T}(A, b::Vector{T}, reg::Regularization
     x[:] = x + (tᵒˡᵈ-1)/t*(x-xᵒˡᵈ)
 
     res = A*x-b
-    solverInfo != nothing && storeInfo(solverInfo,norm(res),norm(reg,x))
+    regNorm = norm(reg,x)
+
+    solverInfo != nothing && storeInfo(solverInfo,norm(res),regNorm)
+
+    # exit if objective functional changes by less then ɛ
+    costFuncOld = costFunc
+    costFunc = 0.5*norm(res)^2+regNorm
+    abs(costFunc-costFuncOld)/costFuncOld < ɛ && return x
 
     next!(p)
   end

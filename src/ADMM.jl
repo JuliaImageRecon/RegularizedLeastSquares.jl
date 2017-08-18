@@ -35,12 +35,10 @@ function admm(A, b::Vector, reg::Regularization
               , startVector=nothing
               , iterations::Int64=50
               , ρ::Float64=1.e-2
+              , ɛᵃᵇˢ::Float64=1.e-8
+              , ɛʳᵉˡ::Float64=1.e-6
               , solverInfo = nothing
               , kargs...)
-
-
-  ɛᵃᵇˢ=1.e-8
-  ɛʳᵉˡ=1.e-6
 
   σᵃᵇˢ = sqrt(length(b))*ɛᵃᵇˢ
   # initialize x, u and z
