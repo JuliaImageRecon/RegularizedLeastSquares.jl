@@ -321,7 +321,7 @@ type StartRange <: AbstractArray{CartesianRange,3}
 end
 
 Base.size(R::StartRange) = (Int(3),)
-Base.linearindexing(::Type{StartRange}) = Base.LinearFast();
+Base.IndexStyle(::Type{StartRange}) = IndexLinear()
 Base.getindex(R::StartRange,i::Int) = if i==1 R.x elseif i==2 R.y elseif i==3 R.z end;
 
 @doc """This function implements the base version of fused lasso reconstruction.
@@ -366,9 +366,9 @@ function fusedlasso{T}(S::Array{T,4},u::Vector{T},c::Array{T,3};
   y = zeros(eltype(c),cSize[1],cSize[2],cSize[3])
 
   t = ones(T,N+1)/(N+1)
-  yTemp = Array(eltype(y),size(y))
+  yTemp = Array{eltype(y)}(size(y))
   #cOld = copy(c)
-  zTemp = Array(eltype(yTemp),size(yTemp))
+  zTemp = Array{eltype(yTemp)}(size(yTemp))
 
   if verbose == true
     res = residuum(S,c,u)
@@ -440,9 +440,9 @@ function fusedlassoCached{T}(S::Array{T,4},STS::Array{T,2},u::Vector{T},STu::Vec
   z = zeros(eltype(c),N+1,cSize[1],cSize[2],cSize[3])
   y = zeros(eltype(c),cSize[1],cSize[2],cSize[3])
   t = ones(T,N+1)/(N+1)
-  yTemp = Array(eltype(y),size(y))
+  yTemp = Array{eltype(y)}(size(y))
   #cOld = copy(c)
-  zTemp = Array(eltype(yTemp),size(yTemp))
+  zTemp = Array{eltype(yTemp)}(size(yTemp))
 
   if verbose == true
     res = residuum(S,c,u)
@@ -531,7 +531,7 @@ function proxmap!{T<:Real}(y::Array{T,3},yTemp::Array{T,3},z::Array{T,4},c::Arra
   ySize = size(y)
   zSize = size(z)
 
-  updateTemp = Array(eltype(y),ySize[1]*ySize[2]*ySize[3])
+  updateTemp = Array{eltype(y)}(ySize[1]*ySize[2]*ySize[3])
 
   c=reshape(c,cSize[1]*cSize[2]*cSize[3])
   y = reshape(y,ySize[1]*ySize[2]*ySize[3])
@@ -593,8 +593,8 @@ function tv_denoise_3d_condat!{T<:Real}(tvData::Array{T,3},nhood::Array{Int64,1}
   tvSize = size(tvData)
   cartRange = get_startrange(tvSize,nhood[:])
   increment = CartesianIndex((nhood[1],nhood[2],nhood[3]));
-  tvOneDim = Array(eltype(tvData),Int64(ceil(sqrt(tvSize[1]*tvSize[2]*tvSize[3]))))
-  arrayCount = Array(Int64,1)
+  tvOneDim = Array{eltype(tvData)}(Int64(ceil(sqrt(tvSize[1]*tvSize[2]*tvSize[3]))))
+  arrayCount = Array{Int64}(1)
   for R in cartRange
 
     for k in R
@@ -740,15 +740,15 @@ function update!{T<:Real}(z::Array{T,4},s::Int64,y::Array{T,3},c::Array{T,3},lam
   flatSize = dataSize[1]*dataSize[2]*dataSize[3];
   y = reshape(y,flatSize)
   c = reshape(c,flatSize)
-  yTemp = Array(T,flatSize)
-  zTemp = view(z,s,:)
+  yTemp = Array{T}(flatSize)
+  zTemp = view(reshape(z,Val{2}),s,:)
 
-  broadcast!(.-,yTemp,y,c)
+  broadcast!(-,yTemp,y,c)
 
   #yTemp[:] = y[:] - c[:]
   BLAS.scale!(lambda,yTemp)
   #zTemp[:] = zTemp[:] + yTemp[:]
-  broadcast!(.+,zTemp,zTemp,yTemp)
+  broadcast!(+,zTemp,zTemp,yTemp)
   #z[s,:,:,:] = reshape(yTemp,dataSize)[:,:,:]
 
 end
@@ -805,7 +805,7 @@ function pointwise_max!{T<:Real}(c::Array{T,3},z::Array{T,4},s::Int64,y::Array{T
 
   y = reshape(y,ySize[1]*ySize[2]*ySize[3])
   c = reshape(c,cSize[1]*cSize[2]*cSize[3])
-  zTemp = view(z,s,:)
+  zTemp = view(reshape(z,Val{2}),s,:)
   out = reshape(out,cSize[1]*cSize[2]*cSize[3])
 
   yTemp = 2*c-zTemp-y;
@@ -824,7 +824,7 @@ function weighted_sum!{T<:Real}(weights::Array{T,1},z::Array{T,4},c::Array{T,3})
   cTemp = zeros(eltype(c),zSize[1]*zSize[2]*zSize[3])
 
   for i=1:length(weights)
-  zTemp = view(z,i,:)
+  zTemp = view(reshape(z,Val{2}),i,:)
   cTemp[:] = cTemp[:] + weights[i]*zTemp
   end
 
