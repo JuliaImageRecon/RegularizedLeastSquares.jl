@@ -1,4 +1,4 @@
-export SolverInfo, rownorm²
+export SolverInfo, rownorm², nrmsd
 
 @doc """
 The Solver Info type is used to obtain aditional information
@@ -203,4 +203,20 @@ function col2imDistinct{T}(A::Array{T}, blocksize::NTuple{2,Int64}, matsize::NTu
   t2 = reshape( permutedims(t1,[1 3 2]), matrows,nblock,blockcols )
   res = reshape( permutedims(t2,[1 3 2]), matrows,matcols)
 
+end
+
+### NRMS ###
+
+function nrmsd(I,Ireco)
+  N = length(I)
+
+  # This is a little trick. We usually are not interested in simple scalings
+  # and therefore "calibrate" them away
+  alpha = (dot(vec(I),vec(Ireco))+dot(vec(Ireco),vec(I))) /
+          (2*dot(vec(Ireco),vec(Ireco)))
+  I2 = Ireco.*alpha
+
+  RMS =  1.0/sqrt(N)*norm(vec(I)-vec(I2))
+  NRMS = RMS/(maximum(abs(I))-minimum(abs(I)) )
+  return NRMS
 end

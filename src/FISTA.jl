@@ -12,6 +12,14 @@ function solve(solver::FISTA, b::Vector)
   return fista(solver.A, b, solver.regularizer; solver.params...)
 end
 
+function fista{T}(A,b::Vector{T},reg::Regularization;AHA=nothing,kargs...)
+  if AHA==nothing
+    return fista1(A,b,reg;kargs...)
+  else
+    return fista2(A,b,reg;kargs...)
+  end
+end
+
 @doc """This funtion implements the fista algorithm.
 Solve the problem: X = arg min_x 1/2*|| Ax-b||² + λ*g(X) where:
    x: variable (vector)
@@ -19,7 +27,7 @@ Solve the problem: X = arg min_x 1/2*|| Ax-b||² + λ*g(X) where:
    A: a general linear operator
    g(X): a convex but not necessarily a smooth function
 """ ->
-function fista{T}(A, b::Vector{T}, reg::Regularization
+function fista1{T}(A, b::Vector{T}, reg::Regularization
                 ; sparseTrafo=nothing
                 , startVector=nothing
                 , iterations::Int64=50
@@ -73,6 +81,63 @@ function fista{T}(A, b::Vector{T}, reg::Regularization
     costFuncOld = costFunc
     costFunc = 0.5*norm(res)^2+regNorm
     abs(costFunc-costFuncOld)/costFuncOld < ɛ && return x
+
+    next!(p)
+  end
+
+  return x
+end
+
+# alternative implementation allowing for an optimized AHA
+# does not contain a stopping condition
+function fista2{T}(A, b::Vector{T}, reg::Regularization
+                ; AHA=nothing
+                , sparseTrafo=nothing
+                , startVector=nothing
+                , iterations::Int64=50
+                , ρ::Float64=1.0
+                , t::Float64=1.0
+                , solverInfo = nothing
+                , kargs...)
+
+  p = Progress(iterations, 1, "FISTA iteration...")
+
+  if startVector == nothing
+    x = Ac_mul_B(A,b)
+  else
+    x = startVector
+  end
+
+  # if AHA!=nothing
+    op = AHA
+  # else
+  #   op = A'*A
+  # end
+
+  β = A'*b
+
+  xᵒˡᵈ = copy(x)
+
+  A_mul_B!(reg,ρ)
+  costFunc = 0.5*norm(res)^2+norm(reg,x)
+
+  for l=1:iterations
+    xᵒˡᵈ[:] = x[:]
+
+    x[:] = x[:] - ρ*(op*x-β)
+
+    if sparseTrafo != nothing
+      xˢᵖᵃʳˢᵉ = sparseTrafo*x[:]
+      prox!(reg, xˢᵖᵃʳˢᵉ)
+      x = sparseTrafo\xˢᵖᵃʳˢᵉ[:]
+    else
+      prox!( reg, x)
+    end
+
+    tᵒˡᵈ = t
+
+    t = (1. + sqrt(1. + 4. * tᵒˡᵈ^2)) / 2.
+    x[:] = x + (tᵒˡᵈ-1)/t*(x-xᵒˡᵈ)
 
     next!(p)
   end
