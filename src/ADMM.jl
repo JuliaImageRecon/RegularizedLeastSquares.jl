@@ -73,6 +73,7 @@ function admm(A, b::Vector, reg::Regularization
   for k=1:iterations
     # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 ||x+u-z||²
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
+    xᵒˡᵈ = x[:]
     x = cg(op, x,  β+ρ*(z-u), iterations=10, verbose=false, solverInfo=solverInfo )
 
     # 2. update z using the proximal map of 1/ρ*g(x)
@@ -91,10 +92,10 @@ function admm(A, b::Vector, reg::Regularization
     u=u+x-z
 
     # exit if residual is below tolerance
-    rᵏ = norm(x-z)
-    ɛᵖʳⁱ = σᵃᵇˢ + ɛʳᵉˡ*max( norm(x), norm(z) );
-    sᵏ = norm(ρ * (z - zᵒˡᵈ))
-    ɛᴰᵘᵃˡ = σᵃᵇˢ + ɛʳᵉˡ*norm(ρ*u);
+#    rᵏ = norm(x-z)
+#    ɛᵖʳⁱ = σᵃᵇˢ + ɛʳᵉˡ*max( norm(x), norm(z) );
+#    sᵏ = norm(ρ * (z - zᵒˡᵈ))
+#    ɛᴰᵘᵃˡ = σᵃᵇˢ + ɛʳᵉˡ*norm(ρ*u);
 
     next!(p)
 
@@ -105,8 +106,14 @@ function admm(A, b::Vector, reg::Regularization
       nrms[k+1] = nrmsd(x0,x)
     end
 
-    if (rᵏ < ɛᵖʳⁱ) && (sᵏ < ɛᴰᵘᵃˡ)
-      break;
+#    if (rᵏ < ɛᵖʳⁱ) && (sᵏ < ɛᴰᵘᵃˡ)
+#      break;
+#    end
+
+    if norm(xᵒˡᵈ-x)/norm(xᵒˡᵈ) < ɛʳᵉˡ
+      println("iter= $k")
+      println("ɛ = $(norm(xᵒˡᵈ-x)/norm(xᵒˡᵈ))")
+      break
     end
   end
 
