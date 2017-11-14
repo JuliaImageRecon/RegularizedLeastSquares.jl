@@ -111,8 +111,6 @@ function admm(A, b::Vector, reg::Regularization
 #    end
 
     if norm(xᵒˡᵈ-x)/norm(xᵒˡᵈ) < ɛʳᵉˡ
-      println("iter= $k")
-      println("ɛ = $(norm(xᵒˡᵈ-x)/norm(xᵒˡᵈ))")
       break
     end
   end
