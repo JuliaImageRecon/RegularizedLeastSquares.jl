@@ -8,6 +8,7 @@ type Regularization
   TV::Bool
   LLR::Bool
   Positive::Bool
+  Nuclear::Bool
   params
 end
 
@@ -35,6 +36,7 @@ function regParamsDefault()
   params[:lambdL21] = 0.
   params[:lambdTV] = 0.
   params[:lambdLLR] = 0.
+  params[:lambdNuclear] = 0.
   params[:slices] = 1
   params[:blockSize] = [1,1]
   return params
@@ -45,9 +47,9 @@ end
 # blockSize -> LLR
 # directions / directionWeights -> TV
 #
-function Regularization(;L1=false,L2=false,L21=false,TV=false,LLR=false,Positive=false, kargs...)
+function Regularization(;L1=false,L2=false,L21=false,TV=false,LLR=false,Positive=false,Nuclear=false, kargs...)
   params = merge(regParamsDefault(), Dict(kargs))
-  return Regularization(L2,L1,L21,TV,LLR,Positive,params)
+  return Regularization(L2,L1,L21,TV,LLR,Positive,Nuclear,params)
 end
 
 function prox!(reg::Regularization, x)
@@ -71,6 +73,9 @@ function prox!(reg::Regularization, x)
   end
   if reg.Positive
     proxPositive!(reg,x)
+  end
+  if reg.Nuclear
+    proxNuclear!(reg,x)
   end
 
 end

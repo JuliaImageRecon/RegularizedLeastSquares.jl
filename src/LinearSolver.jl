@@ -21,6 +21,7 @@ include("proximalMaps/ProxL21.jl")
 include("proximalMaps/ProxLLR.jl")
 include("proximalMaps/ProxPositive.jl")
 include("proximalMaps/ProxTV.jl")
+include("proximalMaps/ProxNuclear.jl")
 
 include("LazyMatrixTranspose.jl")
 include("LinearOperator.jl")

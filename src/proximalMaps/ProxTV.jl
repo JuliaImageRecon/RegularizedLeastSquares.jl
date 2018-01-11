@@ -1,1 +1,96 @@
 export proxTV!
+
+@doc "proximal map for TV regularization using the String-Taut algorithm" ->
+function proxTV!(reg::Regularization, x)
+  weights = get(reg.params,:weights,[])
+  proxTV!(x, reg.params[:lambdTV], reg.params[:shape], weights=weights)
+end
+
+function proxTV!(x::Vector, λ::Float64, shape::NTuple; iterations::Int64=20, weights::Array=[])
+  m,n = shape
+
+  # initialize dual variables
+  p = zeros(eltype(x), m-1,n)
+  q = zeros(eltype(x), m,n-1)
+  r = zeros(eltype(x), m-1,n)
+  s = zeros(eltype(x), m,n-1)
+  pOld = zeros(eltype(x), m-1,n)
+  qOld = zeros(eltype(x), m,n-1)
+  weights!=[] ? weights=reshape(weights,shape) : weights=ones(shape)
+
+  t = 1
+  for i=1:iterations
+    pOld[:] = p[:]
+    qOld[:] = q[:]
+
+    # gradient projection step for dual variables
+    p,q = [r,s] + collect( Φ_hermitian( x-λ*Φ(r,s), shape ) ) ./(8*λ)
+    p = restrictMagnitude(p, weights[1:m-1,:])
+    q = restrictMagnitude(q, weights[:,1:n-1])
+
+    # form linear combinaion of old and new estimates
+    tOld = t
+    t = ( 1+sqrt(1+4*tOld^2) )/2.0
+    r = p + (tOld-1)/t*(p-pOld)
+    s = q + (tOld-1)/t*(q-qOld)
+  end
+
+  x[:] = x[:]-λ*vec(Φ(p,q))
+end
+
+#
+# primal-dual mapping
+#
+function Φ{T}(p::Matrix{T}, q::Matrix{T})
+  m = size(q,1)
+  n = size(p,2)
+  x = zeros(T, m, n)
+
+  # points in the corners
+  x[1,1] = p[1,1]+q[1,1]
+  x[m,1] = q[m,1]-p[m-1,1]
+  x[1,n] = p[1,n]-q[1,n-1]
+  x[m,n] = -p[m-1,n]-q[m,n-1]
+  # remaining points with i=1 (first row)
+  x[1,2:n-1] = p[1,2:n-1]+q[1,2:n-1]-q[1,1:n-2]
+  # remaingin points with j=1 (first column)
+  x[2:m-1,1] = p[2:m-1,1]+q[2:m-1,1]-p[1:m-2,1]
+  #remaining points with i=m (last row)
+  x[m,2:n-1] = q[m,2:n-1]-p[m-1,2:n-1]-q[m,1:n-2]
+  #remaingin points with j=n (last column)
+  x[2:m-1,n] = p[2:m-1,n]-p[1:m-2,n]-q[2:m-1,n-1]
+  #all remaining (inner) matrix elements
+  x[2:m-1,2:n-1] = p[2:m-1,2:n-1]+q[2:m-1,2:n-1]-p[1:m-2,2:n-1]-q[2:m-1,1:n-2]
+
+  return vec(x)
+end
+
+#
+# hermitian conjugate of the primal-dual mapping
+#
+function Φ_hermitian{T}(x::Vector{T}, shape::NTuple)
+  m,n = shape
+  x = reshape(x,m,n)
+  p = zeros(T,m-1,n)
+  q = zeros(T,m,n-1)
+  p[:,:] = x[1:m-1,1:n]-x[2:m,1:n]
+  q[:,:] = x[1:m,1:n-1]-x[1:m,2:n]
+
+  return p,q
+end
+
+# restrict x to a number smaller then one
+# restrictMagnitude(x::Vector) = x/max(1, abs(x))
+function restrictMagnitude(x::Array, w::Array=[])
+  w != [] ? maxval = w : maxval = ones(size(x))
+  return x./max.(maxval, abs(x))
+end
+
+function normTV(reg::Regularization,x)
+  x = reshape(x,reg.params[:shape])
+  tv = norm(vec(x[1:end-1,1:end-1]-x[2:end,1:end-1]),1)
+  tv += norm(vec(x[1:end-1,1:end-1]-x[1:end-1,2:end]),1)
+  tv += norm(vec(x[1:end-1,end]-x[2:end,end]),1)
+  tv += norm(vec(x[end,1:end-1]-x[end,2:end]),1)
+  return tv
+end
