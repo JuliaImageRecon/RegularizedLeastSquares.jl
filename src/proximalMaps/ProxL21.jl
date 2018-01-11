@@ -14,7 +14,7 @@ end
 
 @doc "return the value of the L21-regularization term" ->
 function normL21(reg::Regularization,x)
-  sliceLength = div(length(x),slices)
+  sliceLength = div(length(x),reg.params[:slices])
   groupNorm = [norm(x[i:sliceLength:end]) for i=1:sliceLength]
   return reg.params[:lambdL21]*norm(groupNorm,1)
 end
