@@ -1,7 +1,7 @@
 __precompile__()
 module LinearSolver
 
-using ProgressMeter, IterativeSolvers, Compat
+using ProgressMeter, Compat
 
 import Base.LinAlg: A_mul_B!, Ac_mul_B!, At_mul_B!, length
 using Base.LinAlg: BlasFloat
@@ -31,7 +31,6 @@ include("DAX.jl")
 include("CGNR.jl")
 include("CG.jl")
 include("Direct.jl")
-include("LSQR.jl")
 include("FusedLasso.jl")
 include("FISTA.jl")
 include("ADMM.jl")
@@ -87,8 +86,6 @@ function createLinearSolver(solver::AbstractString, A; kargs...)
     return DaxKaczmarz(A; kargs...)
   elseif solver == "daxconstrained"
     return DaxConstrained(A; kargs...)
-  elseif solver == "lsqr"
-    return LSQR(A; kargs...)
   elseif solver == "pseudoinverse"
     return PseudoInverse(A; kargs...)
   elseif solver == "fusedlasso"
