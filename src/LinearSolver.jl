@@ -62,9 +62,12 @@ All solvers return an approximate solution to Sᵀx = u.
 
 Function returns choosen solver.
 """ ->
-function createLinearSolver(solver::AbstractString, A; kargs...)
+# function createLinearSolver(solver::AbstractString, A; kargs...)
+#
+#   reg = Regularization(;kargs...)
+function createLinearSolver(solver::AbstractString, A, reg=nothing; kargs...)
 
-  reg = Regularization(;kargs...)
+  reg==nothing ? reg = Regularization(;kargs...) : nothing
 
   if solver == "kaczmarz"
     for regEntry in RegularizationList()
