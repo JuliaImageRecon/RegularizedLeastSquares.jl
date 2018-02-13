@@ -1,5 +1,5 @@
 import Base.A_mul_B!, Base.norm
-export Regularization, getRegularization, lambdList, prox! #, norm
+export Regularization, getRegularization, lambdList, prox!, normalize! #, norm
 
 type Regularization
   L2::Bool
@@ -8,6 +8,7 @@ type Regularization
   TV::Bool
   LLR::Bool
   Positive::Bool
+  Proj::Bool
   Nuclear::Bool
   params
 end
@@ -16,7 +17,7 @@ end
 Return a list of all available Regularizations
 """
 function RegularizationList()
-  Any["L2", "L1", "L21", "TV", "LLR", "Positive", "Nuclear"]
+  Any["L2", "L1", "L21", "TV", "LLR", "Positive", "Proj", "Nuclear"]
 end
 
 """
@@ -36,6 +37,7 @@ function regParamsDefault()
   params[:lambdL21] = 0.
   params[:lambdTV] = 0.
   params[:lambdLLR] = 0.
+  params[:lambdNLLR] = 0.
   params[:lambdNuclear] = 0.
   params[:slices] = 1
   params[:blockSize] = [1,1]
@@ -45,9 +47,9 @@ end
 """
  create a Regularization object containing all the infos necessary to calculate a proximal map
 """
-function Regularization(;L1=false,L2=false,L21=false,TV=false,LLR=false,Positive=false,Nuclear=false, kargs...)
+function Regularization(;L1=false,L2=false,L21=false,TV=false,LLR=false,Positive=false,Proj=false, Nuclear=false, kargs...)
   params = merge(regParamsDefault(), Dict(kargs))
-  return Regularization(L2,L1,L21,TV,LLR,Positive,Nuclear,params)
+  return Regularization(L2,L1,L21,TV,LLR,Positive,Proj,Nuclear,params)
 end
 
 function getRegularization(name::String; kargs...)
@@ -65,6 +67,8 @@ function getRegularization(name::String; kargs...)
     return Regularization(;Nuclear=true, kargs...)
   elseif name=="Positive"
     return Regularization(;Positive=true, kargs...)
+  elseif name=="Proj"
+    return Regularization(;Proj=true, kargs...)
   else
     error("Regularization $name not found.")
   end
@@ -103,13 +107,15 @@ function prox!(reg::Regularization, x)
   if reg.LLR
     proxLLR!(reg,x)
   end
-  if reg.Positive
-    proxPositive!(reg,x)
-  end
   if reg.Nuclear
     proxNuclear!(reg,x)
   end
-
+  if reg.Positive
+    proxPositive!(reg,x)
+  end
+  if reg.Proj
+    proxProj!(reg,x)
+  end
 end
 
 ###################
@@ -119,6 +125,11 @@ function A_mul_B!(reg::Regularization, x::Real)
   for lambd in lambdList()
     reg.params[Symbol(lambd)] *= x
   end
+end
+
+function normalize!(reg::Regularization, data)
+  meanEnergy = norm(data,1)/length(data)
+  A_mul_B!(reg, meanEnergy)
 end
 
 function norm(reg::Regularization,x)

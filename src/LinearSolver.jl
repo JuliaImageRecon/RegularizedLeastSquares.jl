@@ -20,6 +20,7 @@ include("proximalMaps/ProxL2.jl")
 include("proximalMaps/ProxL21.jl")
 include("proximalMaps/ProxLLR.jl")
 include("proximalMaps/ProxPositive.jl")
+include("proximalMaps/ProxProj.jl")
 include("proximalMaps/ProxTV.jl")
 include("proximalMaps/ProxNuclear.jl")
 
