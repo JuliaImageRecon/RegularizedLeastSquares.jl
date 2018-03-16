@@ -7,6 +7,7 @@ type Regularization
   L21::Bool
   TV::Bool
   LLR::Bool
+  SLR::Bool
   Positive::Bool
   Proj::Bool
   Nuclear::Bool
@@ -17,14 +18,14 @@ end
 Return a list of all available Regularizations
 """
 function RegularizationList()
-  Any["L2", "L1", "L21", "TV", "LLR", "Positive", "Proj", "Nuclear"]
+  Any["L2", "L1", "L21", "TV", "LLR", "SLR", "Positive", "Proj", "Nuclear"]
 end
 
 """
 Return a list of all parameters determining regularization strength
 """
 function lambdList()
-  Any["lambdL2", "lambdL1", "lambdL21", "lambdTV", "lambdLLR", "lambdNuclear"]
+  Any["lambdL2", "lambdL1", "lambdL21", "lambdTV", "lambdLLR", "lambdSLR", "lambdNuclear"]
 end
 
 """
@@ -37,7 +38,7 @@ function regParamsDefault()
   params[:lambdL21] = 0.
   params[:lambdTV] = 0.
   params[:lambdLLR] = 0.
-  params[:lambdNLLR] = 0.
+  params[:lambdSLR] = 0.
   params[:lambdNuclear] = 0.
   params[:slices] = 1
   params[:blockSize] = [1,1]
@@ -47,9 +48,9 @@ end
 """
  create a Regularization object containing all the infos necessary to calculate a proximal map
 """
-function Regularization(;L1=false,L2=false,L21=false,TV=false,LLR=false,Positive=false,Proj=false, Nuclear=false, kargs...)
+function Regularization(;L1=false,L2=false,L21=false,TV=false,LLR=false,SLR=false,Positive=false,Proj=false, Nuclear=false, kargs...)
   params = merge(regParamsDefault(), Dict(kargs))
-  return Regularization(L2,L1,L21,TV,LLR,Positive,Proj,Nuclear,params)
+  return Regularization(L2,L1,L21,TV,LLR,SLR,Positive,Proj,Nuclear,params)
 end
 
 function getRegularization(name::String; kargs...)
@@ -63,6 +64,8 @@ function getRegularization(name::String; kargs...)
     return Regularization(;TV=true, kargs...)
   elseif name=="LLR"
     return Regularization(;LLR=true, kargs...)
+  elseif name=="SLR"
+    return Regularization(;SLR=true, kargs...)
   elseif name=="Nuclear"
     return Regularization(;Nuclear=true, kargs...)
   elseif name=="Positive"
@@ -107,6 +110,9 @@ function prox!(reg::Regularization, x)
   if reg.LLR
     proxLLR!(reg,x)
   end
+  if reg.SLR
+    proxSLR!(reg,x)
+  end
   if reg.Nuclear
     proxNuclear!(reg,x)
   end
@@ -149,6 +155,9 @@ function norm(reg::Regularization,x)
   end
   if reg.LLR
     res += normLLR(reg,x)
+  end
+  if reg.SLR
+    res += normSLR(reg,x)
   end
 
   return res
