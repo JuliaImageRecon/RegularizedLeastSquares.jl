@@ -115,10 +115,14 @@ function kaczmarz{T}(S, u::Vector{T}, startVector, iterations, lambd, weights, e
     end
 
     # invoke constraints
-    A_mul_B!(sparseTrafo, cl)
+    if sparseTrafo != nothing
+       cl[:] = sparseTrafo*cl
+    end
     enforceReal && enfReal!(cl)
     enforcePositive && enfPos!(cl)
-    At_mul_B!(sparseTrafo, cl)
+    if sparseTrafo != nothing
+      cl[:] = Ac_mul_B(sparseTrafo, cl)
+    end
 
     solverInfo != nothing && storeInfo(solverInfo,norm(S*cl-u),norm(cl))
     #verbose && next!(p)

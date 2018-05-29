@@ -31,11 +31,6 @@ function storeRegularization(solverinfo::SolverInfo,regNorm)
   return nothing
 end
 
-### applying sparse trafo ###
-
-A_mul_B!(sparseTrafo::Void, cl) = nothing
-At_mul_B!(sparseTrafo::Void, cl) = nothing
-
 ### rownorm² ###
 
 @doc "This function computes the 2-norm² of a rows of S for dense matrices." ->
