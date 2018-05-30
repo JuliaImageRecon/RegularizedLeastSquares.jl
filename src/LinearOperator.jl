@@ -14,14 +14,16 @@ function linearOperatorList()
 end
 
 function linearOperator(op::AbstractString, shape)
+  shape_ = tuple(shape...)
   if op == "FFT"
-    trafo = FFTOp(Complex64, tuple(shape...), false) #FFTOperator(shape)
+    trafo = FFTOp(Complex64, shape_, false) #FFTOperator(shape)
   elseif op == "DCT"
-    trafo = DCTOp(Complex64, tuple(shape...))
+    shape_ = tuple(shape[shape .!= 1]...)
+    trafo = DCTOp(Complex64, shape_)
   elseif op == "DST"
-    trafo = DSTOp(Complex64, tuple(shape...))
+    trafo = DSTOp(Complex64, shape_)
   elseif op == "Wavelet"
-    trafo = WaveletOp(tuple(shape...))
+    trafo = WaveletOp(shape_)
   else
     error("Unknown transformation")
   end

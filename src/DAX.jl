@@ -286,7 +286,7 @@ function lentcensormin!{T<:Real}(x::Vector{T},y::Vector{T})
   end
 end
 
-function daxcon{T<:Real}(S::AbstractMatrix{T}, u::Vector, B::RealBasisTrafo, iterations::Int, inneriterations::Int, lambd::Number, solverInfo, weights::Vector{T})
+function daxcon{T<:Real}(S::AbstractMatrix{T}, u::Vector, B, iterations::Int, inneriterations::Int, lambd::Number, solverInfo, weights::Vector{T})
   M = size(S,1)       #number of equations
   N = size(S,2)       #number of unknowns
   denom, rowindex = initkaczmarzconstraineddax(S,lambd,weights) #denom necessary to update αl, if rownorm ≠ 0. rowindex contains the indeces of nonzero rows.

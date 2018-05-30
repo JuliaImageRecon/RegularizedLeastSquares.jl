@@ -5,8 +5,8 @@ export DCTOp
 #
 function DCTOp(T::Type, shape::Tuple)
 
-  return LinearOperator{T}(prod(shape), prod(shape), false, false
-            , x->vec(dct(reshape(x,shape)))/sqrt(prod(shape)/2.0)
+  return LinearOperator{T}(prod(shape), prod(shape), true, true
+            , x->vec(FFTW.r2r(reshape(x,shape),FFTW.REDFT00)) / sqrt(prod(shape)/2.0)
             , nothing
-            , y->vec(idct(reshape(y,shape))) * sqrt(prod(shape)/2.0) )
+            , nothing )
 end
