@@ -79,10 +79,7 @@ function daxrandkaczmarz(S::AbstractMatrix, u::Vector;
   weights==nothing ? weights=ones(T,size(S,1)) : nothing #search for positive solution as default
   x = daxrand(S,u,iterations,inneriterations,lambd,solverInfo,weights)
 
-  A_mul_B!(sparseTrafo, x)
-  enforceReal ? enfReal!(x) : nothing
-  enforcePositive ? enfPos!(x) : nothing
-  At_mul_B!(sparseTrafo, x)
+  applyConstraints(x, sparseTrafo, enforceReal, enforcePositive)
 
   return x
 end

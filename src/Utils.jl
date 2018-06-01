@@ -138,6 +138,19 @@ function enfPos!{T<:Real}(x::Vector{T})
   end
 end
 
+function applyConstraints(x, sparseTrafo,
+                          enforceReal, enforcePositive)
+  if sparseTrafo != nothing
+     x[:] = sparseTrafo*x
+  end
+  enforceReal && enfReal!(x)
+  enforcePositive && enfPos!(x)
+  if sparseTrafo != nothing
+    x[:] = Ac_mul_B(sparseTrafo, x)
+  end
+end
+
+
 ### im2col / col2im ###
 
 @doc "This function rearranges distinct image blocks into columns of a matrix." ->
