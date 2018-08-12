@@ -1,6 +1,8 @@
 export proxPositive!
 
-@doc "enforce positivity and realness of solution." ->
+"""
+enforce positivity and realness of solution.
+"""
 function proxPositive!(reg::Regularization, x)
   proxPositive!(x)
 end

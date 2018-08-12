@@ -9,7 +9,7 @@ function WaveletOp(shape, wt=wavelet(WT.db2))
             , y->waveletCTProd(y,shape,wt) )
 end
 
-function waveletProd{T}(x::Vector{T},shape, wt)
+function waveletProd(x::Vector{T},shape, wt) where T
   if shape[1] != shape[2]
     xSquare = zeros(T, maximum(shape), maximum(shape))
     xSquare[1:shape[1],1:shape[2]] = reshape(x,shape)
@@ -19,7 +19,7 @@ function waveletProd{T}(x::Vector{T},shape, wt)
   return vec( dwt(xSquare, wt) )
 end
 
-function waveletCTProd{T}(y::Vector{T},shape, wt)
+function waveletCTProd(y::Vector{T},shape, wt) where T
   squareSize = (maximum(shape), maximum(shape))
   x = idwt( reshape(y, squareSize), wt)
   return vec( x[1:shape[1],1:shape[2]] )

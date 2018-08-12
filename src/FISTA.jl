@@ -1,6 +1,6 @@
 export fista
 
-type FISTA <: AbstractLinearSolver
+mutable struct FISTA <: AbstractLinearSolver
   A
   regularizer::Regularization
   params
@@ -12,7 +12,7 @@ function solve(solver::FISTA, b::Vector)
   return fista(solver.A, b, solver.regularizer; solver.params...)
 end
 
-function fista{T}(A,b::Vector{T},reg::Regularization;AHA=nothing,kargs...)
+function fista(A,b::Vector{T}, reg::Regularization; AHA=nothing, kargs...) where T
   if AHA==nothing
     return fista1(A,b,reg;kargs...)
   else
@@ -20,14 +20,14 @@ function fista{T}(A,b::Vector{T},reg::Regularization;AHA=nothing,kargs...)
   end
 end
 
-@doc """This funtion implements the fista algorithm.
+"""This funtion implements the fista algorithm.
 Solve the problem: X = arg min_x 1/2*|| Ax-b||² + λ*g(X) where:
    x: variable (vector)
    b: measured data
    A: a general linear operator
    g(X): a convex but not necessarily a smooth function
-""" ->
-function fista1{T}(A, b::Vector{T}, reg::Regularization
+"""
+function fista1(A, b::Vector{T}, reg::Regularization
                 ; sparseTrafo=nothing
                 , startVector=nothing
                 , iterations::Int64=50
@@ -35,7 +35,7 @@ function fista1{T}(A, b::Vector{T}, reg::Regularization
                 , t::Float64=1.0
                 , ɛ::Float64=1.e-4
                 , solverInfo = nothing
-                , kargs...)
+                , kargs...) where T
 
   p = Progress(iterations, 1, "FISTA iteration...")
 
@@ -90,7 +90,7 @@ end
 
 # alternative implementation allowing for an optimized AHA
 # does not contain a stopping condition
-function fista2{T}(A, b::Vector{T}, reg::Regularization
+function fista2(A, b::Vector{T}, reg::Regularization
                 ; AHA=nothing
                 , sparseTrafo=nothing
                 , startVector=nothing
@@ -98,7 +98,7 @@ function fista2{T}(A, b::Vector{T}, reg::Regularization
                 , ρ::Float64=1.0
                 , t::Float64=1.0
                 , solverInfo = nothing
-                , kargs...)
+                , kargs...) where T
 
   p = Progress(iterations, 1, "FISTA iteration...")
 

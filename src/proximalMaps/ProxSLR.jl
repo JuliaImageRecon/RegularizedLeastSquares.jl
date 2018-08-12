@@ -1,14 +1,14 @@
 export proxSLR!, normSLR
 
-@doc """
-proximal map for LLR regularization using singular-value-thresholding" ->
+"""
+proximal map for LLR regularization using singular-value-thresholding
 
 ### parameters:
 
 * λ::Float64: regularization parameter (threshold)
 * shape::Tuple{Int}: dimensions of the image
 * patches::Vector{Vector{Int}}: indices corresponding to each patch
-""" ->
+"""
 function proxSLR!(reg, x)
   patchIdx = reg.params[:slrIdx]
   for i=1:length(patchIdx)
@@ -16,7 +16,7 @@ function proxSLR!(reg, x)
   end
 end
 
-function svt!{T}(x::Vector{T}, shape::Tuple, λ::Float64, patch::Vector{Int64})
+function svt!(x::Vector{T}, shape::Tuple, λ::Float64, patch::Vector{Int64}) where T
 
   x = reshape( x, prod(shape), div(length(x),prod(shape)) )
 
@@ -27,7 +27,9 @@ function svt!{T}(x::Vector{T}, shape::Tuple, λ::Float64, patch::Vector{Int64})
   x[patch,:] = SVDec[:U]*diagm(SVDec[:S])*SVDec[:Vt]
 end
 
-@doc "return the value of the SLR-regularization term" ->
+"""
+return the value of the SLR-regularization term
+"""
 function normSLR(reg::Regularization,x)
   patchIdx = reg.params[:slrIdx]
   shape = reg.params[:shape]

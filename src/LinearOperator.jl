@@ -7,7 +7,7 @@ include("linearOperators/WaveletOp.jl")
 
 export linearOperator, linearOperatorList
 
-linearOperator(op::Void,shape) = nothing
+linearOperator(op::Nothing,shape) = nothing
 
 function linearOperatorList()
   return ["DCT", "Cheb", "FFT"]

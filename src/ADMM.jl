@@ -1,7 +1,7 @@
 using LinearOperators
 export admm
 
-type ADMM <: AbstractLinearSolver
+mutable struct ADMM <: AbstractLinearSolver
   A
   regularizer::Regularization
   params
@@ -13,7 +13,7 @@ function solve(solver::ADMM, b::Vector)
   return admm(solver.A, b, solver.regularizer; solver.params...)
 end
 
-A_mul_B{T}(A::AbstractLinearOperator{T}, x::Vector{T}) = A*x
+A_mul_B(A::AbstractLinearOperator{T}, x::Vector{T}) where T = A*x
 
 """
  Alternating Direction Method of Multipliers
@@ -65,7 +65,7 @@ function admm(A, b::Vector, reg::Regularization
     nrms[1] = nrmsd(x0,x)
   end
 
-  A_mul_B!(reg,1./ρ)
+  A_mul_B!(reg, 1.0 / ρ)
 
   β = Ac_mul_B(A,b)
 

@@ -1,6 +1,8 @@
 export proxTV!
 
-@doc "proximal map for TV regularization using the String-Taut algorithm" ->
+"""
+proximal map for TV regularization using the String-Taut algorithm
+"""
 function proxTV!(reg::Regularization, x)
   weights = get(reg.params,:weights,[])
   proxTV!(x, reg.params[:lambdTV], reg.params[:shape], weights=weights)
@@ -41,7 +43,7 @@ end
 #
 # primal-dual mapping
 #
-function Φ{T}(p::Matrix{T}, q::Matrix{T})
+function Φ(p::Matrix{T}, q::Matrix{T}) where T
   m = size(q,1)
   n = size(p,2)
   x = zeros(T, m, n)
@@ -68,7 +70,7 @@ end
 #
 # hermitian conjugate of the primal-dual mapping
 #
-function Φ_hermitian{T}(x::Vector{T}, shape::NTuple)
+function Φ_hermitian(x::Vector{T}, shape::NTuple) where T
   m,n = shape
   x = reshape(x,m,n)
   p = zeros(T,m-1,n)

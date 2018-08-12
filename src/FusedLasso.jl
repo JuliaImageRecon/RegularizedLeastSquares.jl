@@ -6,7 +6,7 @@ export fusedlasso
 # Private tools
 #==============================================================================#
 
-function normalize!{T<:Real}(A::Array{T,2},b::Vector{T},energy::Vector{T})
+function normalize!(A::Array{T,2},b::Vector{T},energy::Vector{T}) where {T<:Real}
     p=Progress(size(A,1),1,"Normalize data...")
 
     for i=1:size(A,1)
@@ -21,7 +21,7 @@ function normalize!{T<:Real}(A::Array{T,2},b::Vector{T},energy::Vector{T})
 end
 
 
-function normalize!{T}(b::Vector{T},energy::Vector{T})
+function normalize!(b::Vector{T},energy::Vector{T}) where T
     for i=1:length(energy)
       b[i] = b[i] / energy[i]
     end
@@ -31,7 +31,7 @@ end
 # User Parameter
 #==============================================================================#
 
-type FusedLassoUserParams{T}
+mutable struct FusedLassoUserParams{T}
     verbose::Bool
     cached::Bool
     maxIter::Int64
@@ -119,7 +119,7 @@ end
 #==============================================================================#
 # Linear Problem
 #==============================================================================#
-type FusedLassoProblem{T}
+mutable struct FusedLassoProblem{T}
     # System matrix
     A::Array{T,2}
     # Solution
@@ -130,7 +130,7 @@ type FusedLassoProblem{T}
     shape::Array{Int64,1}
 end
 
-type FusedLassoProblemCached{T}
+mutable struct FusedLassoProblemCached{T}
     # System matrix
     A::Array{T,2}
     # Precalculation for gradient descent step
@@ -148,7 +148,7 @@ end
 # Temp Parameter
 #==============================================================================#
 
-type FusedLassoTempParams
+mutable struct FusedLassoTempParams
     # Row energies of system matrix
     rowEnergy
     # Temporary vector
@@ -159,14 +159,14 @@ end
 # Linear Solver
 #==============================================================================#
 
-type FusedLasso{T} <: AbstractLinearSolver
+mutable struct FusedLasso{T} <: AbstractLinearSolver
     # Could be linear problem of cached or non cached fused lasso
     linearProblem::T
     userParams::FusedLassoUserParams
     tempParams::FusedLassoTempParams
 end
 
-function FusedLasso{T}(S::Matrix{T}; shape::Array{Int64,1}=[size(S,2),1,1], kwargs...)
+function FusedLasso(S::Matrix{T}; shape::Array{Int64,1}=[size(S,2),1,1], kwargs...) where T
     userParams = FusedLassoUserParams(T;kwargs...)
 
     # Create linear problem for cached or non cached fused lasso
@@ -314,17 +314,17 @@ end
 # Algorithm
 #==============================================================================#
 
-type StartRange <: AbstractArray{CartesianRange,3}
-  x::CartesianRange
-  y::CartesianRange
-  z::CartesianRange
+mutable struct StartRange <: AbstractArray{CartesianIndices,3}
+  x::CartesianIndices
+  y::CartesianIndices
+  z::CartesianIndices
 end
 
 Base.size(R::StartRange) = (Int(3),)
 Base.IndexStyle(::Type{StartRange}) = IndexLinear()
 Base.getindex(R::StartRange,i::Int) = if i==1 R.x elseif i==2 R.y elseif i==3 R.z end;
 
-@doc """This function implements the base version of fused lasso reconstruction.
+"""This function implements the base version of fused lasso reconstruction.
 
 ### Keyword/Optional Arguments
 * 'maxIter::Int64' Maximum number of Iterations.
@@ -336,8 +336,8 @@ Base.getindex(R::StartRange,i::Int) = if i==1 R.x elseif i==2 R.y elseif i==3 R.
 * 'beta::Float32' Weight of the l1 term.
 * 'gamma::Float32' Weight for the gradient descent step.
 * 'verbose' Flag for extended information output
-""" ->
-function fusedlasso{T}(S::Array{T,4},u::Vector{T},c::Array{T,3};
+"""
+function fusedlasso(S::Array{T,4},u::Vector{T},c::Array{T,3};
   maxIter = Int64(50),
   tol = T(5.0*10.0^-6),
   nhood = Int64[1 0 0;0 1 0; 0 0 1],
@@ -348,7 +348,7 @@ function fusedlasso{T}(S::Array{T,4},u::Vector{T},c::Array{T,3};
   gamma = T(10.0^-3),
   verbose = false,
   kargs...
-  )
+  ) where T
   #=
   println(maxIter)
   println(tol)
@@ -413,7 +413,7 @@ function fusedlasso{T}(S::Array{T,4},u::Vector{T},c::Array{T,3};
 
 end
 
-function fusedlassoCached{T}(S::Array{T,4},STS::Array{T,2},u::Vector{T},STu::Vector{T},c::Array{T,3};
+function fusedlassoCached(S::Array{T,4},STS::Array{T,2},u::Vector{T},STu::Vector{T},c::Array{T,3};
   maxIter = Int64(50),
   tol = T(5.0*10.0^-6),
   nhood = Int64[1 0 0;0 1 0; 0 0 1],
@@ -424,7 +424,7 @@ function fusedlassoCached{T}(S::Array{T,4},STS::Array{T,2},u::Vector{T},STu::Vec
   gamma = T(10.0^-3),
   verbose = false,
   kargs...
-  )
+  ) where T
   #=
   println(maxIter)
   println(tol)
@@ -489,8 +489,10 @@ function fusedlassoCached{T}(S::Array{T,4},STS::Array{T,2},u::Vector{T},STu::Vec
 end
 
 
-@doc "This function calculates the error gradient according to y = γA*(Ac-u)." ->
-function gradient_base!{T}(c::Array{T,3},A::Array{T,4},u::Array{T,1},y::Array{T,3},α::T)
+"""
+This function calculates the error gradient according to y = γA*(Ac-u).
+"""
+function gradient_base!(c::Array{T,3},A::Array{T,4},u::Array{T,1},y::Array{T,3},α::T) where {T}
 
   aSize = size(A)
   cSize = size(c)
@@ -510,7 +512,8 @@ function gradient_base!{T}(c::Array{T,3},A::Array{T,4},u::Array{T,1},y::Array{T,
 
 end
 
-function gradient_base_cached!{T<:Real}(c::Array{T,3},ATA::Array{T,2},ATu::Array{T,1},y::Array{T,3})
+function gradient_base_cached!(c::Array{T,3},ATA::Array{T,2},
+                    ATu::Array{T,1},y::Array{T,3}) where {T<:Real}
 
   aSize = size(ATA)
   cSize = size(c)
@@ -519,14 +522,17 @@ function gradient_base_cached!{T<:Real}(c::Array{T,3},ATA::Array{T,2},ATu::Array
   c = reshape(c,cSize[1]*cSize[2]*cSize[3])
   y = reshape(y,ySize[1]*ySize[2]*ySize[3])
 
-  BLAS.blascopy!(length(y),ATu,1,y,1)
+  BLAS.blascopyto!(length(y),ATu,1,y,1)
 
   BLAS.symv!('U',one(T),ATA,c,one(T),y)
 
 end
 
-@doc "This function performs the proximal mapping." ->
-function proxmap!{T<:Real}(y::Array{T,3},yTemp::Array{T,3},z::Array{T,4},c::Array{T,3},N,nhood,alpha,beta,gamma,omega,lambda,t)
+"""
+This function performs the proximal mapping.
+"""
+function proxmap!(y::Array{T,3},yTemp::Array{T,3},z::Array{T,4},c::Array{T,3},
+    N,nhood,alpha,beta,gamma,omega,lambda,t) where {T<:Real}
   cSize = size(c)
   ySize = size(y)
   zSize = size(z)
@@ -556,8 +562,12 @@ function proxmap!{T<:Real}(y::Array{T,3},yTemp::Array{T,3},z::Array{T,4},c::Arra
   end
 end
 
-@doc "This function returns the one dimensional tv problem depending on a start pixel neighbor and a direction increment." ->
-function tv_get_onedim_data!{T<:Real}(tvData::Array{T,3},tvOneDim::Array{T,1},neighbor,increment,arrayCount::Array{Int64,1})
+"""
+This function returns the one dimensional tv problem depending on a start pixel
+neighbor and a direction increment.
+"""
+function tv_get_onedim_data!(tvData::Array{T,3},tvOneDim::Array{T,1},neighbor,
+    increment,arrayCount::Array{Int64,1}) where {T<:Real}
 
   tvSize = size(tvData)
 
@@ -577,8 +587,11 @@ function tv_get_onedim_data!{T<:Real}(tvData::Array{T,3},tvOneDim::Array{T,1},ne
 end
 
 
-@doc "This function sorts the 1d tv result back into the 3d data." ->
-function tv_push_onedim_data!{T<:Real}(tvData::Array{T,3},tvOneDim::Array{T,1},arrayCount::Int64,neighbor,increment)
+"""
+This function sorts the 1d tv result back into the 3d data.
+"""
+function tv_push_onedim_data!(tvData::Array{T,3},tvOneDim::Array{T,1},
+     arrayCount::Int64,neighbor,increment) where {T<:Real}
 
   for i=1:arrayCount
   @inbounds tvData[neighbor] = tvOneDim[i]
@@ -587,8 +600,10 @@ function tv_push_onedim_data!{T<:Real}(tvData::Array{T,3},tvOneDim::Array{T,1},a
 
 end
 
-@doc "This function extracts 1d problems from the 3d data and starts the 1d tv function." ->
-function tv_denoise_3d_condat!{T<:Real}(tvData::Array{T,3},nhood::Array{Int64,1},lambda)
+"""
+This function extracts 1d problems from the 3d data and starts the 1d tv function.
+"""
+function tv_denoise_3d_condat!(tvData::Array{T,3},nhood::Array{Int64,1},lambda) where {T<:Real}
 
   tvSize = size(tvData)
   cartRange = get_startrange(tvSize,nhood[:])
@@ -613,8 +628,10 @@ function tv_denoise_3d_condat!{T<:Real}(tvData::Array{T,3},nhood::Array{Int64,1}
 end
 
 
-@doc "This function performs the 1d tv algorithm."
-function tv_denoise_1d_condat!{T<:Real}(c::Array{T,1},width::Int64,lambda::T)
+"""
+This function performs the 1d tv algorithm.
+"""
+function tv_denoise_1d_condat!(c::Array{T,1},width::Int64,lambda::T) where {T<:Real}
 
   cLength = width
 
@@ -723,8 +740,10 @@ function tv_denoise_1d_condat!{T<:Real}(c::Array{T,1},width::Int64,lambda::T)
 end
 
 
-@doc "This function applies soft thresholding on given data y." ->
-function softthresh!{T<:Real}(y::Array{T,3},threshold::T)
+"""
+This function applies soft thresholding on given data y.
+"""
+function softthresh!(y::Array{T,3},threshold::T) where {T<:Real}
 
   ySize = size(y)
   y = reshape(y,ySize[1]*ySize[2]*ySize[3])
@@ -734,8 +753,10 @@ function softthresh!{T<:Real}(y::Array{T,3},threshold::T)
 end
 
 
-@doc "This function performs the update step." ->
-function update!{T<:Real}(z::Array{T,4},s::Int64,y::Array{T,3},c::Array{T,3},lambda::T)
+"""
+This function performs the update step.
+"""
+function update!(z::Array{T,4},s::Int64,y::Array{T,3},c::Array{T,3},lambda::T) where {T<:Real}
   dataSize = size(c)
   flatSize = dataSize[1]*dataSize[2]*dataSize[3];
   y = reshape(y,flatSize)
@@ -746,7 +767,7 @@ function update!{T<:Real}(z::Array{T,4},s::Int64,y::Array{T,3},c::Array{T,3},lam
   broadcast!(-,yTemp,y,c)
 
   #yTemp[:] = y[:] - c[:]
-  BLAS.scale!(lambda,yTemp)
+  BLAS.rmul!(lambda,yTemp)
   #zTemp[:] = zTemp[:] + yTemp[:]
   broadcast!(+,zTemp,zTemp,yTemp)
   #z[s,:,:,:] = reshape(yTemp,dataSize)[:,:,:]
@@ -754,7 +775,9 @@ function update!{T<:Real}(z::Array{T,4},s::Int64,y::Array{T,3},c::Array{T,3},lam
 end
 
 
-@doc "This function checks if the cartisian index exceeds size." ->
+"""
+This function checks if the cartisian index exceeds size.
+"""
 function inrange(size::Tuple{Int64,Int64,Int64},range::CartesianIndex{3})
 
     if range.I[1] > size[1] || range.I[1] < 1 || range.I[2] > size[2] || range.I[2] < 1 || range.I[3] > size[3] || range.I[3] < 1
@@ -766,8 +789,11 @@ function inrange(size::Tuple{Int64,Int64,Int64},range::CartesianIndex{3})
 end
 
 
-@doc "This function returns a StartRange variable, which contains the start planes for the 1d tv extraction." ->
-function get_startrange{T<:Real}(size::Tuple{Int64,Int64,Int64},step::Array{T,1})
+"""
+This function returns a StartRange variable, which contains the start planes for
+the 1d tv extraction.
+"""
+function get_startrange(size::Tuple{Int64,Int64,Int64},step::Array{T,1}) where {T<:Real}
 
   output=StartRange(
   CartesianRange(CartesianIndex((0,0,0))),
@@ -798,8 +824,10 @@ function get_startrange{T<:Real}(size::Tuple{Int64,Int64,Int64},step::Array{T,1}
 end
 
 
-@doc "This function applies the pointwise maximum step." ->
-function pointwise_max!{T<:Real}(c::Array{T,3},z::Array{T,4},s::Int64,y::Array{T,3},out::Array{T,3})
+"""
+This function applies the pointwise maximum step.
+"""
+function pointwise_max!(c::Array{T,3},z::Array{T,4},s::Int64,y::Array{T,3},out::Array{T,3}) where {T<:Real}
   ySize = size(y)
   cSize = size(c)
 
@@ -817,8 +845,11 @@ function pointwise_max!{T<:Real}(c::Array{T,3},z::Array{T,4},s::Int64,y::Array{T
 end
 
 
-@doc "This function calculates the weighted sum c depending on weights and the proximal mapping results z." ->
-function weighted_sum!{T<:Real}(weights::Array{T,1},z::Array{T,4},c::Array{T,3})
+"""
+This function calculates the weighted sum c depending on weights and the proximal
+mapping results z.
+"""
+function weighted_sum!(weights::Array{T,1},z::Array{T,4},c::Array{T,3}) where {T<:Real}
   zSize = size(z[1,:,:,:])
   c = reshape(c,zSize[1]*zSize[2]*zSize[3])
   cTemp = zeros(eltype(c),zSize[1]*zSize[2]*zSize[3])
@@ -835,8 +866,10 @@ function weighted_sum!{T<:Real}(weights::Array{T,1},z::Array{T,4},c::Array{T,3})
 end
 
 
-@doc "This function checks if the stopping criterion for the main loop is reached." ->
-function check_stop{T<:Real}(cOld::Array{T,3},c::Array{T,3},tol::T)
+"""
+This function checks if the stopping criterion for the main loop is reached.
+"""
+function check_stop(cOld::Array{T,3},c::Array{T,3},tol::T) where {T<:Real}
   cSize = size(c)
 
   c = reshape(c,cSize[1]*cSize[2]*cSize[3])
@@ -852,7 +885,7 @@ function check_stop{T<:Real}(cOld::Array{T,3},c::Array{T,3},tol::T)
 
 end
 
-function residuum{T<:Real}(A::Array{T,4},c::Array{T,3},u::Array{T,1})
+function residuum(A::Array{T,4},c::Array{T,3},u::Array{T,1}) where {T<:Real}
 aSize = size(A)
 cSize = size(c)
 uSize = size(u)

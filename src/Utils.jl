@@ -1,21 +1,21 @@
 export SolverInfo, rownorm², nrmsd
 
-@doc """
+"""
 The Solver Info type is used to obtain aditional information
 of linear solvers and their iteration process
-""" ->
-type SolverInfo
+"""
+mutable struct SolverInfo
   resNorm::Vector{Float64}
   xNorm::Vector{Float64}
 
   SolverInfo() = new( Array(Float64,0), Array(Float64,0))
 end
 
-function storeInfo(solverinfo::Void,res,x)
+function storeInfo(solverinfo::Nothing, res, x)
   return nothing
 end
 
-function storeInfo(solverinfo::SolverInfo,res,x)
+function storeInfo(solverinfo::SolverInfo, res, x)
   push!( solverinfo.xNorm, x)
   push!( solverinfo.resNorm, res)
   return nothing
@@ -33,11 +33,13 @@ end
 
 ### rownorm² ###
 
-@doc "This function computes the 2-norm² of a rows of S for dense matrices." ->
-function rownorm²{T,S<:DenseMatrix}(B::MatrixTranspose{T,S},row::Int)
+"""
+This function computes the 2-norm² of a rows of S for dense matrices.
+"""
+function rownorm²(B::MatrixTranspose{T,S},row::Int) where {T,S<:DenseMatrix}
   A = B.data
   U = typeof(real(A[1]))
-  res::U = BLAS.nrm2(size(A,1), pointer(A,sub2ind(size(A),1,row)), 1)^2
+  res::U = BLAS.nrm2(size(A,1), pointer(A,(LinearIndices(size(A)))[1,row]), 1)^2
   return res
 end
 
@@ -50,8 +52,10 @@ function rownorm²(A::AbstractMatrix,row::Int)
   return res
 end
 
-@doc "This function computes the 2-norm² of a rows of S for dense matrices." ->
-function rownorm²{T,S<:SparseMatrixCSC}(B::MatrixTranspose{T,S},row::Int)
+"""
+This function computes the 2-norm² of a rows of S for dense matrices.
+"""
+function rownorm²(B::MatrixTranspose{T,S},row::Int) where {T,S<:SparseMatrixCSC}
   A = B.data
   U = typeof(real(A[1]))
   res::U = BLAS.nrm2(A.colptr[row+1]-A.colptr[row], pointer(A.nzval,A.colptr[row]), 1)^2
@@ -63,7 +67,7 @@ end
 
 ### dot_with_matrix_row ###
 
-@doc "This funtion calculates ∑ᵢ Aᵢₖxᵢ for dense matrices." ->
+
 # Fallback implementation
 #=function dot_with_matrix_row_simd{T<:Complex}(A::AbstractMatrix{T}, x::Vector{T}, k::Int64)
   res = zero(T)
@@ -73,30 +77,43 @@ end
   return res
 end=#
 
-function dot_with_matrix_row{T<:Complex}(A::DenseMatrix{T}, x::Vector{T}, k::Int64)
-  BLAS.dotu(length(x), pointer(A,sub2ind(size(A),k,1)), size(A,1), pointer(x,1), 1)
+"""
+This funtion calculates ∑ᵢ Aᵢₖxᵢ for dense matrices.
+"""
+function dot_with_matrix_row(A::DenseMatrix{T}, x::Vector{T}, k::Int64) where {T<:Complex}
+  BLAS.dotu(length(x), pointer(A, (LinearIndices(size(A)))[k,1]), size(A,1), pointer(x,1), 1)
 end
 
-function dot_with_matrix_row{T<:Complex,S<:DenseMatrix}(B::MatrixTranspose{T,S}, x::Vector{T}, k::Int64)
+
+function dot_with_matrix_row(B::MatrixTranspose{T,S},
+                       x::Vector{T}, k::Int64) where {T<:Complex,S<:DenseMatrix}
   A = B.data
-  BLAS.dotu(length(x), pointer(A,sub2ind(size(A),1,k)), 1, pointer(x,1), 1)
+  BLAS.dotu(length(x), pointer(A,(LinearIndices(size(A)))[k,1]), 1, pointer(x,1), 1)
 end
 
 
-@doc "This funtion calculates ∑ᵢ Aᵢₖxᵢ for dense matrices." ->
-function dot_with_matrix_row{T<:Real}(A::DenseMatrix{T}, x::Vector{T}, k::Int64)
-  BLAS.dot(length(x), pointer(A,sub2ind(size(A),k,1)), size(A,1), pointer(x,1), 1)
+"""
+This funtion calculates ∑ᵢ Aᵢₖxᵢ for dense matrices.
+"""
+function dot_with_matrix_row(A::DenseMatrix{T}, x::Vector{T}, k::Int64) where {T<:Real}
+  BLAS.dot(length(x), pointer(A,(LinearIndices(size(A)))[k,1]), size(A,1), pointer(x,1), 1)
 end
 
-@doc "This funtion calculates ∑ᵢ Aᵢₖxᵢ for dense matrices." ->
-function dot_with_matrix_row{T<:Real,S<:DenseMatrix}(B::MatrixTranspose{T,S}, x::Vector{T}, k::Int64)
+"""
+This funtion calculates ∑ᵢ Aᵢₖxᵢ for dense matrices.
+"""
+function dot_with_matrix_row(B::MatrixTranspose{T,S},
+      x::Vector{T}, k::Int64) where {T<:Real,S<:DenseMatrix}
   A = B.data
-  BLAS.dot(length(x), pointer(A,sub2ind(size(A),1,k)), 1, pointer(x,1), 1)
+  BLAS.dot(length(x), pointer(A,(LinearIndices(size(A)))[1,k]), 1, pointer(x,1), 1)
 end
 
 
-@doc "This funtion calculates ∑ᵢ Aᵢₖxᵢ for sparse matrices." ->
-function dot_with_matrix_row{T,S<:SparseMatrixCSC}(B::MatrixTranspose{T,S}, x::Vector{T}, k::Int64)
+"""
+This funtion calculates ∑ᵢ Aᵢₖxᵢ for sparse matrices.
+"""
+function dot_with_matrix_row(B::MatrixTranspose{T,S},
+                             x::Vector{T}, k::Int64) where {T,S<:SparseMatrixCSC}
   A = B.data
   tmp = zero(T)
   N = A.colptr[k+1]-A.colptr[k]
@@ -111,27 +128,35 @@ end
 
 ### enfReal! / enfPos! ###
 
-@doc "This funtion enforces the constraint of a real solution." ->
-function enfReal!{T<:Complex}(x::Vector{T})
+"""
+This funtion enforces the constraint of a real solution.
+"""
+function enfReal!(x::Vector{T}) where {T<:Complex}
   #Returns x as complex vector with imaginary part set to zero
   @simd for i in 1:length(x)
     @inbounds x[i] = complex(x[i].re)
   end
 end
 
-@doc "This funtion enforces the constraint of a real solution." ->
-enfReal!{T<:Real}(x::Vector{T}) = nothing
+"""
+This funtion enforces the constraint of a real solution.
+"""
+enfReal!(x::Vector{T}) where {T<:Real} = nothing
 
-@doc "This funtion enforces positivity constraints on its input." ->
-function enfPos!{T<:Complex}(x::Vector{T})
+"""
+This funtion enforces positivity constraints on its input.
+"""
+function enfPos!(x::Vector{T}) where {T<:Complex}
   #Return x as complex vector with negative parts projected onto 0
   @simd for i in 1:length(x)
     @inbounds x[i].re < 0 && (x[i] = im*x[i].im)
   end
 end
 
-@doc "This funtion enforces positivity constraints on its input." ->
-function enfPos!{T<:Real}(x::Vector{T})
+"""
+This funtion enforces positivity constraints on its input.
+"""
+function enfPos!(x::Vector{T}) where {T<:Real}
   #Return x as complex vector with negative parts projected onto 0
   @simd for i in 1:length(x)
     @inbounds x[i] < 0 && (x[i] = zero(T))
@@ -153,8 +178,10 @@ end
 
 ### im2col / col2im ###
 
-@doc "This function rearranges distinct image blocks into columns of a matrix." ->
-function im2colDistinct{T}(A::Array{T}, blocksize::NTuple{2,Int64})
+"""
+This function rearranges distinct image blocks into columns of a matrix.
+"""
+function im2colDistinct(A::Array{T}, blocksize::NTuple{2,Int64}) where T
 
   nrows = blocksize[1]
   ncols = blocksize[2]
@@ -179,8 +206,11 @@ function im2colDistinct{T}(A::Array{T}, blocksize::NTuple{2,Int64})
 end
 
 
-@doc "This funtion rearrange columns of a matrix into blocks of an image." ->
-function col2imDistinct{T}(A::Array{T}, blocksize::NTuple{2,Int64}, matsize::NTuple{2,Int64})
+"""
+This funtion rearrange columns of a matrix into blocks of an image.
+"""
+function col2imDistinct(A::Array{T}, blocksize::NTuple{2,Int64},
+                 matsize::NTuple{2,Int64}) where T
   # size(A) should not be larger then (blocksize[1]*blocksize[2], matsize[1]*matsize[2]).
   # otherwise the bottom (right) lines (columns) will be cut.
   # matsize should be divisble by blocksize.

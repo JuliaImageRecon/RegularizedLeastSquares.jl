@@ -1,7 +1,7 @@
-import Base.A_mul_B!, Base.norm
+import LinearAlgebra.A_mul_B!, LinearAlgebra.norm
 export Regularization, getRegularization, lambdList, prox!, normalize! #, norm
 
-type Regularization
+mutable struct Regularization
   L2::Bool
   L1::Bool
   L21::Bool

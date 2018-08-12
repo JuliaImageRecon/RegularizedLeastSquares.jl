@@ -1,6 +1,8 @@
 export proxNuclear!
 
-@doc "singular value soft-thresholding." ->
+"""
+singular value soft-thresholding.
+"""
 function proxNuclear!(reg::Regularization, x)
   proxNuclear!(x, reg.params[:lambdNuclear], reg.params[:svtShape])
 end
