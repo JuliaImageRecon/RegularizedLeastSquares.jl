@@ -219,7 +219,7 @@ end
 #  yc = zeros(T,N*2)     #initialize part of dual var holding constraints
 #  αl = zero(T)        #temporary scalar
 #  τl = zero(T)        #temporary scalar
-#  dk = zeros(Complex128,N)     #temporary vector
+#  dk = zeros(ComplexF64,N)     #temporary vector
 #  δ = zeros(T,N*2)
 #
 #  p = Progress(iterations, 1, "Constrained Dax Iteration...")
@@ -261,7 +261,7 @@ end
 #
 #      BLAS.axpy!(1.0,δ,yc) # yc += δ
 #
-#      dk = reinterpret(Complex128,δ)
+#      dk = reinterpret(ComplexF64,δ)
 #      At_mul_B!(B,dk)
 #      δ = reinterpret(T,dk)
 #      for i=2:2:length(δ)

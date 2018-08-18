@@ -194,7 +194,9 @@ function FusedLasso(linearProblem,userParams::FusedLassoUserParams)
     # Create object for temporary parameters
     tempParams = FusedLassoTempParams(
                      zeros(eltype(linearProblem.A),size(linearProblem.A,1)),
-                     zeros(eltype(linearProblem.x),size(linearProblem.A,linearProblem.shape[1],linearProblem.shape[2],linearProblem.shape[3]))
+                     zeros(eltype(linearProblem.x),size(linearProblem.A,linearProblem.shape[1]),
+                                                   size(linearProblem.A,linearProblem.shape[2]),
+                                                   size(linearProblem.A,linearProblem.shape[3]))
                      )
 
     # Create linear solver object
@@ -273,7 +275,7 @@ end
 function solve(linearProblem::FusedLassoProblem,userParams::FusedLassoUserParams,tempParams::FusedLassoTempParams)
       S = linearProblem.A
       shape = linearProblem.shape
-      linearProblem.x[:] = 0.0
+      linearProblem.x[:] .= 0.0
       #linearProblem.x = zeros(eltype(linearProblem.x),shape[1]*shape[2]*shape[3])
       linearProblem.x = reshape(fusedlasso(
                 reshape(S,size(S,1),shape[1],shape[2],shape[3]),
@@ -366,9 +368,9 @@ function fusedlasso(S::Array{T,4},u::Vector{T},c::Array{T,3};
   y = zeros(eltype(c),cSize[1],cSize[2],cSize[3])
 
   t = ones(T,N+1)/(N+1)
-  yTemp = Array{eltype(y)}(size(y))
+  yTemp = Array{eltype(y)}(undef, size(y))
   #cOld = copy(c)
-  zTemp = Array{eltype(yTemp)}(size(yTemp))
+  zTemp = Array{eltype(yTemp)}(undef, size(yTemp))
 
   if verbose == true
     res = residuum(S,c,u)
@@ -537,7 +539,7 @@ function proxmap!(y::Array{T,3},yTemp::Array{T,3},z::Array{T,4},c::Array{T,3},
   ySize = size(y)
   zSize = size(z)
 
-  updateTemp = Array{eltype(y)}(ySize[1]*ySize[2]*ySize[3])
+  updateTemp = Array{eltype(y)}(undef, ySize[1]*ySize[2]*ySize[3])
 
   c=reshape(c,cSize[1]*cSize[2]*cSize[3])
   y = reshape(y,ySize[1]*ySize[2]*ySize[3])
@@ -608,8 +610,8 @@ function tv_denoise_3d_condat!(tvData::Array{T,3},nhood::Array{Int64,1},lambda) 
   tvSize = size(tvData)
   cartRange = get_startrange(tvSize,nhood[:])
   increment = CartesianIndex((nhood[1],nhood[2],nhood[3]));
-  tvOneDim = Array{eltype(tvData)}(Int64(ceil(sqrt(tvSize[1]*tvSize[2]*tvSize[3]))))
-  arrayCount = Array{Int64}(1)
+  tvOneDim = Array{eltype(tvData)}(undef, Int64(ceil(sqrt(tvSize[1]*tvSize[2]*tvSize[3]))))
+  arrayCount = Array{Int64}(undef, 1)
   for R in cartRange
 
     for k in R
@@ -761,13 +763,13 @@ function update!(z::Array{T,4},s::Int64,y::Array{T,3},c::Array{T,3},lambda::T) w
   flatSize = dataSize[1]*dataSize[2]*dataSize[3];
   y = reshape(y,flatSize)
   c = reshape(c,flatSize)
-  yTemp = Array{T}(flatSize)
-  zTemp = view(reshape(z,Val{2}),s,:)
+  yTemp = Array{T}(undef, flatSize)
+  zTemp = view(reshape(z,Val(2)),s,:)
 
   broadcast!(-,yTemp,y,c)
 
   #yTemp[:] = y[:] - c[:]
-  BLAS.rmul!(lambda,yTemp)
+  rmul!(yTemp,lambda)
   #zTemp[:] = zTemp[:] + yTemp[:]
   broadcast!(+,zTemp,zTemp,yTemp)
   #z[s,:,:,:] = reshape(yTemp,dataSize)[:,:,:]
@@ -796,27 +798,27 @@ the 1d tv extraction.
 function get_startrange(size::Tuple{Int64,Int64,Int64},step::Array{T,1}) where {T<:Real}
 
   output=StartRange(
-  CartesianRange(CartesianIndex((0,0,0))),
-  CartesianRange(CartesianIndex((0,0,0))),
-  CartesianRange(CartesianIndex((0,0,0)))
+  CartesianIndices(CartesianIndex((0,0,0))),
+  CartesianIndices(CartesianIndex((0,0,0))),
+  CartesianIndices(CartesianIndex((0,0,0)))
   )
 
 
-  output.x = CartesianRange(CartesianIndex((1,1,1)),CartesianIndex((step[1],size[2],size[3])))
-  output.y = CartesianRange(CartesianIndex((1,1,1)),CartesianIndex((size[1],step[2],size[3])))
-  output.z = CartesianRange(CartesianIndex((1,1,1)),CartesianIndex((size[1],size[2],step[3])))
+  output.x = CartesianIndices(CartesianIndex((1,1,1)),CartesianIndex((step[1],size[2],size[3])))
+  output.y = CartesianIndices(CartesianIndex((1,1,1)),CartesianIndex((size[1],step[2],size[3])))
+  output.z = CartesianIndices(CartesianIndex((1,1,1)),CartesianIndex((size[1],size[2],step[3])))
 
 
   if step[1] < 0
-  output.x = CartesianRange(CartesianIndex((size[1]+step[1],1,1)),CartesianIndex((size[1],size[2],size[3])))
+  output.x = CartesianIndices(CartesianIndex((size[1]+step[1],1,1)),CartesianIndex((size[1],size[2],size[3])))
   end
 
   if step[2] < 0
-  output.y = CartesianRange(CartesianIndex((1,size[2]+step[2],1)),CartesianIndex((size[1],size[2],size[3])))
+  output.y = CartesianIndices(CartesianIndex((1,size[2]+step[2],1)),CartesianIndex((size[1],size[2],size[3])))
   end
 
   if step[3] < 0
-  output.z = CartesianRange(CartesianIndex((1,1,size[3]+step[3])),CartesianIndex((size[1],size[2],size[3])))
+  output.z = CartesianIndices(CartesianIndex((1,1,size[3]+step[3])),CartesianIndex((size[1],size[2],size[3])))
   end
 
   return output
@@ -833,7 +835,7 @@ function pointwise_max!(c::Array{T,3},z::Array{T,4},s::Int64,y::Array{T,3},out::
 
   y = reshape(y,ySize[1]*ySize[2]*ySize[3])
   c = reshape(c,cSize[1]*cSize[2]*cSize[3])
-  zTemp = view(reshape(z,Val{2}),s,:)
+  zTemp = view(reshape(z,Val(2)),s,:)
   out = reshape(out,cSize[1]*cSize[2]*cSize[3])
 
   yTemp = 2*c-zTemp-y;
@@ -855,7 +857,7 @@ function weighted_sum!(weights::Array{T,1},z::Array{T,4},c::Array{T,3}) where {T
   cTemp = zeros(eltype(c),zSize[1]*zSize[2]*zSize[3])
 
   for i=1:length(weights)
-  zTemp = view(reshape(z,Val{2}),i,:)
+  zTemp = view(reshape(z,Val(2)),i,:)
   cTemp[:] = cTemp[:] + weights[i]*zTemp
   end
 

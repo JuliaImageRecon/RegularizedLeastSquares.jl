@@ -46,7 +46,7 @@ function admm(A, b::Vector, reg::Regularization
   σᵃᵇˢ = sqrt(length(b))*ɛᵃᵇˢ
   # initialize x, u and z
   if startVector == nothing
-    x = Ac_mul_B(A,b)
+    x = A' * b
   else
     x = copy(startVector)
   end
@@ -67,7 +67,7 @@ function admm(A, b::Vector, reg::Regularization
 
   A_mul_B!(reg, 1.0 / ρ)
 
-  β = Ac_mul_B(A,b)
+  β = A' * b
 
   p = Progress(iterations,dt=0.1,desc="Doing ADMM...";barglyphs=BarGlyphs("[=> ]"),barlen=50)
   for k=1:iterations

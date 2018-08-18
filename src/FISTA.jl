@@ -40,7 +40,7 @@ function fista1(A, b::Vector{T}, reg::Regularization
   p = Progress(iterations, 1, "FISTA iteration...")
 
   if startVector == nothing
-    x = Ac_mul_B(A,b)
+    x = A' * b
   else
     x = startVector
   end
@@ -56,7 +56,7 @@ function fista1(A, b::Vector{T}, reg::Regularization
   for l=1:iterations
     xᵒˡᵈ[:] = x[:]
 
-    x[:] = x[:] - ρ*Ac_mul_B(A, res)
+    x[:] = x[:] - ρ* (A' * res)
 
     if sparseTrafo != nothing
       xˢᵖᵃʳˢᵉ = sparseTrafo*x[:]
@@ -103,7 +103,7 @@ function fista2(A, b::Vector{T}, reg::Regularization
   p = Progress(iterations, 1, "FISTA iteration...")
 
   if startVector == nothing
-    x = Ac_mul_B(A,b)
+    x = A' * b
   else
     x = startVector
   end

@@ -166,12 +166,12 @@ end
 function applyConstraints(x, sparseTrafo,
                           enforceReal, enforcePositive)
   if sparseTrafo != nothing
-     x[:] = sparseTrafo*x
+     x[:] = sparseTrafo * x
   end
   enforceReal && enfReal!(x)
   enforcePositive && enfPos!(x)
   if sparseTrafo != nothing
-    x[:] = Ac_mul_B(sparseTrafo, x)
+    x[:] = sparseTrafo' * x
   end
 end
 
