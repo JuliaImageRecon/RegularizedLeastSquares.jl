@@ -88,7 +88,7 @@ end
 function dot_with_matrix_row(B::MatrixTranspose{T,S},
                        x::Vector{T}, k::Int64) where {T<:Complex,S<:DenseMatrix}
   A = B.data
-  BLAS.dotu(length(x), pointer(A,(LinearIndices(size(A)))[k,1]), 1, pointer(x,1), 1)
+  BLAS.dotu(length(x), pointer(A,(LinearIndices(size(A)))[1,k]), 1, pointer(x,1), 1)
 end
 
 
