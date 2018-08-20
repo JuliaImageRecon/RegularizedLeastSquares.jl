@@ -1,5 +1,5 @@
 import LinearAlgebra.A_mul_B!, LinearAlgebra.norm
-export Regularization, getRegularization, lambdList, prox!, normalize! #, norm
+export Regularization, getRegularization, lambdList, prox! #, norm
 
 mutable struct Regularization
   L2::Bool
