@@ -1,5 +1,6 @@
 name = "LinearSolver"
-uuid = "12d7aa1e-a7d4-11e8-33ea-6753c3e87491"
+#uuid = "12d7aa1e-a7d4-11e8-33ea-6753c3e87491"
+uuid = "1906c763-83da-50c9-aa61-18e2016498cc"
 authors = ["Tobias Knopp <tobias@knoppweb.de>"]
 version = "0.0.0"
 
