@@ -1,10 +1,13 @@
-__precompile__()
 module LinearSolver
 
 using ProgressMeter, Compat
 
-import Base.LinAlg: A_mul_B!, Ac_mul_B!, At_mul_B!, length
-using Base.LinAlg: BlasFloat
+using LinearAlgebra
+import LinearAlgebra: A_mul_B!, Ac_mul_B!, At_mul_B!, length, BlasFloat, normalize!
+using SparseArrays
+using Random
+using FFTW
+
 
 export createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
 
@@ -51,22 +54,19 @@ function linearSolverListReal()
 end
 
 
-@doc """
+"""
 This file contains linear solver that are commonly used in MPI
 Currently implemented are
  - kaczmarz method (the default)
  - CGNR
- - A direct solver using the \ operator
+ - A direct solver using the backslash operator
 
 
-All solvers return an approximate solution to Sᵀx = u.
+All solvers return an approximate solution to STx = u.
 
 
 Function returns choosen solver.
-""" ->
-# function createLinearSolver(solver::AbstractString, A; kargs...)
-#
-#   reg = Regularization(;kargs...)
+"""
 function createLinearSolver(solver::AbstractString, A, reg=nothing; kargs...)
 
   reg==nothing ? reg = Regularization(;kargs...) : nothing

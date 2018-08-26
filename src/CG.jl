@@ -1,6 +1,6 @@
 export cg
 
-type CG <: AbstractLinearSolver
+mutable struct CG <: AbstractLinearSolver
   A
   params
 end

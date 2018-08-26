@@ -3,7 +3,7 @@ export pseudoinverse, directSolver
 
 ### Direct Solver ###
 
-type DirectSolver <: AbstractLinearSolver
+mutable struct DirectSolver <: AbstractLinearSolver
   A
   params
 end
@@ -15,7 +15,7 @@ function solve(solver::DirectSolver, u::Vector)
 end
 
 #type for Gauß elimination
-type tikhonovLU
+mutable struct tikhonovLU
   S::Matrix
   LUfact
 end
@@ -25,7 +25,9 @@ tikhonovLU(S::AbstractMatrix) = tikhonovLU(S, lufact(S'*S))
 size(A::tikhonovLU) = size(A.S)
 length(A::tikhonovLU) = length(A.S)
 
-@doc "This function can be used to calculate the singular values used for Tikhonov regularization." ->
+"""
+This function can be used to calculate the singular values used for Tikhonov regularization.
+"""
 function setlambda(A::tikhonovLU, λ::Real)
   A.LUfact = lufact(A.S'*A.S + λ*speye(size(A,2),size(A,2)))
   return nothing
@@ -44,7 +46,7 @@ end
 
 ###  Pseudoinverse ###
 
-type PseudoInverse <: AbstractLinearSolver
+mutable struct PseudoInverse <: AbstractLinearSolver
   A
   params
 end
@@ -59,20 +61,25 @@ end
 ##### SVD #######
 
 #type for singular value decomposition
-@doc "This Type stores the singular value decomposition of a Matrix" ->
-type SVD
+"""
+This Type stores the singular value decomposition of a Matrix
+"""
+mutable struct SVD
   U::Matrix
   Σ::Vector
   V::Matrix
   D::Vector
 end
 
-SVD(U::Matrix,Σ::Vector,V::Matrix) = SVD(U,Σ,V,1./Σ)
+SVD(U::Matrix,Σ::Vector,V::Matrix) = SVD(U, Σ, V, 1. / Σ)
 
 size(A::SVD) = (size(A.U,1),size(A.V,1))
 length(A::SVD) = prod(size(A))
 
-@doc "This function can be used to calculate the singular values used for Tikhonov regularization." ->
+"""
+This function can be used to calculate the singular values used for
+Tikhonov regularization.
+"""
 function setlambda(A::SVD, λ::Real)
   for i=1:length(A.Σ)
     σi = A.Σ[i]
@@ -82,8 +89,11 @@ function setlambda(A::SVD, λ::Real)
 end
 
 # Inversion by using the pseudoinverse of the SVD
-@doc "This solves the Tikhonov regularized problem using the singular value decomposition." ->
-function pseudoinverse{T}(A::SVD, b::Vector{T}; enforceReal=false, enforcePositive=false, kargs...)
+"""
+This solves the Tikhonov regularized problem using the singular value decomposition.
+"""
+function pseudoinverse(A::SVD, b::Vector{T}; enforceReal=false,
+                       enforcePositive=false, kargs...) where T
   tmp = BLAS.gemv('C', one(T), A.U, b)
   tmp .*=  A.D
   c = BLAS.gemv('N', one(T), A.V, tmp)

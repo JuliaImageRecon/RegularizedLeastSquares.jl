@@ -7,7 +7,7 @@ include("linearOperators/WaveletOp.jl")
 
 export linearOperator, linearOperatorList
 
-linearOperator(op::Void,shape) = nothing
+linearOperator(op::Nothing,shape) = nothing
 
 function linearOperatorList()
   return ["DCT", "Cheb", "FFT"]
@@ -16,12 +16,12 @@ end
 function linearOperator(op::AbstractString, shape)
   shape_ = tuple(shape...)
   if op == "FFT"
-    trafo = FFTOp(Complex64, shape_, false) #FFTOperator(shape)
+    trafo = FFTOp(ComplexF32, shape_, false) #FFTOperator(shape)
   elseif op == "DCT"
     shape_ = tuple(shape[shape .!= 1]...)
-    trafo = DCTOp(Complex64, shape_)
+    trafo = DCTOp(ComplexF32, shape_)
   elseif op == "DST"
-    trafo = DSTOp(Complex64, shape_)
+    trafo = DSTOp(ComplexF32, shape_)
   elseif op == "Wavelet"
     trafo = WaveletOp(shape_)
   else

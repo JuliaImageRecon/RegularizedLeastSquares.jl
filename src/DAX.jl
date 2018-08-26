@@ -1,6 +1,6 @@
 export daxrandkaczmarz, daxconstrained, daxconstrainedfft
 
-type DaxKaczmarz <: AbstractLinearSolver
+mutable struct DaxKaczmarz <: AbstractLinearSolver
   A
   params
 end
@@ -12,7 +12,7 @@ function solve(solver::DaxKaczmarz, u::Vector)
 end
 
 
-type DaxConstrained <: AbstractLinearSolver
+mutable struct DaxConstrained <: AbstractLinearSolver
   A
   params
 end
@@ -25,8 +25,10 @@ function solve(solver::DaxConstrained, u::Vector)
 end
 
 
-@doc "This funtion saves the denominators to compute αl in denom and the rowindices, which lead to an update of cl in rowindex." ->
-function initkaczmarzdax(S::AbstractMatrix,ɛ,weights::Vector)
+"""This funtion saves the denominators to compute αl in denom and the rowindices,
+  which lead to an update of cl in rowindex.
+"""
+function initkaczmarzdax(S::AbstractMatrix, ɛ, weights::Vector)
   length(weights)==size(S,1) ? nothing : error("number of weights must equal number of equations")
   denom = Float64[]
   sumrowweights = Float64[]
@@ -44,7 +46,7 @@ function initkaczmarzdax(S::AbstractMatrix,ɛ,weights::Vector)
   return sumrowweights, denom, rowindex
 end
 
-@doc "This function returns the next index for the randomized Kaczmarz algorithm."->
+"This function returns the next index for the randomized Kaczmarz algorithm."
 function getrandindex(v::AbstractVector, x)
     lo::Int64 = 0
     hi::Int64 = length(v)+1
@@ -55,7 +57,7 @@ function getrandindex(v::AbstractVector, x)
     return lo
 end
 
-@doc """This function solves a unconstrained linear least squaares problem using an algorithm proposed in [1] combined with a randomized version of kaczmarz [2].
+"""This function solves a unconstrained linear least squaares problem using an algorithm proposed in [1] combined with a randomized version of kaczmarz [2].
 Returns an approximate solution to the linear leaast squares problem Sᵀx = u.
 
 [1] Dax, A. On Row Relaxation Methods for Large Constrained Least Squares Problems. SIAM J. Sci. Comput. 14, 570–584 (1993).
@@ -71,7 +73,7 @@ Returns an approximate solution to the linear leaast squares problem Sᵀx = u.
 * `inneriterations::Int`: Number of Iterations of inner dax scheme.
 * `lambd::Float64`: The regularization parameter ɛ>0 influences the speed of convergence but not the solution.
 * `weights::Vector{T}`: Use weights in vector to weight equations. The larger the weight the more one 'trusts' a sqecific equation.
-""" ->
+"""
 function daxrandkaczmarz(S::AbstractMatrix, u::Vector;
  iterations=3, inneriterations=2, lambd=1e-1, solverInfo = nothing, weights = nothing, sparseTrafo = nothing, enforceReal = true, enforcePositive = true, kargs...)
   T = typeof(real(S[1]))
@@ -84,8 +86,11 @@ function daxrandkaczmarz(S::AbstractMatrix, u::Vector;
   return x
 end
 
-@doc "This funtion saves the denominators to compute αl in denom and the rowindices, which lead to an update of cl in rowindex." ->
-function daxrand{T}(S::AbstractMatrix{T}, u::Vector, iterations::Int, inneriterations::Int, lambd::Number, solverInfo, weights::Vector)
+""" This funtion saves the denominators to compute αl in denom and the rowindices,
+which lead to an update of cl in rowindex.
+"""
+function daxrand(S::AbstractMatrix{T}, u::Vector, iterations::Int, inneriterations::Int,
+     lambd::Number, solverInfo, weights::Vector) where T
   M = size(S,1)       #number of rows of system matrix
   N = size(S,2)       #number of cols of system matrix
   sumrowweights, denom, rowindex = initkaczmarzdax(S,lambd,weights) #denom necessary to update αl, if rownorm ≠ 0. rowindex contains the indeces of nonzero rows. sumrowweight used for randomization of kaczmarz.
@@ -106,7 +111,7 @@ function daxrand{T}(S::AbstractMatrix{T}, u::Vector, iterations::Int, inneritera
   p = Progress(iterations, 1, "Dax Iteration...")
   for k=1:iterations #could be replaced by a while loop based on errorbound if smallest singular value of A is known
     # bk = u-S'*zk
-    copy!(bk,u)
+    copyto!(bk,u)
     A_mul_B!(-1.0,S,zk,1.0,bk)
 
     # solve min ɛ|x|²+|W*A*x-W*bk|² with weightingmatrix W=diag(wᵢ), i=1,...,M.
@@ -121,8 +126,8 @@ function daxrand{T}(S::AbstractMatrix{T}, u::Vector, iterations::Int, inneritera
 
     BLAS.axpy!(1.0,xl,zk)  # zk += xl
     # reset xl and yl for next Kaczmarz run
-    scale!(xl,0.0)
-    scale!(yl,0.0)
+    rmul!(xl,0.0)
+    rmul!(yl,0.0)
 
     storeInfo(solverInfo,norm(bk),norm(zk))
     next!(p)
@@ -130,7 +135,8 @@ function daxrand{T}(S::AbstractMatrix{T}, u::Vector, iterations::Int, inneritera
   return zk
 end
 
-@doc "This funtion saves the denominators to compute αl in denom and the rowindices, which lead to an update of cl in rowindex." ->
+"""This funtion saves the denominators to compute αl in denom and the rowindices,
+  which lead to an update of cl in rowindex."""
 function initkaczmarzconstraineddax(S::AbstractMatrix,ɛ::Number,weights::Vector)
   length(weights)==size(S,1) ? nothing : error("number of weights must equal number of equations")
   denom = Float64[]
@@ -146,7 +152,10 @@ function initkaczmarzconstraineddax(S::AbstractMatrix,ɛ::Number,weights::Vector
   return denom, rowindex
 end
 
-@doc "This funtion saves the denominators to compute αl in denom and the rowindices, which lead to an update of cl in rowindex." ->
+"""
+This funtion saves the denominators to compute αl in denom and the rowindices,
+which lead to an update of cl in rowindex.
+"""
 function initkaczmarzconstraineddaxfft(S::AbstractMatrix,ɛ::Number,weights::Vector)
   length(weights)==size(S,1) ? nothing : error("number of weights must equal number of equations")
   denom = Float64[]
@@ -165,7 +174,7 @@ function initkaczmarzconstraineddaxfft(S::AbstractMatrix,ɛ::Number,weights::Vec
   return denom, rowindex
 end
 
-@doc """This function solves a constrained linear least squares problem using an algorithm proposed in [1].
+"""This function solves a constrained linear least squares problem using an algorithm proposed in [1].
 Returns an approximate solution to Sᵀx = u s.t. Bx>=0 (each component >=0).
 
 [1] Dax, A. On Row Relaxation Methods for Large Constrained Least Squares Problems. SIAM J. Sci. Comput. 14, 570–584 (1993).
@@ -182,11 +191,12 @@ Returns an approximate solution to Sᵀx = u s.t. Bx>=0 (each component >=0).
 * `lambd::Float64`: The regularization parameter ɛ>0 influences the speed of convergence but not the solution.
 * `weights::Bool`: Use weights in vector to weight equations. The larger the weight the more one 'trusts' a sqecific equation.
 * `B`: Basistransformation if solving in dual space.
-""" ->
-function daxconstrained{T<:Real}(S::AbstractMatrix{T}, u::Vector;
- iterations=3, inneriterations=2, lambd=1e-1, solverInfo=nothing, weights=nothing, sparseTrafo=nothing, kargs...)
+"""
+function daxconstrained(S::AbstractMatrix{T}, u::Vector;
+ iterations=3, inneriterations=2, lambd=1e-1, solverInfo=nothing,
+ weights=nothing, sparseTrafo=nothing, kargs...) where {T<:Real}
   lambd = convert(T,lambd)
-  sparseTrafo==nothing ? B=eye(T,size(S,2)) : B=sparseTrafo #search for positive solution as default
+  sparseTrafo==nothing ? B=Matrix{T}(I, size(S,2), size(S,2)) : B=sparseTrafo #search for positive solution as default
   weights==nothing ? weights=ones(T,size(S,1)) : nothing #search for positive solution as default
   return daxcon(S, u, B, iterations, inneriterations, lambd, solverInfo, weights)
 end
@@ -209,13 +219,13 @@ end
 #  yc = zeros(T,N*2)     #initialize part of dual var holding constraints
 #  αl = zero(T)        #temporary scalar
 #  τl = zero(T)        #temporary scalar
-#  dk = zeros(Complex128,N)     #temporary vector
+#  dk = zeros(ComplexF64,N)     #temporary vector
 #  δ = zeros(T,N*2)
 #
 #  p = Progress(iterations, 1, "Constrained Dax Iteration...")
 #  for k=1:iterations
 #    # bk = u-S'*zk
-#    copy!(bk,u)
+#    copyto!(bk,u)
 #    for i=1:2:M
 #      bk[i] += -dot_with_matrix_row_simd(S,zrk,i)+dot_with_matrix_row_simd(S,zik,i+1)
 #      bk[i+1] += -dot_with_matrix_row_simd(S,zik,i)-dot_with_matrix_row_simd(S,zrk,i+1)
@@ -251,7 +261,7 @@ end
 #
 #      BLAS.axpy!(1.0,δ,yc) # yc += δ
 #
-#      dk = reinterpret(Complex128,δ)
+#      dk = reinterpret(ComplexF64,δ)
 #      At_mul_B!(B,dk)
 #      δ = reinterpret(T,dk)
 #      for i=2:2:length(δ)
@@ -265,10 +275,10 @@ end
 #    BLAS.axpy!(1.0,xil,zik)
 #
 #    # reset xl and yl for next Kaczmarz run
-#    scale!(xrl,0.0)
-#    scale!(xil,0.0)
-#    scale!(yl,0.0)
-#    scale!(yc,0.0)
+#    rmul!(xrl,0.0)
+#    rmul!(xil,0.0)
+#    rmul!(yl,0.0)
+#    rmul!(yc,0.0)
 #
 #    storeInfo(solverInfo,norm(bk),norm(zrk)+norm(zik))
 #    next!(p)
@@ -276,14 +286,15 @@ end
 #  return zrk+im*zik
 #end
 
-function lentcensormin!{T<:Real}(x::Vector{T},y::Vector{T})
+function lentcensormin!(x::Vector{T},y::Vector{T}) where {T<:Real}
   α = -one(T)
   @simd for i=1:length(x)
     @inbounds x[i]<=y[i] ? x[i] = α*x[i] : x[i] = α*y[i]
   end
 end
 
-function daxcon{T<:Real}(S::AbstractMatrix{T}, u::Vector, B, iterations::Int, inneriterations::Int, lambd::Number, solverInfo, weights::Vector{T})
+function daxcon(S::AbstractMatrix{T}, u::Vector, B, iterations::Int,
+  inneriterations::Int, lambd::Number, solverInfo, weights::Vector{T}) where {T<:Real}
   M = size(S,1)       #number of equations
   N = size(S,2)       #number of unknowns
   denom, rowindex = initkaczmarzconstraineddax(S,lambd,weights) #denom necessary to update αl, if rownorm ≠ 0. rowindex contains the indeces of nonzero rows.
@@ -306,7 +317,7 @@ function daxcon{T<:Real}(S::AbstractMatrix{T}, u::Vector, B, iterations::Int, in
   p = Progress(iterations, 1, "Constrained Dax Iteration...")
   for k=1:iterations
     # bk = u-S'*zk
-    copy!(bk,u)
+    copyto!(bk,u)
     A_mul_B!(-1.0,S,zk,1.0,bk)
 
     # solve min ɛ|x|²+|W*A*x-W*bk|² with weightingmatrix W=diag(wᵢ), i=1,...,M.
@@ -320,7 +331,7 @@ function daxcon{T<:Real}(S::AbstractMatrix{T}, u::Vector, B, iterations::Int, in
       end
 
       #Lent-Censor scheme for ensuring B(xl+zk) >= 0
-      copy!(δc,xl)
+      copyto!(δc,xl)
       BLAS.axpy!(1.0,zk,δc)
       A_mul_B!(B, δc)
       lentcensormin!(δc,yc)
@@ -333,9 +344,9 @@ function daxcon{T<:Real}(S::AbstractMatrix{T}, u::Vector, B, iterations::Int, in
     BLAS.axpy!(1.0,xl,zk)  # zk += xl
 
     # reset xl and yl for next Kaczmarz run
-    scale!(xl,0.0)
-    scale!(yl,0.0)
-    scale!(yc,0.0)
+    rmul!(xl,0.0)
+    rmul!(yl,0.0)
+    rmul!(yc,0.0)
 
     storeInfo(solverInfo,norm(bk),norm(zk))
     next!(p)
@@ -343,7 +354,8 @@ function daxcon{T<:Real}(S::AbstractMatrix{T}, u::Vector, B, iterations::Int, in
   return zk
 end
 
-function daxcon{T<:Real}(S::AbstractMatrix{T}, u::Vector, B::AbstractMatrix, iterations::Int, inneriterations::Int, lambd::Number, solverInfo, weights::Vector{T})
+function daxcon(S::AbstractMatrix{T}, u::Vector, B::AbstractMatrix, iterations::Int,
+   inneriterations::Int, lambd::Number, solverInfo, weights::Vector{T}) where {T<:Real}
   M = size(S,1)       #number of equations
   N = size(S,2)       #number of unknowns
   K = size(B,2)       #number of constraints
@@ -369,7 +381,7 @@ function daxcon{T<:Real}(S::AbstractMatrix{T}, u::Vector, B::AbstractMatrix, ite
   p = Progress(iterations, 1, "Constrained Dax Iteration...")
   for k=1:iterations
     # bk = u-S'*zk
-    copy!(bk,u)
+    copyto!(bk,u)
     A_mul_B!(-1.0,S,zk,1.0,bk)
 
     # solve min ɛ|x|²+|W*A*x-W*bk|² with weightingmatrix W=diag(wᵢ), i=1,...,M.
@@ -384,7 +396,7 @@ function daxcon{T<:Real}(S::AbstractMatrix{T}, u::Vector, B::AbstractMatrix, ite
 
       #Lent-Censor scheme for solving Bx >= 0
       # bc = xl + zk
-      copy!(bc,zk)
+      copyto!(bc,zk)
       BLAS.axpy!(1.0,xl,bc)
 
       for i=1:K
@@ -398,9 +410,9 @@ function daxcon{T<:Real}(S::AbstractMatrix{T}, u::Vector, B::AbstractMatrix, ite
     BLAS.axpy!(1.0,xl,zk)  # zk += xl
 
     # reset xl and yl for next Kaczmarz run
-    scale!(xl,0.0)
-    scale!(yl,0.0)
-    scale!(yc,0.0)
+    rmul!(xl,0.0)
+    rmul!(yl,0.0)
+    rmul!(yc,0.0)
 
     storeInfo(solverInfo,norm(bk),norm(zk))
     next!(p)

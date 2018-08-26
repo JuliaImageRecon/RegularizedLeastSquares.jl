@@ -1,6 +1,6 @@
 export kaczmarz
 
-type Kaczmarz <: AbstractLinearSolver
+mutable struct Kaczmarz <: AbstractLinearSolver
   A
   reg::Regularization
   params
@@ -14,7 +14,10 @@ end
 
 ### initkaczmarz ###
 
-@doc "This funtion saves the denominators to compute αl in denom and the rowindices, which lead to an update of cl in rowindex." ->
+"""
+This funtion saves the denominators to compute αl in denom and the rowindices,
+which lead to an update of cl in rowindex.
+"""
 function initkaczmarz(S::AbstractMatrix,λ,weights::Vector)
   T = typeof(real(S[1]))
   denom = T[]
@@ -32,15 +35,20 @@ end
 
 ### kaczmarz_update! ###
 
-@doc "This funtion updates x during the kaczmarz algorithm for dense matrices." ->
-function kaczmarz_update!{T}(A::DenseMatrix{T}, x::Vector, k::Integer, beta)
+"""
+This funtion updates x during the kaczmarz algorithm for dense matrices.
+"""
+function kaczmarz_update!(A::DenseMatrix{T}, x::Vector, k::Integer, beta) where T
   @simd for n=1:size(A,2)
     @inbounds x[n] += beta*conj(A[k,n])
   end
 end
 
-@doc "This funtion updates x during the kaczmarz algorithm for dense matrices." ->
-function kaczmarz_update!{T,S<:DenseMatrix}(B::MatrixTranspose{T,S}, x::Vector, k::Integer, beta)
+"""
+This funtion updates x during the kaczmarz algorithm for dense matrices.
+"""
+function kaczmarz_update!(B::MatrixTranspose{T,S}, x::Vector,
+                          k::Integer, beta) where {T,S<:DenseMatrix}
   A = B.data
   @simd for n=1:size(A,1)
     @inbounds x[n] += beta*conj(A[n,k])
@@ -54,8 +62,11 @@ function kaczmarz_update!{T}(A::Matrix{T}, x::Vector{T}, k::Integer, beta::T)
 end
 =#
 
-@doc "This funtion updates x during the kaczmarz algorithm for sparse matrices." ->
-function kaczmarz_update!{T,S<:SparseMatrixCSC}(B::MatrixTranspose{T,S}, x::Vector, k::Integer, beta)
+"""
+This funtion updates x during the kaczmarz algorithm for sparse matrices.
+"""
+function kaczmarz_update!(B::MatrixTranspose{T,S}, x::Vector,
+                          k::Integer, beta) where {T,S<:SparseMatrixCSC}
   A = B.data
   N = A.colptr[k+1]-A.colptr[k]
   for n=A.colptr[k]:N-1+A.colptr[k]
@@ -65,7 +76,7 @@ end
 
 ### kaczmarz ###
 
-@doc """
+"""
 This funtion implements the kaczmarz algorithm.
 
 ### Keyword/Optional Arguments
@@ -78,7 +89,7 @@ This funtion implements the kaczmarz algorithm.
 * `shuff::Bool`: Enable shuffeling of rows during iterations in the kaczmarz algorithm.
 * `enforceReal::Bool`: Enable projection of solution on real plane during iteration.
 * `enforcePositive::Bool`: Enable projection of solution onto positive halfplane during iteration.
-""" ->
+"""
 function kaczmarz(S, u::Vector;
  iterations=10, lambd=0.0, weights=nothing, enforceReal=false, enforcePositive=false, sparseTrafo=nothing, startVector=nothing, solverInfo=nothing, verbose = true ,kargs...)
   T = typeof(real(u[1]))
@@ -88,7 +99,8 @@ function kaczmarz(S, u::Vector;
   return kaczmarz(S, u, startVector, iterations, lambd, weights, enforceReal, enforcePositive, sparseTrafo, solverInfo, verbose=verbose)
 end
 
-function kaczmarz{T}(S, u::Vector{T}, startVector, iterations, lambd, weights, enforceReal, enforcePositive, sparseTrafo, solverInfo; verbose = true)
+function kaczmarz(S, u::Vector{T}, startVector, iterations, lambd, weights, enforceReal,
+            enforcePositive, sparseTrafo, solverInfo; verbose = true) where T
   # fast implementation of kaczmarz using SIMD instructions
   M::Int64 = size(S,1)      #number of rows of system matrix
   N::Int64 = size(S,2)      #number of cols of system matrix

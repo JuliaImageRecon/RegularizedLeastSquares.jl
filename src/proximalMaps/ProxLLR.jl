@@ -1,19 +1,20 @@
 export proxLLR!, normLLR
 
-@doc """
-proximal map for LLR regularization using singular-value-thresholding" ->
+"""
+proximal map for LLR regularization using singular-value-thresholding
 
 ### parameters:
 
 * λ::Float64: regularization parameter (threshold)
 * shape::Tuple{Int}: dimensions of the image
 * blockSize::Tuple{Int}: size of patches to perform singluar value thresholding on
-""" ->
+"""
 function proxLLR!(reg, x)
   x[:] = proxLLR(x, reg.params[:lambdLLR]; reg.params...)
 end
 
-function proxLLR{T}(x::Vector{T}, λ::Float64=1e-6; shape::NTuple=[], L=1, blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...)
+function proxLLR(x::Vector{T}, λ::Float64=1e-6; shape::NTuple=[], L=1,
+   blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...) where T
   xᵖʳᵒˣ = zeros(T,size(x))
   N = prod(shape)
   K = floor(Int,length(x)/(N*L))
@@ -24,7 +25,8 @@ function proxLLR{T}(x::Vector{T}, λ::Float64=1e-6; shape::NTuple=[], L=1, block
   return xᵖʳᵒˣ
 end
 
-function svt{T}(x::Vector{T}, shape::Tuple, λ::Float64=1e-6; blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...)
+function svt(x::Vector{T}, shape::Tuple, λ::Float64=1e-6;
+   blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...) where T
 
   x = reshape( x, tuple( shape...,floor(Int64, length(x)/prod(shape)) ) )
 
@@ -75,7 +77,9 @@ function svt{T}(x::Vector{T}, shape::Tuple, λ::Float64=1e-6; blockSize::Array{I
   return xᵗʰʳᵉˢʰ
 end
 
-@doc "return the value of the LLR-regularization term" ->
+"""
+return the value of the LLR-regularization term
+"""
 normLLR(reg::Regularization,x) = reg.params[:lambdLLR]*normLLR(x; reg.params...)
 
 function normLLR(x::Vector; shape::NTuple=[], L=1, blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...)
@@ -90,7 +94,8 @@ function normLLR(x::Vector; shape::NTuple=[], L=1, blockSize::Array{Int64,1}=[2;
   return normᴸᴸᴿ
 end
 
-function blockNuclearNorm{T}(x::Vector{T}, shape::Tuple; blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...)
+function blockNuclearNorm(x::Vector{T}, shape::Tuple; blockSize::Array{Int64,1}=[2; 2],
+      randshift::Bool=true, kargs...) where T
     x = reshape( x, tuple( shape...,floor(Int64, length(x)/prod(shape)) ) )
 
     Wy = blockSize[1]
