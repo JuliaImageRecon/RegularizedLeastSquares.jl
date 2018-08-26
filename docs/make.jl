@@ -13,8 +13,7 @@ makedocs(
 )
 
 deploydocs(repo   = "github.com/tknopp/LinearSolver.jl.git",
-           julia  = "release",
+           julia  = "0.7",
            target = "build",
            deps   = nothing,
            make   = nothing)
-
