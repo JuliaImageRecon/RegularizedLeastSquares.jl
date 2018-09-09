@@ -3,7 +3,16 @@ module LinearSolver
 using ProgressMeter, Compat
 
 using LinearAlgebra
-import LinearAlgebra: A_mul_B!, Ac_mul_B!, At_mul_B!, length, BlasFloat, normalize!
+using LinearOperators
+
+if VERSION < v"1.0.0"
+  import LinearAlgebra: Ac_mul_B!, At_mul_B!
+end
+import LinearOperators: A_mul_B!
+
+import LinearAlgebra: BlasFloat, normalize!, norm
+import Base: length
+
 using SparseArrays
 using Random
 using FFTW

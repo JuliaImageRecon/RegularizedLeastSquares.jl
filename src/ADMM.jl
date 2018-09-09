@@ -1,4 +1,3 @@
-using LinearOperators
 export admm
 
 mutable struct ADMM <: AbstractLinearSolver

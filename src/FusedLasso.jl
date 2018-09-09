@@ -797,28 +797,31 @@ the 1d tv extraction.
 """
 function get_startrange(size::Tuple{Int64,Int64,Int64},step::Array{T,1}) where {T<:Real}
 
-  output=StartRange(
-  CartesianIndices(CartesianIndex((0,0,0))),
-  CartesianIndices(CartesianIndex((0,0,0))),
-  CartesianIndices(CartesianIndex((0,0,0)))
+  output = StartRange(
+    CartesianIndices(CartesianIndex((0,0,0))),
+    CartesianIndices(CartesianIndex((0,0,0))),
+    CartesianIndices(CartesianIndex((0,0,0)))
   )
 
 
-  output.x = CartesianIndices(CartesianIndex((1,1,1)),CartesianIndex((step[1],size[2],size[3])))
-  output.y = CartesianIndices(CartesianIndex((1,1,1)),CartesianIndex((size[1],step[2],size[3])))
-  output.z = CartesianIndices(CartesianIndex((1,1,1)),CartesianIndex((size[1],size[2],step[3])))
+  #output.x = CartesianIndices(CartesianIndex((1,1,1)),CartesianIndex((step[1],size[2],size[3])))
+  #output.y = CartesianIndices(CartesianIndex((1,1,1)),CartesianIndex((size[1],step[2],size[3])))
+  #output.z = CartesianIndices(CartesianIndex((1,1,1)),CartesianIndex((size[1],size[2],step[3])))
+  output.x = CartesianIndices((1:step[1],1:size[2],1:size[3]))
+  output.y = CartesianIndices((1:size[1],1:step[2],1:size[3]))
+  output.z = CartesianIndices((1:size[1],1:size[2],1:step[3]))
 
 
   if step[1] < 0
-  output.x = CartesianIndices(CartesianIndex((size[1]+step[1],1,1)),CartesianIndex((size[1],size[2],size[3])))
+    output.x = CartesianIndices(((size[1]+step[1]):size[1],1:size[2],1:size[3]))
   end
 
   if step[2] < 0
-  output.y = CartesianIndices(CartesianIndex((1,size[2]+step[2],1)),CartesianIndex((size[1],size[2],size[3])))
+    output.y = CartesianIndices((1:size[1],(size[2]+step[2]):size[2],1:size[3]))
   end
 
   if step[3] < 0
-  output.z = CartesianIndices(CartesianIndex((1,1,size[3]+step[3])),CartesianIndex((size[1],size[2],size[3])))
+    output.z = CartesianIndices((1:size[1],1:size[2],(size[3]+step[3]):size[3]))
   end
 
   return output

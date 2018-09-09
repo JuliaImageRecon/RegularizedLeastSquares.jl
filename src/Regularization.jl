@@ -1,4 +1,3 @@
-import LinearAlgebra.A_mul_B!, LinearAlgebra.norm
 export Regularization, getRegularization, lambdList, prox! #, norm
 
 mutable struct Regularization
