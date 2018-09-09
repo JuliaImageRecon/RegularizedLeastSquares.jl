@@ -46,7 +46,7 @@ N = 32
 F = [ 1. / sqrt(N)*exp(-2. *pi*im*j*k/N) for j=0:N-1, k=0:N-1 ]
 x = zeros(N)
 for i = 1:3
-  x[rand(1:N)] .= rand()
+  x[rand(1:N)] = rand()
 end
 b = 1. / sqrt(N)*fft(x)
 
