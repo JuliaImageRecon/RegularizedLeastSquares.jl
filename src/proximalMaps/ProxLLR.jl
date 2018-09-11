@@ -34,7 +34,7 @@ function svt(x::Vector{T}, shape::Tuple, λ::Float64=1e-6;
   Wz = blockSize[2]
 
   if randshift
-    srand(1234)
+    # Random.seed!(1234)
     shift_idx = [rand(1:Wy) rand(1:Wz) 0]
     x = circshift(x, shift_idx)
   end
@@ -55,9 +55,9 @@ function svt(x::Vector{T}, shape::Tuple, λ::Float64=1e-6;
     if xᴸᴸᴿ[:,:,i] == zeros(T, Wy*Wz,K)
       continue
     end
-    SVDec = svdfact(xᴸᴸᴿ[:,:,i])
-    proxL1!(SVDec[:S],λ)
-    xᴸᴸᴿ[:,:,i] = SVDec[:U]*diagm(SVDec[:S])*SVDec[:Vt]
+    SVDec = svd(xᴸᴸᴿ[:,:,i])
+    proxL1!(SVDec.S,λ)
+    xᴸᴸᴿ[:,:,i] = SVDec.U*Matrix(Diagonal(SVDec.S))*SVDec.Vt
   end
 
   # reshape into image

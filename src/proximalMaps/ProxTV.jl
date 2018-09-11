@@ -85,7 +85,7 @@ end
 # restrictMagnitude(x::Vector) = x/max(1, abs(x))
 function restrictMagnitude(x::Array, w::Array=[])
   w != [] ? maxval = w : maxval = ones(size(x))
-  return x./max.(maxval, abs(x))
+  return x./max.(maxval, abs.(x))
 end
 
 function normTV(reg::Regularization,x)

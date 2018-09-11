@@ -25,7 +25,7 @@ function cg(A
 
   r = b-A_mul_B(A,x)
   p = r
-  rsold = BLAS.dot(r,r)
+  rsold = BLAS.dotc(r,r)
   rsnew = rsold
 
   if verbose==true
@@ -35,7 +35,7 @@ function cg(A
 
   for i=1:iterations
     Ap = A_mul_B(A,p)
-    bla = BLAS.dot(p,Ap)
+    bla = BLAS.dotc(p,Ap)
 
     alpha = rsold/ bla
     #x = x+alpha*p;
@@ -43,7 +43,7 @@ function cg(A
     # BLAS.axpy!(a,X,Y) overwrites Y with a*X + Y
     BLAS.axpy!(-alpha,Ap,r)
     #r = r-alpha*Ap
-    rsnew = BLAS.dot(r,r)
+    rsnew = BLAS.dotc(r,r)
     if sqrt(abs(rsnew))<1e-10
       break
     end
