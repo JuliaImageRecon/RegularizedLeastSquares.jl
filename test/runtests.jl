@@ -4,6 +4,8 @@ using LinearAlgebra
 using FFTW
 using Random
 
+Random.seed!(1234)
+
 @testset "Real Linear Solver" begin
 
 A = rand(3,2);
