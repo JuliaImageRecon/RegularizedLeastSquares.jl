@@ -7,7 +7,6 @@ export fusedlasso
 #==============================================================================#
 
 function normalize!(A::Array{T,2},b::Vector{T},energy::Vector{T}) where {T<:Real}
-    p=Progress(size(A,1),1,"Normalize data...")
 
     for i=1:size(A,1)
       energy[i] = norm(vec(A[i,:]));
@@ -15,7 +14,6 @@ function normalize!(A::Array{T,2},b::Vector{T},energy::Vector{T}) where {T<:Real
         A[i,j] = A[i,j]/energy[i]
       end
       b[i] = b[i]/energy[i]
-      next!(p)
     end
 
 end
@@ -32,7 +30,6 @@ end
 #==============================================================================#
 
 mutable struct FusedLassoUserParams{T}
-    verbose::Bool
     cached::Bool
     maxIter::Int64
     nhood::Array{Int64,2}
@@ -46,8 +43,6 @@ mutable struct FusedLassoUserParams{T}
 end
 
 function FusedLassoUserParams(T::Type;
-                                # Flag for info prints
-                                verbose = false,
                                 # Flag for using the cached version of fused lasso
                                 cached = false,
                                 # Number of performed iterations
@@ -113,7 +108,7 @@ function FusedLassoUserParams(T::Type;
 
 	end
 
-    return FusedLassoUserParams(verbose,cached,iterations,nhood,omega,gamma,kappa,T(lambdaTV),T(lambdaL1),lib,recompile)
+    return FusedLassoUserParams(cached,iterations,nhood,omega,gamma,kappa,T(lambdaTV),T(lambdaL1),lib,recompile)
 end
 
 #==============================================================================#
@@ -219,7 +214,7 @@ function FusedLasso(linearProblem,userParams::FusedLassoUserParams)
     solver.linearProblem.A = S
 
     if solver.userParams.cached == true
-        println("Calculating ATA")
+        @debug "Calculating ATA"
         #=
 	BLAS.gemm!('T','N',
                    linearSolver.userParams.gamma,
@@ -287,8 +282,7 @@ function solve(linearProblem::FusedLassoProblem,userParams::FusedLassoUserParams
                 lambda=userParams.lambda,
                 alpha=userParams.alpha,
                 beta=userParams.beta,
-                gamma=userParams.gamma,
-                verbose=userParams.verbose),
+                gamma=userParams.gamma),
                 shape[1]*shape[2]*shape[3]
                 )
 end
@@ -308,8 +302,7 @@ function solve(linearProblem::FusedLassoProblemCached,userParams::FusedLassoUser
                 lambda=userParams.lambda,
                 alpha=userParams.alpha,
                 beta=userParams.beta,
-                gamma=userParams.gamma,
-                verbose=userParams.verbose),shape[1]*shape[2]*shape[3])
+                gamma=userParams.gamma),shape[1]*shape[2]*shape[3])
 end
 
 #==============================================================================#
@@ -337,7 +330,6 @@ Base.getindex(R::StartRange,i::Int) = if i==1 R.x elseif i==2 R.y elseif i==3 R.
 * 'alpha::Float32' Weight of the tv term.
 * 'beta::Float32' Weight of the l1 term.
 * 'gamma::Float32' Weight for the gradient descent step.
-* 'verbose' Flag for extended information output
 """
 function fusedlasso(S::Array{T,4},u::Vector{T},c::Array{T,3};
   maxIter = Int64(50),
@@ -348,17 +340,8 @@ function fusedlasso(S::Array{T,4},u::Vector{T},c::Array{T,3};
   alpha = T(0.000017),
   beta = T(0.001),
   gamma = T(10.0^-3),
-  verbose = false,
   kargs...
   ) where T
-  #=
-  println(maxIter)
-  println(tol)
-  println(lambda)
-  println(alpha)
-  println(beta)
-  println(gamma)
-  =#
   gradientFunc! = gradient_base!
 
   cSize = size(c)
@@ -372,45 +355,30 @@ function fusedlasso(S::Array{T,4},u::Vector{T},c::Array{T,3};
   #cOld = copy(c)
   zTemp = Array{eltype(yTemp)}(undef, size(yTemp))
 
-  if verbose == true
-    res = residuum(S,c,u)
-    println("Residuum pre reconstruction: ", res)
-  end
-  p = Progress(Int64(maxIter)*5, 1, "Fused lasso reconstruction...")
+  @debug "Residuum pre reconstruction: " residuum(S,c,u)
   for i=1:maxIter
 
       # Calculate gradient
       gradientFunc!(c,S,u,y,gamma)
-      next!(p)
 
       # Proximal mapping
       proxmap!(y,yTemp,z,c,N,nhood,alpha,beta,gamma,omega,lambda,t)
-      next!(p)
 
       # Pointwise maximum
       pointwise_max!(c,z,N+1,y,yTemp)
-      next!(p)
 
       # Update step
       update!(z,N+1,yTemp,c,lambda)
-      next!(p)
 
       # Averaging over single results
       c = reshape(c,cSize[1],cSize[2],cSize[3])
       weighted_sum!(t,z,c)
-      next!(p)
-      #println("")
-      #res = residuum(S,c,u)
-      #println(res)
       # Evaluate stopping criterion
       #check_stop(cOld,c,tol) && break;
       #cOld = copy(c)
 
   end
-  if verbose == true
-    res = residuum(S,c,u)
-    println("Residuum post reconstruction: ", res)
-  end
+  @debug "Residuum post reconstruction: " residuum(S,c,u)
   return c
 
 end
@@ -424,17 +392,8 @@ function fusedlassoCached(S::Array{T,4},STS::Array{T,2},u::Vector{T},STu::Vector
   alpha = T(0.000017),
   beta = T(0.001),
   gamma = T(10.0^-3),
-  verbose = false,
   kargs...
   ) where T
-  #=
-  println(maxIter)
-  println(tol)
-  println(lambda)
-  println(alpha)
-  println(beta)
-  println(gamma)
-  =#
   gradientFuncCached! = gradient_base_cached!
 
   cSize = size(c)
@@ -446,46 +405,32 @@ function fusedlassoCached(S::Array{T,4},STS::Array{T,2},u::Vector{T},STu::Vector
   #cOld = copy(c)
   zTemp = Array{eltype(yTemp)}(size(yTemp))
 
-  if verbose == true
-    res = residuum(S,c,u)
-    println("Residuum pre reconstruction: ", res)
-  end
-  p = Progress(Int64(maxIter)*5, 1, "Fused lasso reconstruction...")
+  @debug "Residuum pre reconstruction: " residuum(S,c,u)
   #residuum(S,c,u)
   for i=1:maxIter
 
       # Calculate gradient
       gradientFuncCached!(c,STS,STu,y)
       #gradient!(c,S,u,y,gamma)
-      next!(p)
 
       # Proximal mapping
       proxmap!(y,yTemp,z,c,N,nhood,alpha,beta,gamma,omega,lambda,t)
-      next!(p)
 
       # Pointwise maximum
       pointwise_max!(c,z,N+1,y,yTemp)
-      next!(p)
 
       # Update step
       update!(z,N+1,yTemp,c,lambda)
-      next!(p)
 
       # Averaging over single results
       c = reshape(c,cSize[1],cSize[2],cSize[3])
       weighted_sum!(t,z,c)
-      next!(p)
-      #res = residuum(S,c,u)
-      #println(res)
       # Evaluate stopping criterion
       #check_stop(cOld,c,tol) && break;
       #cOld = copy(c)
 
   end
-  if verbose == true
-    res = residuum(S,c,u)
-    println("Residuum post reconstruction: ", res)
-  end
+  @debug "Residuum post reconstruction: " residuum(S,c,u)
   return c
 
 end
@@ -880,8 +825,6 @@ function check_stop(cOld::Array{T,3},c::Array{T,3},tol::T) where {T<:Real}
   c = reshape(c,cSize[1]*cSize[2]*cSize[3])
   cOld = reshape(cOld,cSize[1]*cSize[2]*cSize[3])
 
-  #println(norm(cOld-c)/norm(cOld)+1.0*10^-3.0)
-
   if (norm(cOld-c)/norm(cOld) + 1.0*10.0^-3.0) <= tol
     return true
   else
@@ -898,10 +841,6 @@ uSize = size(u)
 A = reshape(A,aSize[1],aSize[2]*aSize[3]*aSize[4])
 c = reshape(c,cSize[1]*cSize[2]*cSize[3])
 
-#println("Residuum norm: ", (norm(A*c-u)^2)/norm(u))
-
-#println("Norm u: ", norm(u))
-#return((norm(A*c-u)^2)/norm(u))
 return(norm(A*c-u)^2/norm(u))
 
 end

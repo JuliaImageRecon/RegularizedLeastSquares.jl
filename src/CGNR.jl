@@ -56,7 +56,6 @@ solverInfo = nothing, kargs... ) where T
   #pₗ = zₗ
   copyto!(pl,zl)
   #start iteration
-  p = Progress(iterations, 1, "CGNR Iteration...")
   for l=1:min(iterations,size(S,2))
     #vₗ = Sᵗ*pₗ
     A_mul_B!(one(T), S, pl, zero(T), vl)
@@ -99,7 +98,6 @@ solverInfo = nothing, kargs... ) where T
     BLAS.axpy!(one(T),zl,pl)
 
     solverInfo != nothing && storeInfo(solverInfo,norm(S*cl-u),norm(cl))
-    next!(p)
   end
   if sparseTrafo != nothing # This is a hack to allow constraints even when solving in a dual space
     A_mul_B!(sparseTrafo, cl)

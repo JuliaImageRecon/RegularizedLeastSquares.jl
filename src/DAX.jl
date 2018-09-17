@@ -108,7 +108,6 @@ function daxrand(S::AbstractMatrix{T}, u::Vector, iterations::Int, inneriteratio
     ɛw[i] = sqrt(lambd)/weights[j]
   end
 
-  p = Progress(iterations, 1, "Dax Iteration...")
   for k=1:iterations #could be replaced by a while loop based on errorbound if smallest singular value of A is known
     # bk = u-S'*zk
     copyto!(bk,u)
@@ -130,7 +129,6 @@ function daxrand(S::AbstractMatrix{T}, u::Vector, iterations::Int, inneriteratio
     rmul!(yl,0.0)
 
     storeInfo(solverInfo,norm(bk),norm(zk))
-    next!(p)
   end
   return zk
 end
@@ -222,7 +220,6 @@ end
 #  dk = zeros(ComplexF64,N)     #temporary vector
 #  δ = zeros(T,N*2)
 #
-#  p = Progress(iterations, 1, "Constrained Dax Iteration...")
 #  for k=1:iterations
 #    # bk = u-S'*zk
 #    copyto!(bk,u)
@@ -281,7 +278,6 @@ end
 #    rmul!(yc,0.0)
 #
 #    storeInfo(solverInfo,norm(bk),norm(zrk)+norm(zik))
-#    next!(p)
 #  end
 #  return zrk+im*zik
 #end
@@ -314,7 +310,6 @@ function daxcon(S::AbstractMatrix{T}, u::Vector, B, iterations::Int,
     ɛw[i] = sqrt(lambd)/weights[j]
   end
 
-  p = Progress(iterations, 1, "Constrained Dax Iteration...")
   for k=1:iterations
     # bk = u-S'*zk
     copyto!(bk,u)
@@ -349,7 +344,6 @@ function daxcon(S::AbstractMatrix{T}, u::Vector, B, iterations::Int,
     rmul!(yc,0.0)
 
     storeInfo(solverInfo,norm(bk),norm(zk))
-    next!(p)
   end
   return zk
 end
@@ -378,7 +372,6 @@ function daxcon(S::AbstractMatrix{T}, u::Vector, B::AbstractMatrix, iterations::
     ɛw[i] = sqrt(lambd)/weights[j]
   end
 
-  p = Progress(iterations, 1, "Constrained Dax Iteration...")
   for k=1:iterations
     # bk = u-S'*zk
     copyto!(bk,u)
@@ -415,7 +408,6 @@ function daxcon(S::AbstractMatrix{T}, u::Vector, B::AbstractMatrix, iterations::
     rmul!(yc,0.0)
 
     storeInfo(solverInfo,norm(bk),norm(zk))
-    next!(p)
   end
   return zk
 end

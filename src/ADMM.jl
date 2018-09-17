@@ -68,12 +68,11 @@ function admm(A, b::Vector, reg::Regularization
 
   β = A' * b
 
-  p = Progress(iterations,dt=0.1,desc="Doing ADMM...";barglyphs=BarGlyphs("[=> ]"),barlen=50)
   for k=1:iterations
     # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 ||x+u-z||²
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
     xᵒˡᵈ = x[:]
-    x = cg(op, x,  β+ρ*(z-u), iterations=10, verbose=false, solverInfo=solverInfo )
+    x = cg(op, x,  β+ρ*(z-u), iterations=10, solverInfo=solverInfo )
 
     # 2. update z using the proximal map of 1/ρ*g(x)
     zᵒˡᵈ = z
@@ -95,8 +94,6 @@ function admm(A, b::Vector, reg::Regularization
 #    ɛᵖʳⁱ = σᵃᵇˢ + ɛʳᵉˡ*max( norm(x), norm(z) );
 #    sᵏ = norm(ρ * (z - zᵒˡᵈ))
 #    ɛᴰᵘᵃˡ = σᵃᵇˢ + ɛʳᵉˡ*norm(ρ*u);
-
-    next!(p)
 
     solverInfo != nothing && storeRegularization(solverInfo,norm(reg,z))
 

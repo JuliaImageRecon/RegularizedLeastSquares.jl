@@ -17,7 +17,7 @@ solvers = linearSolverListReal()
 for solver in solvers
   S = createLinearSolver(solver, A, iterations=100)
   x_approx = solve(S,b)
-  println("Testing solver $solver ...: $x  == $x_approx")
+  @info "Testing solver $solver ...: $x  == $x_approx"
   @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
 end
 
@@ -35,7 +35,7 @@ solvers = linearSolverList()
 for solver in solvers
   S = createLinearSolver(solver, A, iterations=100)
   x_approx = solve(S,b)
-  println("Testing solver $solver ...: $x  == $x_approx")
+  @info "Testing solver $solver ...: $x  == $x_approx"
   @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
 end
 
@@ -60,7 +60,7 @@ F[idx,:] .= 0
 for solver in ["fista"]
   S = createLinearSolver(solver,F; L1=true, lambdL1=1.e-3, iterations=200)
   x_approx = solve(S, b)
-  println("Testing solver $solver ...: $x  == $x_approx")
+  @info "Testing solver $solver ...: $x  == $x_approx"
   @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
 end
 

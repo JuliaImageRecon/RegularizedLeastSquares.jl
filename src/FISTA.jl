@@ -37,8 +37,6 @@ function fista1(A, b::Vector{T}, reg::Regularization
                 , solverInfo = nothing
                 , kargs...) where T
 
-  p = Progress(iterations, 1, "FISTA iteration...")
-
   if startVector == nothing
     x = A' * b
   else
@@ -81,8 +79,6 @@ function fista1(A, b::Vector{T}, reg::Regularization
     costFuncOld = costFunc
     costFunc = 0.5*norm(res)^2+regNorm
     abs(costFunc-costFuncOld)/costFuncOld < ɛ && return x
-
-    next!(p)
   end
 
   return x
@@ -99,8 +95,6 @@ function fista2(A, b::Vector{T}, reg::Regularization
                 , t::Float64=1.0
                 , solverInfo = nothing
                 , kargs...) where T
-
-  p = Progress(iterations, 1, "FISTA iteration...")
 
   if startVector == nothing
     x = A' * b
@@ -138,8 +132,6 @@ function fista2(A, b::Vector{T}, reg::Regularization
 
     t = (1. + sqrt(1. + 4. * tᵒˡᵈ^2)) / 2.
     x[:] = x + (tᵒˡᵈ-1)/t*(x-xᵒˡᵈ)
-
-    next!(p)
   end
 
   return x

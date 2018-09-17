@@ -20,18 +20,12 @@ function cg(A
             , x::Vector
             , b::Vector
             ; iterations::Int = 30
-            , verbose::Bool=true
             , solverInfo = nothing)
 
   r = b-A_mul_B(A,x)
   p = r
   rsold = BLAS.dotc(r,r)
   rsnew = rsold
-
-  if verbose==true
-    #progr = Progress(iterations, 1, "Iterating Conjugate Gradient...")
-    progr = Progress(iterations,dt=0.1,desc="Doing CG...";barglyphs=BarGlyphs("[=> ]"),barlen=50);
-  end
 
   for i=1:iterations
     Ap = A_mul_B(A,p)
@@ -51,10 +45,6 @@ function cg(A
     beta = rsnew/rsold
     p = r+beta*p
     rsold = rsnew
-
-    if verbose==true
-      next!(progr)
-    end
   end
 
   solverInfo != nothing && storeResidual(solverInfo, sqrt(abs(rsnew)) )

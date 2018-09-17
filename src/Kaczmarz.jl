@@ -91,16 +91,16 @@ This funtion implements the kaczmarz algorithm.
 * `enforcePositive::Bool`: Enable projection of solution onto positive halfplane during iteration.
 """
 function kaczmarz(S, u::Vector;
- iterations=10, lambd=0.0, weights=nothing, enforceReal=false, enforcePositive=false, sparseTrafo=nothing, startVector=nothing, solverInfo=nothing, verbose = true ,kargs...)
+ iterations=10, lambd=0.0, weights=nothing, enforceReal=false, enforcePositive=false, sparseTrafo=nothing, startVector=nothing, solverInfo=nothing, kargs...)
   T = typeof(real(u[1]))
   lambd = convert(T,lambd)
   weights==nothing ? weights=ones(T,size(S,1)) : nothing #search for positive solution as default
   startVector==nothing ? startVector=zeros(typeof(u[1]),size(S,2)) : nothing
-  return kaczmarz(S, u, startVector, iterations, lambd, weights, enforceReal, enforcePositive, sparseTrafo, solverInfo, verbose=verbose)
+  return kaczmarz(S, u, startVector, iterations, lambd, weights, enforceReal, enforcePositive, sparseTrafo, solverInfo)
 end
 
 function kaczmarz(S, u::Vector{T}, startVector, iterations, lambd, weights, enforceReal,
-            enforcePositive, sparseTrafo, solverInfo; verbose = true) where T
+            enforcePositive, sparseTrafo, solverInfo) where T
   # fast implementation of kaczmarz using SIMD instructions
   M::Int64 = size(S,1)      #number of rows of system matrix
   N::Int64 = size(S,2)      #number of cols of system matrix
@@ -116,7 +116,6 @@ function kaczmarz(S, u::Vector{T}, startVector, iterations, lambd, weights, enfo
     ɛw[i] = sqrt(lambd)/weights[j]
   end
 
-  #verbose && (p = Progress(iterations, 1, "Kaczmarz Iteration..."))
   for l=1:iterations
     for i in rowIndexCycle
       j = rowindex[i]
@@ -130,7 +129,6 @@ function kaczmarz(S, u::Vector{T}, startVector, iterations, lambd, weights, enfo
     applyConstraints(cl, sparseTrafo, enforceReal, enforcePositive)
 
     solverInfo != nothing && storeInfo(solverInfo,norm(S*cl-u),norm(cl))
-    #verbose && next!(p)
   end
   return cl
 end

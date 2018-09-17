@@ -1,6 +1,6 @@
 module LinearSolver
 
-using ProgressMeter, Compat
+using  Compat
 
 using LinearAlgebra
 using LinearOperators
