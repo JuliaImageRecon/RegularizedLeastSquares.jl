@@ -3,7 +3,7 @@ export WaveletOp
 
 
 function WaveletOp(shape, wt=wavelet(WT.db2))
-  return LinearOperator{ComplexF64}(maximum(shape)^2, prod(shape), false, false
+  return LinearOperator(maximum(shape)^2, prod(shape), false, false
             , x->waveletProd(x,shape,wt)
             , nothing
             , y->waveletCTProd(y,shape,wt) )
