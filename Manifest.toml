@@ -15,21 +15,21 @@ version = "0.8.10"
 
 [[BinaryProvider]]
 deps = ["Libdl", "Pkg", "SHA", "Test"]
-git-tree-sha1 = "b530fbeb6f41ab5a83fbe3db1fcbe879334bcd2d"
+git-tree-sha1 = "38be61810f280c3c478f5c38aaf387f8f9199275"
 uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
-version = "0.4.2"
+version = "0.5.1"
 
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
-git-tree-sha1 = "ae262fa91da6a74e8937add6b613f58cd56cdad4"
+git-tree-sha1 = "ff2595695fc4f14427358ce2593f867085c45dcb"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "1.1.0"
+version = "1.2.0"
 
 [[Conda]]
 deps = ["Compat", "JSON", "VersionParsing"]
-git-tree-sha1 = "a47f9a2c7b80095e6a935536795635522fe27f5d"
+git-tree-sha1 = "85b5bf3ffcf4f39abe019dab1dd00a0aead8d882"
 uuid = "8f4d0f93-b110-5947-807f-2305c1781a2d"
-version = "1.0.1"
+version = "1.0.2"
 
 [[DSP]]
 deps = ["AbstractFFTs", "Compat", "FFTW", "LinearAlgebra", "Pkg", "Polynomials", "Random", "Reexport", "SpecialFunctions"]
@@ -56,10 +56,10 @@ uuid = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 version = "0.2.4"
 
 [[FastClosures]]
-deps = ["Compat"]
-git-tree-sha1 = "ab31392bbdd4f7c254fbeab8fe9ee470fe5e5f7c"
+deps = ["Compat", "InteractiveUtils", "Pkg"]
+git-tree-sha1 = "9769222f4f0702d063a54e5f53000e8f219e4e7d"
 uuid = "9aa1b823-49e4-5ca5-8b0f-3971ec8bab6a"
-version = "0.2.0"
+version = "0.2.1"
 
 [[InteractiveUtils]]
 deps = ["LinearAlgebra", "Markdown"]
@@ -83,9 +83,9 @@ uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[LinearOperators]]
 deps = ["FastClosures", "InteractiveUtils", "LinearAlgebra", "Pkg", "Printf", "SparseArrays", "Test"]
-git-tree-sha1 = "c689db7bff10361897c3e66c779d8fb184c013d5"
+git-tree-sha1 = "ce557a70f2f6a96e32ec05d2b308bbfdf50070b0"
 uuid = "5c8ed15e-5a4c-59e4-a42b-c7e8811fb125"
-version = "0.5.0"
+version = "0.5.1"
 
 [[Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
@@ -143,10 +143,10 @@ deps = ["LinearAlgebra", "Random"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[SpecialFunctions]]
-deps = ["BinDeps", "BinaryProvider", "Compat", "Libdl"]
-git-tree-sha1 = "d12f8917be3782f4b800ba16003b8d0d4858c2e5"
+deps = ["BinDeps", "BinaryProvider", "Libdl", "Test"]
+git-tree-sha1 = "c35c9c76008babf4d658060fc64aeb369a41e7bd"
 uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
-version = "0.7.0"
+version = "0.7.1"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -173,10 +173,10 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 deps = ["Compat"]
 git-tree-sha1 = "c9d5aa108588b978bd859554660c8a5c4f2f7669"
 uuid = "81def892-9a0e-5fdd-b105-ffc91e053289"
-version = "1.1.2"
+version = "1.1.3"
 
 [[Wavelets]]
-deps = ["Compat", "DSP", "Reexport"]
-git-tree-sha1 = "3c6bbc45e01653781d8baf026c3d317c1347d512"
+deps = ["Compat", "DSP", "Pkg", "Reexport"]
+git-tree-sha1 = "4a53da1099523e7191ee5b95d6e5e32a88913b6d"
 uuid = "29a6e085-ba6d-5f35-a997-948ac2efa89a"
-version = "0.7.0"
+version = "0.8.0"

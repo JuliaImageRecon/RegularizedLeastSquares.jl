@@ -14,7 +14,6 @@ import LinearAlgebra: BlasFloat, normalize!, norm
 import Base: length
 
 using SparseArrays
-using Random
 using FFTW
 
 

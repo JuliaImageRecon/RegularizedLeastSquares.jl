@@ -1,8 +1,9 @@
 using LinearSolver
-using Test
 using LinearAlgebra
 using FFTW
+# Packages for tetsing only
 using Random
+using Test
 
 Random.seed!(1234)
 
