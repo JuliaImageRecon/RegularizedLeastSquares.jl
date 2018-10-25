@@ -1,16 +1,3 @@
-export cg
-
-mutable struct CG <: AbstractLinearSolver
-  A
-  params
-end
-
-CG(A; kargs...) = FISTA(A,kargs)
-
-function solve(solver::CG, b::Vector)
-  return cg(solver.A, b; solver.params...)
-end
-
 """
   Simple conjugate gradient algorithm.
   The system matrix contained in AbstractLinearTrafo MUST be symmetrical and

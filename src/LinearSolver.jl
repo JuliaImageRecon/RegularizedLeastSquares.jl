@@ -82,8 +82,6 @@ function createLinearSolver(solver::AbstractString, A, reg=nothing; kargs...)
       getfield(reg, Symbol(regEntry)) ? error("Regularization $regularizer not supported by solver $solver.") : nothing
     end
     return CGNR(A, reg; kargs...)
-  elseif solver== "cg"
-    return CG(A;kargs...)
   elseif solver == "direct"
     return DirectSolver(A; kargs...)
   elseif solver == "daxkaczmarz"
