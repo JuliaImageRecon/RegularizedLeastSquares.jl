@@ -111,7 +111,7 @@ function daxrand(S::AbstractMatrix{T}, u::Vector, iterations::Int, inneriteratio
   for k=1:iterations #could be replaced by a while loop based on errorbound if smallest singular value of A is known
     # bk = u-S'*zk
     copyto!(bk,u)
-    A_mul_B!(-1.0,S,zk,1.0,bk)
+    gemv!('N',-1.0,S,zk,1.0,bk)
 
     # solve min ɛ|x|²+|W*A*x-W*bk|² with weightingmatrix W=diag(wᵢ), i=1,...,M.
     for l=1:length(rowindex)*inneriterations
@@ -252,14 +252,14 @@ end
 #      for i=1:length(xrl)
 #        dk[i] = xrl[i]+zrk[i] +im*(xil[i]+zik[i])
 #      end
-#      A_mul_B!(B, dk)
+#      lmul!(B, dk)
 #      δ = reinterpret(T,dk)
 #      lentcensormin!(δ,yc)
 #
 #      BLAS.axpy!(1.0,δ,yc) # yc += δ
 #
 #      dk = reinterpret(ComplexF64,δ)
-#      At_mul_B!(B,dk)
+#      dk = gemv('T',B,dk)
 #      δ = reinterpret(T,dk)
 #      for i=2:2:length(δ)
 #        xrl[div(i,2)] += δ[i-1]
@@ -313,7 +313,7 @@ function daxcon(S::AbstractMatrix{T}, u::Vector, B, iterations::Int,
   for k=1:iterations
     # bk = u-S'*zk
     copyto!(bk,u)
-    A_mul_B!(-1.0,S,zk,1.0,bk)
+    gemv!('N',-1.0,S,zk,1.0,bk)
 
     # solve min ɛ|x|²+|W*A*x-W*bk|² with weightingmatrix W=diag(wᵢ), i=1,...,M.
     for l=1:inneriterations
@@ -328,12 +328,12 @@ function daxcon(S::AbstractMatrix{T}, u::Vector, B, iterations::Int,
       #Lent-Censor scheme for ensuring B(xl+zk) >= 0
       copyto!(δc,xl)
       BLAS.axpy!(1.0,zk,δc)
-      A_mul_B!(B, δc)
+      lmul!(B, δc)
       lentcensormin!(δc,yc)
 
       BLAS.axpy!(1.0,δc,yc) # yc += δc
 
-      At_mul_B!(B,δc)
+      δc = gemv('T',B,δc)
       BLAS.axpy!(1.0,δc,xl) # xl += Bᵀ*δc
     end
     BLAS.axpy!(1.0,xl,zk)  # zk += xl
@@ -375,7 +375,7 @@ function daxcon(S::AbstractMatrix{T}, u::Vector, B::AbstractMatrix, iterations::
   for k=1:iterations
     # bk = u-S'*zk
     copyto!(bk,u)
-    A_mul_B!(-1.0,S,zk,1.0,bk)
+    gemv!('N',-1.0,S,zk,1.0,bk)
 
     # solve min ɛ|x|²+|W*A*x-W*bk|² with weightingmatrix W=diag(wᵢ), i=1,...,M.
     for l=1:inneriterations

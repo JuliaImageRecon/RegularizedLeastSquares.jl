@@ -12,8 +12,6 @@ function solve(solver::ADMM, b::Vector)
   return admm(solver.A, b, solver.regularizer; solver.params...)
 end
 
-A_mul_B(A::AbstractLinearOperator{T}, x::Vector{T}) where T = A*x
-
 """
  Alternating Direction Method of Multipliers
 
@@ -64,7 +62,7 @@ function admm(A, b::Vector, reg::Regularization
     nrms[1] = nrmsd(x0,x)
   end
 
-  A_mul_B!(reg, 1.0 / ρ)
+  rmul!(reg, 1.0 / ρ)
 
   β = A' * b
 

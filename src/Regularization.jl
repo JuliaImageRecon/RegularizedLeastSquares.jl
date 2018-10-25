@@ -126,7 +126,7 @@ end
 ###################
 # utility functions
 ###################
-function A_mul_B!(reg::Regularization, x::Real)
+function rmul!(reg::Regularization, x::Real)
   for lambd in lambdList()
     reg.params[Symbol(lambd)] *= x
   end
@@ -134,7 +134,7 @@ end
 
 function normalize!(reg::Regularization, data)
   meanEnergy = norm(data,1)/length(data)
-  A_mul_B!(reg, meanEnergy)
+  rmul!(reg, meanEnergy)
 end
 
 function norm(reg::Regularization,x)

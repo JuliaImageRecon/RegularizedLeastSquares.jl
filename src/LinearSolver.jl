@@ -1,21 +1,13 @@
 module LinearSolver
 
-using  Compat
-
-using LinearAlgebra
-using LinearOperators
-
-if VERSION < v"1.0.0"
-  import LinearAlgebra: Ac_mul_B!, At_mul_B!
-end
-import LinearOperators: A_mul_B!
-
-import LinearAlgebra: BlasFloat, normalize!, norm
 import Base: length
-
-using SparseArrays
+using  Compat
 using FFTW
-
+using LinearAlgebra
+import LinearAlgebra.BLAS: gemv, gemv!
+import LinearAlgebra: BlasFloat, normalize!, norm, rmul!, lmul!
+using LinearOperators
+using SparseArrays
 
 export createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
 

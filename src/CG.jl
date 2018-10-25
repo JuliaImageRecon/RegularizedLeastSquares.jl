@@ -22,13 +22,13 @@ function cg(A
             ; iterations::Int = 30
             , solverInfo = nothing)
 
-  r = b-A_mul_B(A,x)
+  r = b-A*x
   p = r
   rsold = BLAS.dotc(r,r)
   rsnew = rsold
 
   for i=1:iterations
-    Ap = A_mul_B(A,p)
+    Ap = A*p
     bla = BLAS.dotc(p,Ap)
 
     alpha = rsold/ bla

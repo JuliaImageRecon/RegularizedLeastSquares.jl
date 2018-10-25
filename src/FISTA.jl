@@ -48,7 +48,7 @@ function fista1(A, b::Vector{T}, reg::Regularization
 
   xᵒˡᵈ = copy(x)
 
-  A_mul_B!(reg,ρ)
+  rmul!(reg,ρ)
   costFunc = 0.5*norm(res)^2+norm(reg,x)
 
   for l=1:iterations
@@ -112,7 +112,7 @@ function fista2(A, b::Vector{T}, reg::Regularization
 
   xᵒˡᵈ = copy(x)
 
-  A_mul_B!(reg,ρ)
+  rmul!(reg,ρ)
   costFunc = 0.5*norm(res)^2+norm(reg,x)
 
   for l=1:iterations

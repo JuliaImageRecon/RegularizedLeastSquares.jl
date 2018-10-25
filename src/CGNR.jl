@@ -42,24 +42,20 @@ solverInfo = nothing, kargs... ) where T
   #pre iteration
   #rₗ = u - Sᵗ*cₗ
   copyto!(rl,u)
-  A_mul_B!(-one(T), S, cl, one(T), rl)
-  #At_mul_B!(-one(T),S,cl,one(T),rl)
+  gemv!('N',-one(T), S, cl, one(T), rl)
   #zₗ = Sᶜ*rₗ, where ᶜ denotes complex conjugation
   if weights != nothing
     xl = rl .* weights
-    Ac_mul_B!(one(T), S, xl, zero(T), zl)
-    #Aconj_mul_B!(one(T),S,xl,zero(T),zl)
+    gemv!('C',one(T), S, xl, zero(T), zl)
   else
-    Ac_mul_B!(one(T), S, rl, zero(T), zl)
-    #Aconj_mul_B!(one(T),S,rl,zero(T),zl)
+    gemv!('C',one(T), S, rl, zero(T), zl)
   end
   #pₗ = zₗ
   copyto!(pl,zl)
   #start iteration
   for l=1:min(iterations,size(S,2))
     #vₗ = Sᵗ*pₗ
-    A_mul_B!(one(T), S, pl, zero(T), vl)
-    #At_mul_B!(vl,S,pl)
+    gemv!('N',one(T), S, pl, zero(T), vl)
 
     # αₗ = zₗᴴ⋅zₗ/(vₗᴴ⋅vₗ+λ*pₗᴴ⋅pₗ)
     ζl = norm(zl)^2
@@ -80,11 +76,9 @@ solverInfo = nothing, kargs... ) where T
     #zₗ = Sᶜ*rₗ-lambd*cₗ
     if weights != nothing
       xl = rl .* weights
-      Ac_mul_B!(one(T), S, xl, zero(T), zl)
-      #Aconj_mul_B!(one(T),S,xl,zero(T),zl)
+      gemv!('C',one(T), S, xl, zero(T), zl)
     else
-      Ac_mul_B!(one(T), S, rl, zero(T), zl)
-      #Aconj_mul_B!(one(T),S,rl,zero(T),zl)
+      gemv!('C',one(T), S, rl, zero(T), zl)
     end
     if lambd > 0
       BLAS.axpy!(-lambd,cl,zl)
@@ -99,24 +93,8 @@ solverInfo = nothing, kargs... ) where T
 
     solverInfo != nothing && storeInfo(solverInfo,norm(S*cl-u),norm(cl))
   end
-  if sparseTrafo != nothing # This is a hack to allow constraints even when solving in a dual space
-    A_mul_B!(sparseTrafo, cl)
-  end
-  if enforceReal #apply constraint: solution must be real
-    enfReal!(cl)
-  end
-  if enforcePositive #apply constraint: solution must be real
-    enfPos!(cl)
-  end
-  if sparseTrafo != nothing # backtransformation
-    At_mul_B!(sparseTrafo, cl)
-  end
+
+  applyConstraints(cl, sparseTrafo, enforceReal, enforcePositive)
+  
   return cl
 end
-
-A_mul_B!(α::Number,A::Matrix{T},x::AbstractArray{T,1},β::Number,
-   y::AbstractArray{T,1}) where T = BLAS.gemv!('N', α, A, x, β, y)
-At_mul_B!(α::Number,A::Matrix{T},x::AbstractArray{T,1},β::Number,
-   y::AbstractArray{T,1}) where T = BLAS.gemv!('T', α, A, x, β, y)
-Ac_mul_B!(α::Number,A::Matrix{T},x::AbstractArray{T,1},β::Number,
-  y::AbstractArray{T,1}) where T = BLAS.gemv!('C', α, A, x, β, y)
