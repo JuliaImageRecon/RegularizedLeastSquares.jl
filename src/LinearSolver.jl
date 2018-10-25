@@ -1,7 +1,6 @@
 module LinearSolver
 
 import Base: length
-using  Compat
 using FFTW
 using LinearAlgebra
 import LinearAlgebra.BLAS: gemv, gemv!
@@ -11,7 +10,7 @@ using SparseArrays
 
 export createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
 
-@compat abstract type AbstractLinearSolver end
+abstract type AbstractLinearSolver end
 
 # Fallback function
 setlambda(S::AbstractMatrix, λ::Real) = nothing
