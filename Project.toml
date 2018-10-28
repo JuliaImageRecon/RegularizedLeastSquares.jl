@@ -1,5 +1,4 @@
 name = "RegularizedLeastSquares"
-#uuid = "1906c763-83da-50c9-aa61-18e2016498cc"
 uuid = "1e9c538a-f78c-5de5-8ffb-0b6dbe892d23"
 authors = ["Tobias Knopp <tobias@knoppweb.de>"]
 version = "0.0.0"
