@@ -1,18 +1,18 @@
-# LinearSolver.jl
+# RegularizedLeastSquares.jl
 
 *Linear Solvers using Regularization Techniques*
 
 ## Introduction
 
-LinearSolver.jl is a Julia package for solving large scale linear systems
+RegularizedLeastSquares.jl is a Julia package for solving large scale linear systems
 using different types of algorithm.
 
 ## Installation
 
-Install LinearSolver.jl within Julia using
+Install RegularizedLeastSquares.jl within Julia using
 
 ```julia
-Pkg.clone("https://github.com/tknopp/LinearSolver.jl.git")
+Pkg.clone("https://github.com/tknopp/RegularizedLeastSquares.jl.git")
 ```
 
 ## Usage

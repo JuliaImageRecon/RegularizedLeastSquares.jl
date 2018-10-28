@@ -1,4 +1,4 @@
-using LinearSolver
+using RegularizedLeastSquares
 using LinearAlgebra
 using FFTW
 # Packages for tetsing only

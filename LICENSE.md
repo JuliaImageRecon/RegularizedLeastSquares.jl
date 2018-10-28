@@ -1,4 +1,4 @@
-The LinearSolver.jl package is licensed under the GNU Public License, Version 3.0+:
+The RegularizedLeastSquares.jl package is licensed under the GNU Public License, Version 3.0+:
 
 > Copyright (c) 2017: Tobias Knopp.
 > This program is free software: you can redistribute it and/or modify

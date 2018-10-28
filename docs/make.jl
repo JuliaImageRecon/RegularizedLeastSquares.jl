@@ -1,9 +1,9 @@
-using Documenter, LinearSolver
+using Documenter, RegularizedLeastSquares
 
 makedocs(
     format = :html,
-    modules = [LinearSolver],
-    sitename = "LinearSolver.jl",
+    modules = [RegularizedLeastSquares],
+    sitename = "RegularizedLeastSquares.jl",
     authors = "Tobias Knopp",
     pages = [
         "Home" => "index.md",
@@ -12,7 +12,7 @@ makedocs(
     ],
 )
 
-deploydocs(repo   = "github.com/tknopp/LinearSolver.jl.git",
+deploydocs(repo   = "github.com/tknopp/RegularizedLeastSquares.jl.git",
            julia  = "0.7",
            target = "build",
            deps   = nothing,
