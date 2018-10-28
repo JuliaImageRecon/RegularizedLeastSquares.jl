@@ -1,4 +1,4 @@
-module LinearSolver
+module RegularizedLeastSquares
 
 import Base: length
 using FFTW
