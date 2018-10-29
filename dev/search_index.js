@@ -9,9 +9,9 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#LinearSolver.jl-1",
+    "location": "index.html#RegularizedLeastSquares.jl-1",
     "page": "Home",
-    "title": "LinearSolver.jl",
+    "title": "RegularizedLeastSquares.jl",
     "category": "section",
     "text": "Linear Solvers using Regularization Techniques"
 },
@@ -21,7 +21,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Introduction",
     "category": "section",
-    "text": "LinearSolver.jl is a Julia package for solving large scale linear systems using different types of algorithm."
+    "text": "RegularizedLeastSquares.jl is a Julia package for solving large scale linear systems using different types of algorithm."
 },
 
 {
@@ -29,7 +29,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Installation",
     "category": "section",
-    "text": "Install LinearSolver.jl within Julia usingPkg.clone(\"https://github.com/tknopp/LinearSolver.jl.git\")"
+    "text": "Install RegularizedLeastSquares.jl within Julia usingPkg.clone(\"https://github.com/tknopp/RegularizedLeastSquares.jl.git\")"
 },
 
 {
