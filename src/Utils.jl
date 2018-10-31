@@ -36,8 +36,8 @@ end
 """
 This function computes the 2-norm² of a rows of S for dense matrices.
 """
-function rownorm²(B::MatrixTranspose{T,S},row::Int) where {T,S<:DenseMatrix}
-  A = B.data
+function rownorm²(B::Transpose{T,S},row::Int) where {T,S<:DenseMatrix}
+  A = B.parent
   U = typeof(real(A[1]))
   res::U = BLAS.nrm2(size(A,1), pointer(A,(LinearIndices(size(A)))[1,row]), 1)^2
   return res
@@ -55,8 +55,8 @@ end
 """
 This function computes the 2-norm² of a rows of S for dense matrices.
 """
-function rownorm²(B::MatrixTranspose{T,S},row::Int) where {T,S<:SparseMatrixCSC}
-  A = B.data
+function rownorm²(B::Transpose{T,S},row::Int) where {T,S<:SparseMatrixCSC}
+  A = B.parent
   U = typeof(real(A[1]))
   res::U = BLAS.nrm2(A.colptr[row+1]-A.colptr[row], pointer(A.nzval,A.colptr[row]), 1)^2
   return res
@@ -85,9 +85,9 @@ function dot_with_matrix_row(A::DenseMatrix{T}, x::Vector{T}, k::Int64) where {T
 end
 
 
-function dot_with_matrix_row(B::MatrixTranspose{T,S},
+function dot_with_matrix_row(B::Transpose{T,S},
                        x::Vector{T}, k::Int64) where {T<:Complex,S<:DenseMatrix}
-  A = B.data
+  A = B.parent
   BLAS.dotu(length(x), pointer(A,(LinearIndices(size(A)))[1,k]), 1, pointer(x,1), 1)
 end
 
@@ -102,9 +102,9 @@ end
 """
 This funtion calculates ∑ᵢ Aᵢₖxᵢ for dense matrices.
 """
-function dot_with_matrix_row(B::MatrixTranspose{T,S},
+function dot_with_matrix_row(B::Transpose{T,S},
       x::Vector{T}, k::Int64) where {T<:Real,S<:DenseMatrix}
-  A = B.data
+  A = B.parent
   BLAS.dot(length(x), pointer(A,(LinearIndices(size(A)))[1,k]), 1, pointer(x,1), 1)
 end
 
@@ -112,9 +112,9 @@ end
 """
 This funtion calculates ∑ᵢ Aᵢₖxᵢ for sparse matrices.
 """
-function dot_with_matrix_row(B::MatrixTranspose{T,S},
+function dot_with_matrix_row(B::Transpose{T,S},
                              x::Vector{T}, k::Int64) where {T,S<:SparseMatrixCSC}
-  A = B.data
+  A = B.parent
   tmp = zero(T)
   N = A.colptr[k+1]-A.colptr[k]
   for n=A.colptr[k]:N-1+A.colptr[k]

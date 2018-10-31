@@ -47,9 +47,9 @@ end
 """
 This funtion updates x during the kaczmarz algorithm for dense matrices.
 """
-function kaczmarz_update!(B::MatrixTranspose{T,S}, x::Vector,
+function kaczmarz_update!(B::Transpose{T,S}, x::Vector,
                           k::Integer, beta) where {T,S<:DenseMatrix}
-  A = B.data
+  A = B.parent
   @simd for n=1:size(A,1)
     @inbounds x[n] += beta*conj(A[n,k])
   end
@@ -65,9 +65,9 @@ end
 """
 This funtion updates x during the kaczmarz algorithm for sparse matrices.
 """
-function kaczmarz_update!(B::MatrixTranspose{T,S}, x::Vector,
+function kaczmarz_update!(B::Transpose{T,S}, x::Vector,
                           k::Integer, beta) where {T,S<:SparseMatrixCSC}
-  A = B.data
+  A = B.parent
   N = A.colptr[k+1]-A.colptr[k]
   for n=A.colptr[k]:N-1+A.colptr[k]
     @inbounds x[A.rowval[n]] += beta*conj(A.nzval[n])

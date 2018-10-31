@@ -22,8 +22,8 @@ end
 
 tikhonovLU(S::AbstractMatrix) = tikhonovLU(S, lufact(S'*S))
 
-size(A::tikhonovLU) = size(A.S)
-length(A::tikhonovLU) = length(A.S)
+Base.size(A::tikhonovLU) = size(A.S)
+Base.length(A::tikhonovLU) = length(A.S)
 
 """
 This function can be used to calculate the singular values used for Tikhonov regularization.
@@ -73,8 +73,8 @@ end
 
 SVD(U::Matrix,Σ::Vector,V::Matrix) = SVD(U, Σ, V, 1. / Σ)
 
-size(A::SVD) = (size(A.U,1),size(A.V,1))
-length(A::SVD) = prod(size(A))
+Base.size(A::SVD) = (size(A.U,1),size(A.V,1))
+Base.length(A::SVD) = prod(size(A))
 
 """
 This function can be used to calculate the singular values used for
