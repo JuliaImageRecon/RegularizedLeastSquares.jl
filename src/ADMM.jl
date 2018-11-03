@@ -32,6 +32,7 @@ function admm(A, b::Vector, reg::Regularization
               , sparseTrafo=nothing
               , startVector=nothing
               , iterations::Int64=50
+              , iterationsInner::Int64=10
               , ρ::Float64=1.e-2
               , ɛᵃᵇˢ::Float64=1.e-8
               , ɛʳᵉˡ::Float64=1.e-6
@@ -70,7 +71,7 @@ function admm(A, b::Vector, reg::Regularization
     # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 ||x+u-z||²
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
     xᵒˡᵈ = x[:]
-    x = cg(op, x,  β+ρ*(z-u), iterations=10, solverInfo=solverInfo )
+    x = cg(op, x,  β+ρ*(z-u), iterations=iterationsInner, solverInfo=solverInfo )
 
     # 2. update z using the proximal map of 1/ρ*g(x)
     zᵒˡᵈ = z
