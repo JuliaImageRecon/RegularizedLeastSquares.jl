@@ -18,7 +18,7 @@ end
 """
 This funtion implements the cgnr algorithm.
 """
-function cgnr(S::AbstractMatrix{T}, u::Vector{T};
+function cgnr(S, u::Vector{T};
 iterations = 10, lambd::Real = 0.0, startVector = nothing, weights = nothing,
 enforceReal = false, enforcePositive = false, sparseTrafo = nothing,
 solverInfo = nothing, kargs... ) where T
@@ -95,6 +95,6 @@ solverInfo = nothing, kargs... ) where T
   end
 
   applyConstraints(cl, sparseTrafo, enforceReal, enforcePositive)
-  
+
   return cl
 end

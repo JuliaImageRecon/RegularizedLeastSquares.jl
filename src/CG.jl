@@ -14,7 +14,7 @@ function cg(A
   rsold = BLAS.dotc(r,r)
   rsnew = rsold
 
-  for i=1:iterations
+  @showprogress 1 "Computing..." for i=1:iterations
     Ap = A*p
     bla = BLAS.dotc(p,Ap)
 

@@ -3,3 +3,4 @@ Documenter
 FFTW
 LinearOperators
 Wavelets
+ProgressMeter

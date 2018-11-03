@@ -66,7 +66,7 @@ function admm(A, b::Vector, reg::Regularization
 
   β = A' * b
 
-  for k=1:iterations
+  @showprogress 1 "Computing..." for k=1:iterations
     # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 ||x+u-z||²
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
     xᵒˡᵈ = x[:]

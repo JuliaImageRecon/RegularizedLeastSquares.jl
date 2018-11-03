@@ -7,6 +7,7 @@ import LinearAlgebra.BLAS: gemv, gemv!
 import LinearAlgebra: BlasFloat, normalize!, norm, rmul!, lmul!
 using LinearOperators
 using SparseArrays
+using ProgressMeter
 
 export createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
 
