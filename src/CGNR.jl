@@ -40,29 +40,33 @@ solverInfo = nothing, kargs... ) where T
   ζl = zero(T)        #temporary scalar
 
   #pre iteration
-  #rₗ = u - Sᵗ*cₗ
+  #rl = u - Sᵗ*cl
   copyto!(rl,u)
-  gemv!('N',-one(T), S, cl, one(T), rl)
-  #zₗ = Sᶜ*rₗ, where ᶜ denotes complex conjugation
+  ###gemv!('N',-one(T), S, cl, one(T), rl)
+  rl[:] = u - S*cl
+  #zl = Sᶜ*rl, where ᶜ denotes complex conjugation
   if weights != nothing
     xl = rl .* weights
-    gemv!('C',one(T), S, xl, zero(T), zl)
+    ## gemv!('C',one(T), S, xl, zero(T), zl)
+    zl[:] = adjoint(S)*xl
   else
-    gemv!('C',one(T), S, rl, zero(T), zl)
+    ## gemv!('C',one(T), S, rl, zero(T), zl)
+    zl[:] = adjoint(S)*rl
   end
-  #pₗ = zₗ
+  #pl = zl
   copyto!(pl,zl)
   #start iteration
   for l=1:min(iterations,size(S,2))
-    #vₗ = Sᵗ*pₗ
-    gemv!('N',one(T), S, pl, zero(T), vl)
+    #vl = Sᵗ*pl
+    ##gemv!('N',one(T), S, pl, zero(T), vl)
+    vl[:] = S*pl
 
-    # αₗ = zₗᴴ⋅zₗ/(vₗᴴ⋅vₗ+λ*pₗᴴ⋅pₗ)
+    # αl = zlᴴ⋅zl/(vlᴴ⋅vl+λ*plᴴ⋅pl)
     ζl = norm(zl)^2
     normvl = weights == nothing ? dot(vl,vl) : dot(vl,weights.*vl)
     lambd > 0 ? αl = ζl/(normvl+lambd*norm(pl)^2) : αl = ζl/normvl
 
-    #cₗ += αₗ*pₗ
+    #cl += αl*pl
     BLAS.axpy!(αl,pl,cl)
 
     if solverInfo != nothing
@@ -70,24 +74,26 @@ solverInfo = nothing, kargs... ) where T
       push!( solverInfo.resNorm, norm(rl) )
     end
 
-    #rₗ += -αₗ*vₗ
+    #rl += -αl*vl
     BLAS.axpy!(-αl,vl,rl)
 
-    #zₗ = Sᶜ*rₗ-lambd*cₗ
+    #zl = Sᶜ*rl-lambd*cl
     if weights != nothing
       xl = rl .* weights
-      gemv!('C',one(T), S, xl, zero(T), zl)
+      ##gemv!('C',one(T), S, xl, zero(T), zl)
+      zl[:] = adjoint(S)*xl
     else
-      gemv!('C',one(T), S, rl, zero(T), zl)
+      ##gemv!('C',one(T), S, rl, zero(T), zl)
+      zl[:] = adjoint(S)*rl
     end
     if lambd > 0
       BLAS.axpy!(-lambd,cl,zl)
     end
 
-    # βₗ = zₗ₊₁ᴴ⋅zₗ₊₁/zₗᴴ⋅zₗ
+    # βl = zl₊₁ᴴ⋅zl₊₁/zlᴴ⋅zl
     βl = dot(zl,zl)/ζl
 
-    #pₗ = zₗ + βₗ*pₗ
+    #pl = zl + βl*pl
     rmul!(pl,βl)
     BLAS.axpy!(one(T),zl,pl)
 
