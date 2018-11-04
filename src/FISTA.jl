@@ -51,7 +51,7 @@ function fista1(A, b::Vector{T}, reg::Regularization
   rmul!(reg,ρ)
   costFunc = 0.5*norm(res)^2+norm(reg,x)
 
-  for l=1:iterations
+  @showprogress 1 "Computing..." for l=1:iterations
     xᵒˡᵈ[:] = x[:]
 
     x[:] = x[:] - ρ* (A' * res)
