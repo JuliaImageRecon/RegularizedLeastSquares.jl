@@ -51,7 +51,7 @@ function svt(x::Vector{T}, shape::Tuple, λ::Float64=1e-6;
   xᴸᴸᴿ = permutedims(xᴸᴸᴿ,[1 3 2])
 
   # threshold singular values
-  Threads.@threads for i = 1:L
+  for i = 1:L
     if xᴸᴸᴿ[:,:,i] == zeros(T, Wy*Wz,K)
       continue
     end
