@@ -77,8 +77,6 @@ function admm(A, b::Vector, reg::Regularization
     nrms[1] = nrmsd(x0,x)
   end
 
-  rmul!(reg, 1.0 / ρ)
-
   β = A' * b
 
   @showprogress 1 "Computing..." for k=1:iterations
@@ -96,11 +94,11 @@ function admm(A, b::Vector, reg::Regularization
 
     if sparseTrafo != nothing
       zˢᵖᵃʳˢᵉ = sparseTrafo*(x[:]+u[:])
-      prox!(reg, zˢᵖᵃʳˢᵉ)
+      reg.prox!(zˢᵖᵃʳˢᵉ, reg.λ/ρ; reg.params...)
       z[:] = sparseTrafo\zˢᵖᵃʳˢᵉ[:]
     else
       z[:]=x[:]+u[:]
-      prox!( reg, z)
+      reg.prox!(z, reg.λ/ρ; reg.params...)
     end
 
     # 3. update u
@@ -112,7 +110,7 @@ function admm(A, b::Vector, reg::Regularization
 #    sᵏ = norm(ρ * (z - zᵒˡᵈ))
 #    ɛᴰᵘᵃˡ = σᵃᵇˢ + ɛʳᵉˡ*norm(ρ*u);
 
-    solverInfo != nothing && storeRegularization(solverInfo,norm(reg,z))
+    solverInfo != nothing && storeRegularization(solverInfo,reg.norm(z,reg.λ))
 
     # compare solution with a given reference solution
     if nrms != nothing
@@ -175,8 +173,6 @@ function fadmm(A, b::Vector, reg::Regularization
     nrms[1] = nrmsd(x0,x)
   end
 
-  rmul!(reg, 1.0 / ρ)
-
   β = A' * b
 
   α = 1.0
@@ -191,11 +187,11 @@ function fadmm(A, b::Vector, reg::Regularization
     zᵒˡᵈ[:] = z
     if sparseTrafo != nothing
       zˢᵖᵃʳˢᵉ = sparseTrafo*(x[:]+û[:])
-      prox!(reg, zˢᵖᵃʳˢᵉ)
+      reg.prox!(zˢᵖᵃʳˢᵉ, reg.λ/ρ)
       z[:] = sparseTrafo\zˢᵖᵃʳˢᵉ[:]
     else
       z[:]=x[:]+û[:]
-      prox!( reg, z)
+      reg.prox!(z, reg.λ/ρ)
     end
 
     # 3. update u
@@ -219,7 +215,7 @@ function fadmm(A, b::Vector, reg::Regularization
       c = cᵒˡᵈ/η
     end
 
-    solverInfo != nothing && storeRegularization(solverInfo,norm(reg,z))
+    solverInfo != nothing && storeRegularization(solverInfo,reg.norm(z,reg.λ))
 
     # compare solution with a given reference solution
     if nrms != nothing

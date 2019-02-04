@@ -9,14 +9,13 @@ proximal map for LLR regularization using singular-value-thresholding
 * shape::Tuple{Int}: dimensions of the image
 * patches::Vector{Vector{Int}}: indices corresponding to each patch
 """
-function proxSLR!(reg, x)
-  patchIdx = reg.params[:slrIdx]
-  for i=1:length(patchIdx)
-    svt!(x, reg.params[:shape], reg.params[:lambdSLR], patchIdx[i])
+function proxSLR!(x::Vector{T},λ::Float64; shape::NTuple=(1,1), slrIdx=nothing) where T
+  for i=1:length(slrIdx)
+    svt!(x, shape, λ, slrIdx[i])
   end
 end
 
-function svt!(x::Vector{T}, shape::Tuple, λ::Float64, patch::Vector{Int64}) where T
+function svt!(x::Vector{T}, shape::NTuple, λ::Float64, patch::Vector{Int64}) where T
 
   x = reshape( x, prod(shape), div(length(x),prod(shape)) )
 
@@ -30,16 +29,12 @@ end
 """
 return the value of the SLR-regularization term
 """
-function normSLR(reg::Regularization,x)
-  patchIdx = reg.params[:slrIdx]
-  shape = reg.params[:shape]
+function normSLR(x::Vector{T},λ::Float64; shape::NTuple=(1,1), slrIdx=nothing) where T
   x = reshape( x, prod(shape), div(length(x),prod(shape)) )
-  λ = reg.params[:lambdSLR]
-
   norm_slr = 0.0
-  for i=1:length(patchIdx)
-    SVDec = svd(x[patchIdx[i],:])
-    norm_slr += λ*sqrt(length(patchIdx[i]))*norm(SVDec.S,1)
+  for i=1:length(slrIdx)
+    SVDec = svd(x[slrIdx[i],:])
+    norm_slr += λ*sqrt(length(slridx[i]))*norm(SVDec.S,1)
   end
 
   return norm_slr

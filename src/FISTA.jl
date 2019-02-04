@@ -48,8 +48,7 @@ function fista1(A, b::Vector{T}, reg::Regularization
 
   xᵒˡᵈ = copy(x)
 
-  rmul!(reg,ρ)
-  costFunc = 0.5*norm(res)^2+norm(reg,x)
+  costFunc = 0.5*norm(res)^2+reg.norm(x,reg.λ)
 
   @showprogress 1 "Computing..." for l=1:iterations
     xᵒˡᵈ[:] = x[:]
@@ -58,10 +57,10 @@ function fista1(A, b::Vector{T}, reg::Regularization
 
     if sparseTrafo != nothing
       xˢᵖᵃʳˢᵉ = sparseTrafo*x[:]
-      prox!(reg, xˢᵖᵃʳˢᵉ)
+      reg.prox!(xˢᵖᵃʳˢᵉ, ρ*reg.λ; reg.params...)
       x = sparseTrafo\xˢᵖᵃʳˢᵉ[:]
     else
-      prox!( reg, x)
+      reg.prox!(x, ρ*reg.λ; reg.params...)
     end
 
 
@@ -71,7 +70,7 @@ function fista1(A, b::Vector{T}, reg::Regularization
     x[:] = x + (tᵒˡᵈ-1)/t*(x-xᵒˡᵈ)
 
     res = A*x-b
-    regNorm = norm(reg,x)
+    regNorm = reg.norm(x,reg.λ)
 
     solverInfo != nothing && storeInfo(solverInfo,norm(res),regNorm)
 
@@ -112,7 +111,6 @@ function fista2(A, b::Vector{T}, reg::Regularization
 
   xᵒˡᵈ = copy(x)
 
-  rmul!(reg,ρ)
   costFunc = 0.5*norm(res)^2+norm(reg,x)
 
   for l=1:iterations
@@ -122,10 +120,10 @@ function fista2(A, b::Vector{T}, reg::Regularization
 
     if sparseTrafo != nothing
       xˢᵖᵃʳˢᵉ = sparseTrafo*x[:]
-      prox!(reg, xˢᵖᵃʳˢᵉ)
+      reg.prox!(xˢᵖᵃʳˢᵉ, ρ*reg.λ)
       x = sparseTrafo\xˢᵖᵃʳˢᵉ[:]
     else
-      prox!( reg, x)
+      reg.prox!(x, ρ*reg.λ)
     end
 
     tᵒˡᵈ = t

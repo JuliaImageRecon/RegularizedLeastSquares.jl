@@ -16,18 +16,17 @@ abstract type AbstractLinearSolver end
 # Fallback function
 setlambda(S::AbstractMatrix, λ::Real) = nothing
 
-include("Regularization.jl")
-
 include("proximalMaps/ProxL1.jl")
 include("proximalMaps/ProxL2.jl")
 include("proximalMaps/ProxL21.jl")
 include("proximalMaps/ProxLLR.jl")
-include("proximalMaps/ProxSLR.jl")
+# include("proximalMaps/ProxSLR.jl")
 include("proximalMaps/ProxPositive.jl")
 include("proximalMaps/ProxProj.jl")
 include("proximalMaps/ProxTV.jl")
 include("proximalMaps/ProxNuclear.jl")
 
+include("Regularization.jl")
 include("LinearOperator.jl")
 include("Utils.jl")
 include("Kaczmarz.jl")
@@ -66,21 +65,18 @@ All solvers return an approximate solution to STx = u.
 
 Function returns choosen solver.
 """
-function createLinearSolver(solver::AbstractString, A, reg=nothing; kargs...)
+function createLinearSolver(solver::AbstractString, A, reg=nothing; lambdL2::Float64=0.0, λ::Float64=0.0, kargs...)
 
-  reg==nothing ? reg = Regularization(;kargs...) : nothing
+  # hack for compatibility with MPIReco.jl -> FIXME
+  if lambdL2 != 0
+     λ = lambdL2
+  end
 
   if solver == "kaczmarz"
-    for regEntry in RegularizationList()
-      regEntry == "L2" ? continue : nothing
-      getfield(reg, Symbol(regEntry)) ? error("Regularization $regularizer not supported by solver $solver.") : nothing
-    end
+    reg =  getRegularization("L2",λ)
     return Kaczmarz(A, reg; kargs...)
   elseif solver == "cgnr"
-    for regEntry in RegularizationList()
-      regEntry == "L2" ? continue : nothing
-      getfield(reg, Symbol(regEntry)) ? error("Regularization $regularizer not supported by solver $solver.") : nothing
-    end
+    reg =  getRegularization("L2",λ)
     return CGNR(A, reg; kargs...)
   elseif solver == "direct"
     return DirectSolver(A; kargs...)
@@ -93,8 +89,10 @@ function createLinearSolver(solver::AbstractString, A, reg=nothing; kargs...)
   elseif solver == "fusedlasso"
     return FusedLasso(A; kargs...)
   elseif solver == "fista"
+    reg==nothing ? reg = Regularization(;kargs...) : nothing
     return FISTA(A, reg;kargs...)
   elseif solver == "admm"
+    reg==nothing ? reg = Regularization(;kargs...) : nothing
     return ADMM(A, reg;kargs...)
   else
     error("Solver $solver not found.")

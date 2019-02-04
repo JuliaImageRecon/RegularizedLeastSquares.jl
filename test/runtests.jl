@@ -59,7 +59,8 @@ b[idx] .= 0
 F[idx,:] .= 0
 
 for solver in ["fista"]
-  S = createLinearSolver(solver,F; L1=true, lambdL1=1.e-3, iterations=200)
+  reg = getRegularization("L1",1.e-3)
+  S = createLinearSolver(solver,F,reg; iterations=200)
   x_approx = solve(S, b)
   @info "Testing solver $solver ...: $x  == $x_approx"
   @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1

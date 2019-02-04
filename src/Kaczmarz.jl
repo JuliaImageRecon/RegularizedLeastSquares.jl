@@ -9,7 +9,7 @@ end
 Kaczmarz(A, reg; kargs...) = Kaczmarz(A,reg,kargs)
 
 function solve(solver::Kaczmarz, u::Vector)
-  return kaczmarz(solver.A, u; lambd=solver.reg.params[:lambdL2], solver.params... )
+  return kaczmarz(solver.A, u; lambd=solver.reg.λ, solver.params... )
 end
 
 ### initkaczmarz ###

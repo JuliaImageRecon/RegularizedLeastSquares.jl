@@ -1,163 +1,60 @@
 export Regularization, getRegularization, lambdList, prox! #, norm
 
-mutable struct Regularization
-  L2::Bool
-  L1::Bool
-  L21::Bool
-  TV::Bool
-  LLR::Bool
-  SLR::Bool
-  Positive::Bool
-  Proj::Bool
-  Nuclear::Bool
-  params
+abstract type AbstractRegularization end
+
+#
+# each Regularization should contain:
+#   1. prox!(x,λ;kargs...) : function to evaluate the proximal mapping (in-place in x)
+#   2. norm(x,λ;kargs...) : function to evaluate the Regularization norm
+#   3. λ :         Regularization parameter
+#
+mutable struct Regularization <: AbstractRegularization
+  prox!::Function
+  norm::Function
+  λ::Float64
+  params::Dict{Symbol,Any}
 end
+
+Regularization(;prox = x->x, norm = x->0.0, λ=0.0) = Regularization(prox!,norm,λ,Dict{Symbol,Any}())
 
 """
 Return a list of all available Regularizations
 """
 function RegularizationList()
-  Any["L2", "L1", "L21", "TV", "LLR", "SLR", "Positive", "Proj", "Nuclear"]
-end
-
-"""
-Return a list of all parameters determining regularization strength
-"""
-function lambdList()
-  Any["lambdL2", "lambdL1", "lambdL21", "lambdTV", "lambdLLR", "lambdSLR", "lambdNuclear"]
-end
-
-"""
- Return a default set of parameters for the regularizers
-"""
-function regParamsDefault()
-  params = Dict{Symbol,Any}()
-  params[:lambdL2] = 0.
-  params[:lambdL1] = 0.
-  params[:lambdL21] = 0.
-  params[:lambdTV] = 0.
-  params[:lambdLLR] = 0.
-  params[:lambdSLR] = 0.
-  params[:lambdNuclear] = 0.
-  params[:slices] = 1
-  params[:blockSize] = [1,1]
-  return params
+  Any["L2", "L1", "L21", "TV", "LLR", "Positive", "Proj", "Nuclear"]
 end
 
 """
  create a Regularization object containing all the infos necessary to calculate a proximal map
 """
-function Regularization(;L1=false,L2=false,L21=false,TV=false,LLR=false,SLR=false,Positive=false,Proj=false, Nuclear=false, kargs...)
-  params = merge(regParamsDefault(), Dict(kargs))
-  return Regularization(L2,L1,L21,TV,LLR,SLR,Positive,Proj,Nuclear,params)
-end
-
-function getRegularization(name::String; kargs...)
+function getRegularization(name::String, λ::Float64; kargs...)
   if name=="L2"
-    return Regularization(;L2=true, kargs...)
+    return Regularization(proxL2!, normL2, λ, kargs)
   elseif name=="L1"
-    return Regularization(;L1=true, kargs...)
+    return Regularization(proxL1!, normL1, λ, kargs)
   elseif name=="L21"
-    return Regularization(;L21=true, kargs...)
+    return Regularization(proxL21!, normL21, λ, kargs)
   elseif name=="TV"
-    return Regularization(;TV=true, kargs...)
+    return Regularization(proxTV!, normTV, λ, kargs)
   elseif name=="LLR"
-    return Regularization(;LLR=true, kargs...)
-  elseif name=="SLR"
-    return Regularization(;SLR=true, kargs...)
+    return Regularization(proxLLR!, normLLR, λ, kargs)
   elseif name=="Nuclear"
-    return Regularization(;Nuclear=true, kargs...)
+    return Regularization(proxNuclear!, normNuclear, λ, kargs)
   elseif name=="Positive"
-    return Regularization(;Positive=true, kargs...)
+    return Regularization(proxPositive!, normPositive, λ, kargs)
   elseif name=="Proj"
-    return Regularization(;Proj=true, kargs...)
+    return Regularization(proxProj!, normProj, λ, kargs)
   else
     error("Regularization $name not found.")
   end
 
-  return Regularization()
-end
-
-function getRegularization(names::Vector{String}; kargs...)
-  params = Dict(kargs)
-  for i=RegularizationList()
-    contains(==,names,i) ? params[Symbol(i)]=true : continue
-  end
-
-  return Regularization(;params...)
-end
-
-"""
-calculate proximal map
-"""
-function prox!(reg::Regularization, x)
-
-  # prepend dedicated proximal maps for combined regularizations and end with break
-  # otherwise approximate the combined proximal map as a composition of individual maps
-  if reg.L2
-    proxL2!(reg,x)
-  end
-  if reg.L1
-    proxL1!(reg,x)
-  end
-  if reg.L21
-    proxL21!(reg,x)
-  end
-  if reg.TV
-    proxTV!(reg,x)
-  end
-  if reg.LLR
-    proxLLR!(reg,x)
-  end
-  if reg.SLR
-    proxSLR!(reg,x)
-  end
-  if reg.Nuclear
-    proxNuclear!(reg,x)
-  end
-  if reg.Positive
-    proxPositive!(reg,x)
-  end
-  if reg.Proj
-    proxProj!(reg,x)
-  end
+  return Regularization(proxL2!, normL2, 0.0, kargs)
 end
 
 ###################
 # utility functions
 ###################
-function rmul!(reg::Regularization, x::Real)
-  for lambd in lambdList()
-    reg.params[Symbol(lambd)] *= x
-  end
-end
-
 function normalize!(reg::Regularization, data)
   meanEnergy = norm(data,1)/length(data)
-  rmul!(reg, meanEnergy)
-end
-
-function norm(reg::Regularization,x)
-  res = 0.
-
-  if reg.L2
-    res += normL2(reg,x)
-  end
-  if reg.L1
-    res += normL1(reg,x)
-  end
-  if reg.L21
-    res += normL21(reg,x)
-  end
-  if reg.TV
-    res += normTV(reg,x)
-  end
-  if reg.LLR
-    res += normLLR(reg,x)
-  end
-  if reg.SLR
-    res += normSLR(reg,x)
-  end
-
-  return res
+  reg.λ = meanEnergy*reg.λ
 end

@@ -10,7 +10,7 @@ end
 CGNR(A, reg; kargs...) = CGNR(A,reg,kargs)
 
 function solve(solver::CGNR, u::Vector)
-  return cgnr(solver.A, u; lambd=solver.reg.params[:lambdL2], solver.params... )
+  return cgnr(solver.A, u; lambd=solver.reg.λ, solver.params... )
 end
 
 

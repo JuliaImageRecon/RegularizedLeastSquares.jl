@@ -3,12 +3,7 @@ export proxTV!
 """
 proximal map for TV regularization using the String-Taut algorithm
 """
-function proxTV!(reg::Regularization, x)
-  weights = get(reg.params,:weights,[])
-  proxTV!(x, reg.params[:lambdTV], reg.params[:shape], weights=weights)
-end
-
-function proxTV!(x::Vector, λ::Float64, shape::NTuple; iterations::Int64=20, weights::Array=[])
+function proxTV!(x::Vector{T}, λ::Float64; shape::NTuple=[], iterationsTV::Int64=20, weights::Array=[], kargs...) where T
   m,n = shape
 
   # initialize dual variables
@@ -21,7 +16,7 @@ function proxTV!(x::Vector, λ::Float64, shape::NTuple; iterations::Int64=20, we
   weights!=[] ? weights=reshape(weights,shape) : weights=ones(shape)
 
   t = 1
-  for i=1:iterations
+  for i=1:iterationsTV
     pOld[:] = p[:]
     qOld[:] = q[:]
 
@@ -88,11 +83,11 @@ function restrictMagnitude(x::Array, w::Array=[])
   return x./max.(1.0, abs.(x)./maxval)
 end
 
-function normTV(reg::Regularization,x)
-  x = reshape(x,reg.params[:shape])
+function normTV(x::Vector{T},λ::Float64;shape::NTuple=[],kargs...) where T
+  x = reshape(x,shape)
   tv = norm(vec(x[1:end-1,1:end-1]-x[2:end,1:end-1]),1)
   tv += norm(vec(x[1:end-1,1:end-1]-x[1:end-1,2:end]),1)
   tv += norm(vec(x[1:end-1,end]-x[2:end,end]),1)
   tv += norm(vec(x[end,1:end-1]-x[end,2:end]),1)
-  return tv
+  return λ*tv
 end

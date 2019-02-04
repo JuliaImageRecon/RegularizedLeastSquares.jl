@@ -9,20 +9,14 @@ proximal map for LLR regularization using singular-value-thresholding
 * shape::Tuple{Int}: dimensions of the image
 * blockSize::Tuple{Int}: size of patches to perform singluar value thresholding on
 """
-function proxLLR!(reg, x)
-  x[:] = proxLLR(x, reg.params[:lambdLLR]; reg.params...)
-end
-
-function proxLLR(x::Vector{T}, λ::Float64=1e-6; shape::NTuple=[], L=1,
+function proxLLR!(x::Vector{T}, λ::Float64=1e-6; shape::NTuple=[],
    blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...) where T
-  xᵖʳᵒˣ = zeros(T,size(x))
+  # xᵖʳᵒˣ = zeros(T,size(x))
   N = prod(shape)
-  K = floor(Int,length(x)/(N*L))
-  for i = 1:L
-    xᵖʳᵒˣ[(i-1)*N*K+1:i*N*K] = vec( svt(x[(i-1)*N*K+1:i*N*K], shape, λ; blockSize=blockSize, randshift=randshift, kargs...) )
-  end
+  # K = floor(Int,length(x)/N)
+  x[:] = vec( svt(x[:], shape, λ; blockSize=blockSize, randshift=randshift, kargs...) )
 
-  return xᵖʳᵒˣ
+  return x
 end
 
 function svt(x::Vector{T}, shape::Tuple, λ::Float64=1e-6;
@@ -80,9 +74,7 @@ end
 """
 return the value of the LLR-regularization term
 """
-normLLR(reg::Regularization,x) = reg.params[:lambdLLR]*normLLR(x; reg.params...)
-
-function normLLR(x::Vector; shape::NTuple=[], L=1, blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...)
+function normLLR(x::Vector{T}, λ::Float64; shape::NTuple=[], L=1, blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...) where T
 
   N = prod(shape)
   K = floor(Int,length(x)/(N*L))
@@ -91,7 +83,7 @@ function normLLR(x::Vector; shape::NTuple=[], L=1, blockSize::Array{Int64,1}=[2;
     normᴸᴸᴿ +=  blockNuclearNorm(x[(i-1)*N*K+1:i*N*K], shape; blockSize=blockSize, randshift=randshift, kargs...)
   end
 
-  return normᴸᴸᴿ
+  return λ*normᴸᴸᴿ
 end
 
 function blockNuclearNorm(x::Vector{T}, shape::Tuple; blockSize::Array{Int64,1}=[2; 2],
