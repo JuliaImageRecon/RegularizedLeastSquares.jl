@@ -255,6 +255,6 @@ function nrmsd(I,Ireco)
   I2 = Ireco.*alpha
 
   RMS =  1.0/sqrt(N)*norm(vec(I)-vec(I2))
-  NRMS = RMS/(maximum(abs(I))-minimum(abs(I)) )
+  NRMS = RMS/(maximum(abs.(I))-minimum(abs.(I)) )
   return NRMS
 end
