@@ -1,7 +1,7 @@
 export DSTOp
 
 #
-# Linear Operator to perform an FFT
+# Linear Operator to perform a DST
 #
 function DSTOp(T::Type, shape::Tuple)
 

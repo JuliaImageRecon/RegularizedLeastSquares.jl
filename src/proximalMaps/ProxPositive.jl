@@ -1,4 +1,4 @@
-export proxPositive!
+export proxPositive!, normPositive
 
 """
 enforce positivity and realness of solution.

@@ -1,4 +1,4 @@
-export proxTV!
+export proxTV!, normTV
 
 """
 proximal map for TV regularization using the String-Taut algorithm

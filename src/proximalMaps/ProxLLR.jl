@@ -113,8 +113,8 @@ function blockNuclearNorm(x::Vector{T}, shape::Tuple; blockSize::Array{Int64,1}=
     # L1-norm of singular values
     normᴸᴸᴿ = 0.
     for i = 1:L
-      SVDec = svdfact(xᴸᴸᴿ[:,:,i])
-      normᴸᴸᴿ += norm(SVDec[:S],1)
+      SVDec = svd(xᴸᴸᴿ[:,:,i])
+      normᴸᴸᴿ += norm(SVDec.S,1)
     end
 
     return normᴸᴸᴿ

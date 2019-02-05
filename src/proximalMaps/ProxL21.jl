@@ -1,4 +1,4 @@
-export proxL21!
+export proxL21!, normL21
 
 
 """
