@@ -187,11 +187,11 @@ function fadmm(A, b::Vector, reg::Regularization
     zᵒˡᵈ[:] = z
     if sparseTrafo != nothing
       zˢᵖᵃʳˢᵉ = sparseTrafo*(x[:]+û[:])
-      reg.prox!(zˢᵖᵃʳˢᵉ, reg.λ/ρ)
+      reg.prox!(zˢᵖᵃʳˢᵉ, reg.λ/ρ; reg.params...)
       z[:] = sparseTrafo\zˢᵖᵃʳˢᵉ[:]
     else
       z[:]=x[:]+û[:]
-      reg.prox!(z, reg.λ/ρ)
+      reg.prox!(z, reg.λ/ρ; reg.params...)
     end
 
     # 3. update u
