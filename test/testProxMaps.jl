@@ -31,7 +31,7 @@ function testL1Prox(N=1024; numPeaks=5, σ=0.03)
   proxL1!(x_l1, 2*σ)
 
   # solution should be better then without denoising
-  @info "L1 error : $(norm(x - x_l1)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
+  @info "rel. L1 error : $(norm(x - x_l1)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
   @test norm(x - x_l1) <= norm(x - xNoisy)
   @test norm(x - x_l1) / norm(x) ≈ 0 atol=0.1
   # check decrease of ojective function
@@ -62,7 +62,7 @@ function testL21Prox(N=1024; numPeaks=5, numSlices=8, noisySlices=2, σ=0.05)
   proxL21!(x_l21, 2*σ,slices=numSlices)
 
   # solution should be better then without denoising and with l1-denoising
-  @info "L1 error : $(norm(x - x_l21)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
+  @info "rel. L21 error : $(norm(x - x_l21)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
   @test norm(x - x_l21) <= norm(x - xNoisy)
   @test norm(x - x_l21) <= norm(x - x_l1)
   @test norm(x - x_l21) / norm(x) ≈ 0 atol=0.05
@@ -93,7 +93,7 @@ function testTVprox(N=1024; numEdges=5, σ=0.05)
   x_tv = copy(xNoisy)
   proxTV!(x_tv, 2*σ, shape=(N,N))
 
-  @info "L1 error : $(norm(x - x_tv)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
+  @info "rel. TV error : $(norm(x - x_tv)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
   @test norm(x - x_tv) <= norm(x - xNoisy)
   @test norm(x - x_tv) <= norm(x - x_l1)
   @test norm(x - x_tv) / norm(x) ≈ 0 atol=0.05
@@ -153,7 +153,7 @@ function testNuclear(N=32,rank=2;σ=0.05)
   proxNuclear!(x_lr,5*σ,svtShape=(32,32))
   @test norm(x - x_lr) <= norm(x - xNoisy)
   @test norm(x - x_lr) / norm(x) ≈ 0 atol=0.05
-  @info "LR error : $(norm(x - x_lr)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
+  @info "rel. LR error : $(norm(x - x_lr)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
   # check decreas of objective function
   @test 0.5*norm(xNoisy-x_lr)^2+normNuclear(x_lr,5*σ,svtShape=(N,N)) <= normNuclear(xNoisy,5*σ,svtShape=(N,N))
 end
@@ -181,7 +181,7 @@ function testLLR(shape=(32,32,80),blockSize=[4,4];σ=0.05)
   proxLLR!(x_llr,10*σ,shape=shape[1:2],blockSize=blockSize,randshift=false)
   @test norm(x - x_llr) <= norm(x - xNoisy)
   @test norm(x - x_llr) / norm(x) ≈ 0 atol=0.05
-  @info "LLR error : $(norm(x - x_llr)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
+  @info "rel. LLR error : $(norm(x - x_llr)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
   # check decreas of objective function
   @test 0.5*norm(xNoisy-x_llr)^2+normLLR(x_llr,10*σ,shape=shape[1:2],blockSize=blockSize,randshift=false) <= normLLR(xNoisy,10*σ,shape=shape[1:2],blockSize=blockSize,randshift=false)
 end
