@@ -43,9 +43,9 @@ function fista1(A, b::Vector{T}, reg::Regularization
   end
   res = A*x-b
 
-  solverInfo != nothing && storeInfo(solverInfo,norm(res),norm(x))
-
   xᵒˡᵈ = copy(x)
+
+  solverInfo != nothing && storeInfo(solverInfo,A,b,x;xᵒˡᵈ=xᵒˡᵈ,reg=[reg],residual=res)
 
   costFunc = 0.5*norm(res)^2+reg.norm(x,reg.λ)
 
@@ -64,7 +64,7 @@ function fista1(A, b::Vector{T}, reg::Regularization
     res = A*x-b
     regNorm = reg.norm(x,reg.λ)
 
-    solverInfo != nothing && storeInfo(solverInfo,norm(res),regNorm)
+    solverInfo != nothing && storeInfo(solverInfo,A,b,x;xᵒˡᵈ=xᵒˡᵈ,reg=[reg],residual=res)
 
     # exit if objective functional changes by less then ɛ
     costFuncOld = costFunc
@@ -102,6 +102,8 @@ function fista2(A, b::Vector{T}, reg::Regularization
 
   xᵒˡᵈ = copy(x)
 
+  solverInfo != nothing && storeInfo(solverInfo,A,b,x;xᵒˡᵈ=xᵒˡᵈ,reg=[reg])
+
   costFunc = 0.5*norm(res)^2+norm(reg,x)
 
   for l=1:iterations
@@ -115,6 +117,8 @@ function fista2(A, b::Vector{T}, reg::Regularization
 
     t = (1. + sqrt(1. + 4. * tᵒˡᵈ^2)) / 2.
     x[:] = x + (tᵒˡᵈ-1)/t*(x-xᵒˡᵈ)
+
+    solverInfo != nothing && storeInfo(solverInfo,A,b,x;xᵒˡᵈ=xᵒˡᵈ,reg=[reg])
   end
 
   return x

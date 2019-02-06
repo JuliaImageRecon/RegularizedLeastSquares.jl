@@ -8,7 +8,8 @@ Random.seed!(1234)
   solvers = linearSolverListReal()
 
   for solver in solvers
-    S = createLinearSolver(solver, A, iterations=100)
+    solverInfo = SolverInfo()
+    S = createLinearSolver(solver, A, iterations=100, solverInfo=solverInfo)
     x_approx = solve(S,b)
     @info "Testing solver $solver ...: $x  == $x_approx"
     @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
@@ -23,7 +24,8 @@ end
   solvers = linearSolverList()
 
   for solver in solvers
-    S = createLinearSolver(solver, A, iterations=100)
+    solverInfo = SolverInfo()
+    S = createLinearSolver(solver, A, iterations=100, solverInfo=solverInfo)
     x_approx = solve(S,b)
     @info "Testing solver $solver ...: $x  == $x_approx"
     @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
@@ -48,7 +50,8 @@ end
 
   for solver in ["fista","admm"]
     reg = getRegularization("L1",1.e-3)
-    S = createLinearSolver(solver,F,reg; iterations=200)
+    solverInfo = SolverInfo()
+    S = createLinearSolver(solver,F,reg; iterations=200, solverInfo=solverInfo)
     x_approx = solve(S, b)
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
     @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1

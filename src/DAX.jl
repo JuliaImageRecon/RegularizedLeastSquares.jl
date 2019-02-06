@@ -108,6 +108,8 @@ function daxrand(S::AbstractMatrix{T}, u::Vector, iterations::Int, inneriteratio
     ɛw[i] = sqrt(lambd)/weights[j]
   end
 
+  reg = getRegularization("L2", lambd)
+
   for k=1:iterations #could be replaced by a while loop based on errorbound if smallest singular value of A is known
     # bk = u-S'*zk
     copyto!(bk,u)
@@ -128,7 +130,8 @@ function daxrand(S::AbstractMatrix{T}, u::Vector, iterations::Int, inneriteratio
     rmul!(xl,0.0)
     rmul!(yl,0.0)
 
-    storeInfo(solverInfo,norm(bk),norm(zk))
+    # storeInfo(solverInfo,norm(bk),norm(zk))
+    solverInfo != nothing && storeInfo(solverInfo,S,u,zk;reg=[reg],residual=bk)
   end
   return zk
 end
@@ -310,6 +313,8 @@ function daxcon(S::AbstractMatrix{T}, u::Vector, B, iterations::Int,
     ɛw[i] = sqrt(lambd)/weights[j]
   end
 
+  reg = getRegularization("L2", lambd)
+
   for k=1:iterations
     # bk = u-S'*zk
     copyto!(bk,u)
@@ -343,7 +348,8 @@ function daxcon(S::AbstractMatrix{T}, u::Vector, B, iterations::Int,
     rmul!(yl,0.0)
     rmul!(yc,0.0)
 
-    storeInfo(solverInfo,norm(bk),norm(zk))
+    # storeInfo(solverInfo,norm(bk),norm(zk))
+    solverInfo != nothing && storeInfo(solverInfo,S,u,zk;reg=[reg],residual=bk)
   end
   return zk
 end
@@ -371,6 +377,8 @@ function daxcon(S::AbstractMatrix{T}, u::Vector, B::AbstractMatrix, iterations::
     j = rowindex[i]
     ɛw[i] = sqrt(lambd)/weights[j]
   end
+
+  reg = getRegularization("L2", lambd)
 
   for k=1:iterations
     # bk = u-S'*zk
@@ -407,7 +415,8 @@ function daxcon(S::AbstractMatrix{T}, u::Vector, B::AbstractMatrix, iterations::
     rmul!(yl,0.0)
     rmul!(yc,0.0)
 
-    storeInfo(solverInfo,norm(bk),norm(zk))
+    # storeInfo(solverInfo,norm(bk),norm(zk))
+    solverInfo != nothing && storeInfo(solverInfo,S,u,zk;reg=[reg],residual=bk)
   end
   return zk
 end

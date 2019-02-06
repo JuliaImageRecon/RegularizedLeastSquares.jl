@@ -5,14 +5,45 @@ The Solver Info type is used to obtain aditional information
 of linear solvers and their iteration process
 """
 mutable struct SolverInfo
-  resNorm::Vector{Float64}
-  xNorm::Vector{Float64}
+  cost::Vector{Float64}
+  residual::Vector
+  relSolutionChange::Vector{Float64}
+  nrmse::Vector{Float64}
+  x_ref::Union{Vector,Nothing}
+end
 
-  SolverInfo() = new( Array(Float64,0), Array(Float64,0))
+function SolverInfo(x_ref::Union{Vector,Nothing}=nothing;kargs...)
+  SolverInfo(Vector{Float64}(),Vector{Float64}(),Vector{Float64}(),Vector{Float64}(),x_ref)
 end
 
 function storeInfo(solverinfo::Nothing, res, x)
   return nothing
+end
+
+function storeInfo(solverInfo::SolverInfo,A,y::Vector{U},x::Vector{U};xᵒˡᵈ::Vector{U}=U[],reg::Union{Vector{T},Nothing}=nothing,residual::Vector{U}=U[]) where {U,T<:AbstractRegularization}
+  # residual
+  if isempty(residual)
+    residual=A*x-y
+  end
+  push!(solverInfo.residual,norm(residual))
+  # cost function
+  cost = 0.5*norm(residual)^2
+  if reg != nothing
+    for i=1:length(reg)
+      cost += reg[i].norm(x,reg[i].λ;reg[i].params...)
+    end
+  end
+  push!(solverInfo.cost, cost)
+  # relative change of the solution
+  if !isempty(xᵒˡᵈ)
+    relSolutionChange = norm(x-xᵒˡᵈ)/norm(x)
+    push!(solverInfo.relSolutionChange, relSolutionChange)
+  end
+  # nrmse
+  if solverInfo.x_ref != nothing
+    nrmse = nrmsd(solverInfo.x_ref,x)
+    push!(solverInfo.nrmse, nrmse)
+  end
 end
 
 function storeInfo(solverinfo::SolverInfo, res, x)

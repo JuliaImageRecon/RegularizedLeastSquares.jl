@@ -34,7 +34,7 @@ function cg(A
     rsold = rsnew
   end
 
-  solverInfo != nothing && storeResidual(solverInfo, sqrt(abs(rsnew)) )
+  solverInfo != nothing && storeInfo(solverInfo,A,b,x;residual=rsnew)
 
   return x
 end
@@ -77,7 +77,7 @@ function cg(A
     rsold = rsnew
   end
 
-  solverInfo != nothing && storeResidual(solverInfo, sqrt(abs(rsnew)) )
+  solverInfo != nothing && storeInfo(solverInfo,A,b,x;residual=rsnew)
 
   return x
 end

@@ -45,9 +45,6 @@ function admm(A, b::Vector, reg::Regularization
               , ɛᵃᵇˢ::Float64=1.e-8
               , ɛʳᵉˡ::Float64=1.e-6
               , solverInfo = nothing
-              , x_ref = nothing
-              , nrms = nothing
-              , verbose = false
               , kargs...)
 
   σᵃᵇˢ = sqrt(length(b))*ɛᵃᵇˢ
@@ -70,11 +67,7 @@ function admm(A, b::Vector, reg::Regularization
     op = A'*A+ρ*opEye(length(x))
   end
 
-  # compare solution with a given reference solution
-  x_ref != nothing ? x0 = x_ref : x0 = zeros(eltype(x), size(x))
-  if nrms != nothing
-    nrms[1] = nrmsd(x0,x)
-  end
+  solverInfo != nothing && storeInfo(solverInfo,A,b,x;xᵒˡᵈ=xᵒˡᵈ,reg=[reg])
 
   β = A' * b
 
@@ -83,9 +76,9 @@ function admm(A, b::Vector, reg::Regularization
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
     xᵒˡᵈ[:] = x[:]
     if precon != nothing
-      x[:] = cg(op, x, β+ρ*(z-u), precon, iterations=iterationsInner, solverInfo=solverInfo )
+      x[:] = cg(op, x, β+ρ*(z-u), precon, iterations=iterationsInner )
     else
-      x[:] = cg(op, x, β+ρ*(z-u), iterations=iterationsInner, solverInfo=solverInfo )
+      x[:] = cg(op, x, β+ρ*(z-u), iterations=iterationsInner)
     end
 
     # 2. update z using the proximal map of 1/ρ*g(x)
@@ -96,18 +89,14 @@ function admm(A, b::Vector, reg::Regularization
     # 3. update u
     u[:]=u+x-z
 
-    solverInfo != nothing && storeRegularization(solverInfo,reg.norm(z,reg.λ))
-
-    # compare solution with a given reference solution
-    if nrms != nothing
-      nrms[k+1] = nrmsd(x0,x)
-    end
+    solverInfo != nothing && storeInfo(solverInfo,A,b,x;xᵒˡᵈ=xᵒˡᵈ,reg=[reg])
 
     # exit if residual is below tolerance
     rᵏ = norm(x-z)
     ɛᵖʳⁱ = σᵃᵇˢ + ɛʳᵉˡ*max( norm(x), norm(z) );
     sᵏ = norm(ρ * (z - zᵒˡᵈ))
     ɛᴰᵘᵃˡ = σᵃᵇˢ + ɛʳᵉˡ*norm(ρ*u);
+
     if (rᵏ < ɛᵖʳⁱ) && (sᵏ < ɛᴰᵘᵃˡ)
       @info "ADMM converged at iteration $(k)"
       break;
@@ -128,9 +117,6 @@ function fadmm(A, b::Vector, reg::Regularization
               , ɛᵃᵇˢ::Float64=1.e-8
               , ɛʳᵉˡ::Float64=1.e-6
               , solverInfo = nothing
-              , x_ref = nothing
-              , nrms = nothing
-              , verbose = false
               , kargs...)
 
   # initialize x, u and z
@@ -154,11 +140,7 @@ function fadmm(A, b::Vector, reg::Regularization
     op = A'*A+ρ*opEye(length(x))
   end
 
-  # compare solution with a given reference solution
-  x_ref != nothing ? x0 = x_ref : x0 = zeros(eltype(x), size(x))
-  if nrms != nothing
-    nrms[1] = nrmsd(x0,x)
-  end
+  solverInfo != nothing && storeInfo(solverInfo,A,b,x;xᵒˡᵈ=xᵒˡᵈ,reg=[reg])
 
   β = A' * b
 
@@ -168,7 +150,7 @@ function fadmm(A, b::Vector, reg::Regularization
     # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 ||x+û-ẑ||²
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
     xᵒˡᵈ[:] = x[:]
-    x[:] = cg(op, x,  β+ρ*(ẑ-û), iterations=iterationsInner, solverInfo=solverInfo )
+    x[:] = cg(op, x,  β+ρ*(ẑ-û), iterations=iterationsInner)
 
     # 2. update z using the proximal map of 1/ρ*g(x)
     zᵒˡᵈ[:] = z
@@ -196,12 +178,7 @@ function fadmm(A, b::Vector, reg::Regularization
       c = cᵒˡᵈ/η
     end
 
-    solverInfo != nothing && storeRegularization(solverInfo,reg.norm(z,reg.λ))
-
-    # compare solution with a given reference solution
-    if nrms != nothing
-      nrms[k+1] = nrmsd(x0,x)
-    end
+    solverInfo != nothing && storeInfo(solverInfo,A,b,x;xᵒˡᵈ=xᵒˡᵈ,reg=[reg])
 
     # exit if residual is below tolerance
     rᵏ = norm(x-z)

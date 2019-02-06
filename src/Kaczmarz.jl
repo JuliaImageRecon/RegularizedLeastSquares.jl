@@ -116,6 +116,8 @@ function kaczmarz(S, u::Vector{T}, startVector, iterations, lambd, weights, enfo
     ɛw[i] = sqrt(lambd)/weights[j]
   end
 
+  reg = getRegularization("L2", lambd)
+
   for l=1:iterations
     for i in rowIndexCycle
       j = rowindex[i]
@@ -128,7 +130,8 @@ function kaczmarz(S, u::Vector{T}, startVector, iterations, lambd, weights, enfo
     # invoke constraints
     applyConstraints(cl, sparseTrafo, enforceReal, enforcePositive)
 
-    solverInfo != nothing && storeInfo(solverInfo,norm(S*cl-u),norm(cl))
+    # solverInfo != nothing && storeInfo(solverInfo,norm(S*cl-u),norm(cl))
+    solverInfo != nothing && storeInfo(solverInfo,S,u,cl;reg=[reg],residual=vl)
   end
   return cl
 end

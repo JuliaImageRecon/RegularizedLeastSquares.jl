@@ -39,6 +39,8 @@ solverInfo = nothing, kargs... ) where T
   βl = zero(T)        #temporary scalar
   ζl = zero(T)        #temporary scalar
 
+  reg = getRegularization("L2", lambd)
+
   #pre iteration
   #rl = u - Sᵗ*cl
   copyto!(rl,u)
@@ -69,10 +71,10 @@ solverInfo = nothing, kargs... ) where T
     #cl += αl*pl
     BLAS.axpy!(αl,pl,cl)
 
-    if solverInfo != nothing
-      push!( solverInfo.xNorm, norm(cl))
-      push!( solverInfo.resNorm, norm(rl) )
-    end
+    # if solverInfo != nothing
+    #   push!( solverInfo.xNorm, norm(cl))
+    #   push!( solverInfo.resNorm, norm(rl) )
+    # end
 
     #rl += -αl*vl
     BLAS.axpy!(-αl,vl,rl)
@@ -97,7 +99,7 @@ solverInfo = nothing, kargs... ) where T
     rmul!(pl,βl)
     BLAS.axpy!(one(T),zl,pl)
 
-    solverInfo != nothing && storeInfo(solverInfo,norm(S*cl-u),norm(cl))
+    solverInfo != nothing && storeInfo(solverInfo,S,u,cl;reg=[reg])
   end
 
   applyConstraints(cl, sparseTrafo, enforceReal, enforcePositive)
