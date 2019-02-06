@@ -37,7 +37,6 @@ end
 """
 function admm(A, b::Vector, reg::Regularization
               ; AHA=nothing
-              , sparseTrafo=nothing
               , precon=nothing
               , startVector=nothing
               , iterations::Int64=50
@@ -59,8 +58,8 @@ function admm(A, b::Vector, reg::Regularization
     x[:] = A' * b
   else
     x[:] = copy(startVector)
+    z[:] = x
   end
-  z[:] = x
   xᵒˡᵈ = zeros(eltype(x), size(x))
   zᵒˡᵈ = zeros(eltype(x), size(x))
   u = zeros(eltype(x), size(x))
@@ -91,24 +90,11 @@ function admm(A, b::Vector, reg::Regularization
 
     # 2. update z using the proximal map of 1/ρ*g(x)
     zᵒˡᵈ[:] = z
-
-    if sparseTrafo != nothing
-      zˢᵖᵃʳˢᵉ = sparseTrafo*(x[:]+u[:])
-      reg.prox!(zˢᵖᵃʳˢᵉ, reg.λ/ρ; reg.params...)
-      z[:] = sparseTrafo\zˢᵖᵃʳˢᵉ[:]
-    else
-      z[:]=x[:]+u[:]
-      reg.prox!(z, reg.λ/ρ; reg.params...)
-    end
+    z[:]=x[:]+u[:]
+    reg.prox!(z, reg.λ/ρ; reg.params...)
 
     # 3. update u
     u[:]=u+x-z
-
-    # exit if residual is below tolerance
-#    rᵏ = norm(x-z)
-#    ɛᵖʳⁱ = σᵃᵇˢ + ɛʳᵉˡ*max( norm(x), norm(z) );
-#    sᵏ = norm(ρ * (z - zᵒˡᵈ))
-#    ɛᴰᵘᵃˡ = σᵃᵇˢ + ɛʳᵉˡ*norm(ρ*u);
 
     solverInfo != nothing && storeRegularization(solverInfo,reg.norm(z,reg.λ))
 
@@ -117,13 +103,14 @@ function admm(A, b::Vector, reg::Regularization
       nrms[k+1] = nrmsd(x0,x)
     end
 
-#    if (rᵏ < ɛᵖʳⁱ) && (sᵏ < ɛᴰᵘᵃˡ)
-#      break;
-#    end
-
-    if norm(xᵒˡᵈ-x)/norm(xᵒˡᵈ) < ɛʳᵉˡ
-      @info "converged at iteration $(k)"
-      break
+    # exit if residual is below tolerance
+    rᵏ = norm(x-z)
+    ɛᵖʳⁱ = σᵃᵇˢ + ɛʳᵉˡ*max( norm(x), norm(z) );
+    sᵏ = norm(ρ * (z - zᵒˡᵈ))
+    ɛᴰᵘᵃˡ = σᵃᵇˢ + ɛʳᵉˡ*norm(ρ*u);
+    if (rᵏ < ɛᵖʳⁱ) && (sᵏ < ɛᴰᵘᵃˡ)
+      @info "ADMM converged at iteration $(k)"
+      break;
     end
   end
 
@@ -133,12 +120,12 @@ end
 # fast version which emplois a Nesterov-type acceleration
 function fadmm(A, b::Vector, reg::Regularization
               ; AHA=nothing
-              , sparseTrafo=nothing
               , startVector=nothing
               , iterations::Int64=50
               , iterationsInner::Int64=10
               , ρ::Float64=1.e-2
               , η::Float64=0.999
+              , ɛᵃᵇˢ::Float64=1.e-8
               , ɛʳᵉˡ::Float64=1.e-6
               , solverInfo = nothing
               , x_ref = nothing
@@ -185,14 +172,8 @@ function fadmm(A, b::Vector, reg::Regularization
 
     # 2. update z using the proximal map of 1/ρ*g(x)
     zᵒˡᵈ[:] = z
-    if sparseTrafo != nothing
-      zˢᵖᵃʳˢᵉ = sparseTrafo*(x[:]+û[:])
-      reg.prox!(zˢᵖᵃʳˢᵉ, reg.λ/ρ; reg.params...)
-      z[:] = sparseTrafo\zˢᵖᵃʳˢᵉ[:]
-    else
-      z[:]=x[:]+û[:]
-      reg.prox!(z, reg.λ/ρ; reg.params...)
-    end
+    z[:]=x[:]+û[:]
+    reg.prox!(z, reg.λ/ρ; reg.params...)
 
     # 3. update u
     uᵒˡᵈ[:] = u
@@ -222,9 +203,14 @@ function fadmm(A, b::Vector, reg::Regularization
       nrms[k+1] = nrmsd(x0,x)
     end
 
-    if norm(xᵒˡᵈ-x)/norm(xᵒˡᵈ) < ɛʳᵉˡ
-      @info "converged at iteration $(k)"
-      break
+    # exit if residual is below tolerance
+    rᵏ = norm(x-z)
+    ɛᵖʳⁱ = σᵃᵇˢ + ɛʳᵉˡ*max( norm(x), norm(z) );
+    sᵏ = norm(ρ * (z - zᵒˡᵈ))
+    ɛᴰᵘᵃˡ = σᵃᵇˢ + ɛʳᵉˡ*norm(ρ*u);
+    if (rᵏ < ɛᵖʳⁱ) && (sᵏ < ɛᴰᵘᵃˡ)
+      @info "FADMM converged at iteration $(k)"
+      break;
     end
   end
 

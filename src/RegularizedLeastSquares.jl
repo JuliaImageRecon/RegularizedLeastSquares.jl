@@ -12,6 +12,7 @@ using ProgressMeter
 export createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
 
 abstract type AbstractLinearSolver end
+const Trafo = Union{AbstractMatrix, AbstractLinearOperator, Nothing}
 
 # Fallback function
 setlambda(S::AbstractMatrix, λ::Real) = nothing

@@ -28,8 +28,7 @@ Solve the problem: X = arg min_x 1/2*|| Ax-b||² + λ*g(X) where:
    g(X): a convex but not necessarily a smooth function
 """
 function fista1(A, b::Vector{T}, reg::Regularization
-                ; sparseTrafo=nothing
-                , startVector=nothing
+                ; startVector=nothing
                 , iterations::Int64=50
                 , ρ::Float64=1.0
                 , t::Float64=1.0
@@ -55,14 +54,7 @@ function fista1(A, b::Vector{T}, reg::Regularization
 
     x[:] = x[:] - ρ* (A' * res)
 
-    if sparseTrafo != nothing
-      xˢᵖᵃʳˢᵉ = sparseTrafo*x[:]
-      reg.prox!(xˢᵖᵃʳˢᵉ, ρ*reg.λ; reg.params...)
-      x = sparseTrafo\xˢᵖᵃʳˢᵉ[:]
-    else
-      reg.prox!(x, ρ*reg.λ; reg.params...)
-    end
-
+    reg.prox!(x, ρ*reg.λ; reg.params...)
 
     tᵒˡᵈ = t
 
@@ -87,7 +79,6 @@ end
 # does not contain a stopping condition
 function fista2(A, b::Vector{T}, reg::Regularization
                 ; AHA=nothing
-                , sparseTrafo=nothing
                 , startVector=nothing
                 , iterations::Int64=50
                 , ρ::Float64=1.0
@@ -118,13 +109,7 @@ function fista2(A, b::Vector{T}, reg::Regularization
 
     x[:] = x[:] - ρ*(op*x-β)
 
-    if sparseTrafo != nothing
-      xˢᵖᵃʳˢᵉ = sparseTrafo*x[:]
-      reg.prox!(xˢᵖᵃʳˢᵉ, ρ*reg.λ)
-      x = sparseTrafo\xˢᵖᵃʳˢᵉ[:]
-    else
-      reg.prox!(x, ρ*reg.λ)
-    end
+    reg.prox!(x, ρ*reg.λ)
 
     tᵒˡᵈ = t
 
