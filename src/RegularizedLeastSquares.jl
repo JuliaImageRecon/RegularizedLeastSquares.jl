@@ -8,6 +8,7 @@ import LinearAlgebra: BlasFloat, normalize!, norm, rmul!, lmul!
 using LinearOperators
 using SparseArrays
 using ProgressMeter
+using IterativeSolvers
 
 export createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
 
@@ -33,7 +34,7 @@ include("Utils.jl")
 include("Kaczmarz.jl")
 include("DAX.jl")
 include("CGNR.jl")
-include("CG.jl")
+# include("CG.jl")
 include("Direct.jl")
 include("FusedLasso.jl")
 include("FISTA.jl")

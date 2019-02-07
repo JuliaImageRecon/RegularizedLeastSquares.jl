@@ -8,10 +8,6 @@ end
 
 ADMM(A, regularization; kargs...) = ADMM(A,regularization,kargs)
 
-# function solve(solver::ADMM, b::Vector)
-#   return admm(solver.A, b, solver.regularizer; solver.params...)
-# end
-
 function solve(solver::ADMM, b::Vector)
   if get(solver.params, :accelerate, false)
     return fadmm(solver.A, b, solver.regularizer; solver.params...)
@@ -37,7 +33,7 @@ end
 """
 function admm(A, b::Vector, reg::Regularization
               ; AHA=nothing
-              , precon=nothing
+              , precon=Identity()
               , startVector=nothing
               , iterations::Int64=50
               , iterationsInner::Int64=10
@@ -75,11 +71,7 @@ function admm(A, b::Vector, reg::Regularization
     # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 ||x+u-z||²
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
     xᵒˡᵈ[:] = x[:]
-    if precon != nothing
-      x[:] = cg(op, x, β+ρ*(z-u), precon, iterations=iterationsInner )
-    else
-      x[:] = cg(op, x, β+ρ*(z-u), iterations=iterationsInner)
-    end
+    cg!(x,op,β+ρ*(z-u),Pl=precon,maxiter=iterationsInner)
 
     # 2. update z using the proximal map of 1/ρ*g(x)
     zᵒˡᵈ[:] = z
@@ -109,6 +101,7 @@ end
 # fast version which emplois a Nesterov-type acceleration
 function fadmm(A, b::Vector, reg::Regularization
               ; AHA=nothing
+              , precon=Identity()
               , startVector=nothing
               , iterations::Int64=50
               , iterationsInner::Int64=10
@@ -119,6 +112,7 @@ function fadmm(A, b::Vector, reg::Regularization
               , solverInfo = nothing
               , kargs...)
 
+  σᵃᵇˢ = sqrt(length(b))*ɛᵃᵇˢ
   # initialize x, u and z
   x = zeros(eltype(b),size(A,2))
   if startVector == nothing
@@ -150,7 +144,8 @@ function fadmm(A, b::Vector, reg::Regularization
     # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 ||x+û-ẑ||²
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
     xᵒˡᵈ[:] = x[:]
-    x[:] = cg(op, x,  β+ρ*(ẑ-û), iterations=iterationsInner)
+    # x[:] = cg(op, x,  β+ρ*(ẑ-û), iterations=iterationsInner)
+    cg!(x,op,β+ρ*(ẑ-û),Pl=precon,maxiter=iterationsInner)
 
     # 2. update z using the proximal map of 1/ρ*g(x)
     zᵒˡᵈ[:] = z

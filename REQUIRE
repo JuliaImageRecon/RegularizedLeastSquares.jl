@@ -4,3 +4,4 @@ FFTW
 LinearOperators
 Wavelets
 ProgressMeter
+IterativeSolvers
