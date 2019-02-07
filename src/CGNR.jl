@@ -10,7 +10,7 @@ end
 CGNR(A, reg; kargs...) = CGNR(A,reg,kargs)
 
 function solve(solver::CGNR, u::Vector)
-  return cgnr(solver.A, u; lambd=solver.reg.λ, solver.params... )
+  return cgnr(solver.A, u; λ=solver.reg.λ, solver.params... )
 end
 
 
@@ -19,7 +19,7 @@ end
 This funtion implements the cgnr algorithm.
 """
 function cgnr(S, u::Vector{T};
-iterations = 10, lambd::Real = 0.0, startVector = nothing, weights = nothing,
+iterations = 10, λ::Real = 0.0, startVector = nothing, weights = nothing,
 enforceReal = false, enforcePositive = false, sparseTrafo = nothing,
 solverInfo = nothing, kargs... ) where T
   N = size(S,2)
@@ -39,7 +39,7 @@ solverInfo = nothing, kargs... ) where T
   βl = zero(T)        #temporary scalar
   ζl = zero(T)        #temporary scalar
 
-  reg = getRegularization("L2", lambd)
+  reg = getRegularization("L2", λ)
 
   #pre iteration
   #rl = u - Sᵗ*cl
@@ -66,7 +66,7 @@ solverInfo = nothing, kargs... ) where T
     # αl = zlᴴ⋅zl/(vlᴴ⋅vl+λ*plᴴ⋅pl)
     ζl = norm(zl)^2
     normvl = weights == nothing ? dot(vl,vl) : dot(vl,weights.*vl)
-    lambd > 0 ? αl = ζl/(normvl+lambd*norm(pl)^2) : αl = ζl/normvl
+    λ > 0 ? αl = ζl/(normvl+λ*norm(pl)^2) : αl = ζl/normvl
 
     #cl += αl*pl
     BLAS.axpy!(αl,pl,cl)
@@ -79,7 +79,7 @@ solverInfo = nothing, kargs... ) where T
     #rl += -αl*vl
     BLAS.axpy!(-αl,vl,rl)
 
-    #zl = Sᶜ*rl-lambd*cl
+    #zl = Sᶜ*rl-λ*cl
     if weights != nothing
       xl = rl .* weights
       ##gemv!('C',one(T), S, xl, zero(T), zl)
@@ -88,8 +88,8 @@ solverInfo = nothing, kargs... ) where T
       ##gemv!('C',one(T), S, rl, zero(T), zl)
       zl[:] = adjoint(S)*rl
     end
-    if lambd > 0
-      BLAS.axpy!(-lambd,cl,zl)
+    if λ > 0
+      BLAS.axpy!(-λ,cl,zl)
     end
 
     # βl = zl₊₁ᴴ⋅zl₊₁/zlᴴ⋅zl

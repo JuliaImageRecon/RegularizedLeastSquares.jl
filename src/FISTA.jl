@@ -32,7 +32,7 @@ function fista1(A, b::Vector{T}, reg::Regularization
                 , iterations::Int64=50
                 , ρ::Float64=1.0
                 , t::Float64=1.0
-                , ɛ::Float64=1.e-4
+                , relTol::Float64=1.e-4
                 , solverInfo = nothing
                 , kargs...) where T
 
@@ -69,7 +69,7 @@ function fista1(A, b::Vector{T}, reg::Regularization
     # exit if objective functional changes by less then ɛ
     costFuncOld = costFunc
     costFunc = 0.5*norm(res)^2+regNorm
-    abs(costFunc-costFuncOld)/costFuncOld < ɛ && return x
+    abs(costFunc-costFuncOld)/costFuncOld < relTol && return x
   end
 
   return x

@@ -7,7 +7,8 @@ function cg(A
             , x::Vector
             , b::Vector
             ; iterations::Int = 30
-            , solverInfo = nothing)
+            , absTol = 1e-10
+            , solverInfo = nothing )
 
   r = b-A*x
   p = r
@@ -25,7 +26,7 @@ function cg(A
     BLAS.axpy!(-alpha,Ap,r)
     #r = r-alpha*Ap
     rsnew = BLAS.dotc(r,r)
-    if sqrt(abs(rsnew))<1e-10
+    if sqrt(abs(rsnew))<absTol
       break
     end
 
@@ -47,6 +48,7 @@ function cg(A
             , b::Vector
             , M
             ; iterations::Int = 30
+            , absTol = 1e-10
             , solverInfo = nothing)
 
   r = b-A*x
@@ -68,7 +70,7 @@ function cg(A
     z = M*r
 
     rsnew = BLAS.dotc(z,r)
-    if sqrt(abs(rsnew))<1e-10
+    if sqrt(abs(rsnew))<absTol
       break
     end
 

@@ -9,7 +9,7 @@ end
 Kaczmarz(A, reg; kargs...) = Kaczmarz(A,reg,kargs)
 
 function solve(solver::Kaczmarz, u::Vector)
-  return kaczmarz(solver.A, u; lambd=solver.reg.λ, solver.params... )
+  return kaczmarz(solver.A, u; λ=solver.reg.λ, solver.params... )
 end
 
 ### initkaczmarz ###
@@ -81,7 +81,7 @@ This funtion implements the kaczmarz algorithm.
 
 ### Keyword/Optional Arguments
 
-* `lambd::Float64`: The regularization parameter, relative to the matrix trace
+* `λ::Float64`: The regularization parameter, relative to the matrix trace
 * `iterations::Int`: Number of iterations of the iterative solver
 * `solver::AbstractString`: Algorithm used to solve the imaging equation (currently "kaczmarz" or "cgnr")
 * `normWeights::Bool`: Enable row normalization (true/false)
@@ -91,20 +91,20 @@ This funtion implements the kaczmarz algorithm.
 * `enforcePositive::Bool`: Enable projection of solution onto positive halfplane during iteration.
 """
 function kaczmarz(S, u::Vector;
- iterations=10, lambd=0.0, weights=nothing, enforceReal=false, enforcePositive=false, sparseTrafo=nothing, startVector=nothing, solverInfo=nothing, kargs...)
+ iterations=10, λ=0.0, weights=nothing, enforceReal=false, enforcePositive=false, sparseTrafo=nothing, startVector=nothing, solverInfo=nothing, kargs...)
   T = typeof(real(u[1]))
-  lambd = convert(T,lambd)
+  λ = convert(T,λ)
   weights==nothing ? weights=ones(T,size(S,1)) : nothing #search for positive solution as default
   startVector==nothing ? startVector=zeros(typeof(u[1]),size(S,2)) : nothing
-  return kaczmarz(S, u, startVector, iterations, lambd, weights, enforceReal, enforcePositive, sparseTrafo, solverInfo)
+  return kaczmarz(S, u, startVector, iterations, λ, weights, enforceReal, enforcePositive, sparseTrafo, solverInfo)
 end
 
-function kaczmarz(S, u::Vector{T}, startVector, iterations, lambd, weights, enforceReal,
+function kaczmarz(S, u::Vector{T}, startVector, iterations, λ, weights, enforceReal,
             enforcePositive, sparseTrafo, solverInfo) where T
   # fast implementation of kaczmarz using SIMD instructions
   M::Int64 = size(S,1)      #number of rows of system matrix
   N::Int64 = size(S,2)      #number of cols of system matrix
-  denom, rowindex = initkaczmarz(S,lambd,weights) #denom necessary to update αl, if rownorm ≠ 0. rowindex contains the indeces of nonzero rows.
+  denom, rowindex = initkaczmarz(S,λ,weights) #denom necessary to update αl, if rownorm ≠ 0. rowindex contains the indeces of nonzero rows.
   rowIndexCycle = collect(1:length(rowindex))
 
   cl = startVector     #solution vector
@@ -113,10 +113,10 @@ function kaczmarz(S, u::Vector{T}, startVector, iterations, lambd, weights, enfo
   ɛw = zeros(T,length(rowindex))
   for i=1:length(rowindex)
     j = rowindex[i]
-    ɛw[i] = sqrt(lambd)/weights[j]
+    ɛw[i] = sqrt(λ)/weights[j]
   end
 
-  reg = getRegularization("L2", lambd)
+  reg = getRegularization("L2", λ)
 
   for l=1:iterations
     for i in rowIndexCycle

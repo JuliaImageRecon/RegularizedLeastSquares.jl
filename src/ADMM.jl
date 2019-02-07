@@ -33,17 +33,18 @@ end
 """
 function admm(A, b::Vector, reg::Regularization
               ; AHA=nothing
+              , ρ::Float64=1.e-2
               , precon=Identity()
               , startVector=nothing
               , iterations::Int64=50
               , iterationsInner::Int64=10
-              , ρ::Float64=1.e-2
-              , ɛᵃᵇˢ::Float64=1.e-8
-              , ɛʳᵉˡ::Float64=1.e-6
+              , absTol::Float64=1.e-8
+              , relTol::Float64=1.e-6
+              , tolInner::Float64=1.e-3
               , solverInfo = nothing
               , kargs...)
 
-  σᵃᵇˢ = sqrt(length(b))*ɛᵃᵇˢ
+  σᵃᵇˢ = sqrt(length(b))*absTol # rescaled tolerance
   # initialize x, u and z
   x = zeros(eltype(b),size(A,2))
   z = zeros(eltype(x), size(x))
@@ -71,7 +72,7 @@ function admm(A, b::Vector, reg::Regularization
     # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 ||x+u-z||²
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
     xᵒˡᵈ[:] = x[:]
-    cg!(x,op,β+ρ*(z-u),Pl=precon,maxiter=iterationsInner)
+    cg!(x,op,β+ρ*(z-u),Pl=precon,maxiter=iterationsInner,tol=tolInner)
 
     # 2. update z using the proximal map of 1/ρ*g(x)
     zᵒˡᵈ[:] = z
@@ -84,10 +85,10 @@ function admm(A, b::Vector, reg::Regularization
     solverInfo != nothing && storeInfo(solverInfo,A,b,x;xᵒˡᵈ=xᵒˡᵈ,reg=[reg])
 
     # exit if residual is below tolerance
-    rᵏ = norm(x-z)
-    ɛᵖʳⁱ = σᵃᵇˢ + ɛʳᵉˡ*max( norm(x), norm(z) );
-    sᵏ = norm(ρ * (z - zᵒˡᵈ))
-    ɛᴰᵘᵃˡ = σᵃᵇˢ + ɛʳᵉˡ*norm(ρ*u);
+    rᵏ = norm(x-z)  # primal residual (x-z)
+    ɛᵖʳⁱ = σᵃᵇˢ + relTol*max( norm(x), norm(z) );
+    sᵏ = norm(ρ * (z - zᵒˡᵈ)) # dual residual (concerning f(x))
+    ɛᴰᵘᵃˡ = σᵃᵇˢ + relTol*norm(ρ*u);
 
     if (rᵏ < ɛᵖʳⁱ) && (sᵏ < ɛᴰᵘᵃˡ)
       @info "ADMM converged at iteration $(k)"
@@ -100,19 +101,21 @@ end
 
 # fast version which emplois a Nesterov-type acceleration
 function fadmm(A, b::Vector, reg::Regularization
-              ; AHA=nothing
+              ; ρ::Float64=1.e-2
+              , AHA=nothing
               , precon=Identity()
               , startVector=nothing
               , iterations::Int64=50
               , iterationsInner::Int64=10
-              , ρ::Float64=1.e-2
-              , η::Float64=0.999
-              , ɛᵃᵇˢ::Float64=1.e-8
-              , ɛʳᵉˡ::Float64=1.e-6
+              , absTol::Float64=1.e-8
+              , relTol::Float64=1.e-6
+              , tolInner::Float64=1.e-3
               , solverInfo = nothing
               , kargs...)
 
-  σᵃᵇˢ = sqrt(length(b))*ɛᵃᵇˢ
+  σᵃᵇˢ = sqrt(length(b))*absTol # rescaled tolerance
+  η=0.999 # parameter for restart criterion
+
   # initialize x, u and z
   x = zeros(eltype(b),size(A,2))
   if startVector == nothing
@@ -145,7 +148,7 @@ function fadmm(A, b::Vector, reg::Regularization
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
     xᵒˡᵈ[:] = x[:]
     # x[:] = cg(op, x,  β+ρ*(ẑ-û), iterations=iterationsInner)
-    cg!(x,op,β+ρ*(ẑ-û),Pl=precon,maxiter=iterationsInner)
+    cg!(x,op,β+ρ*(ẑ-û),Pl=precon,maxiter=iterationsInner,tol=tolInner)
 
     # 2. update z using the proximal map of 1/ρ*g(x)
     zᵒˡᵈ[:] = z
@@ -176,10 +179,10 @@ function fadmm(A, b::Vector, reg::Regularization
     solverInfo != nothing && storeInfo(solverInfo,A,b,x;xᵒˡᵈ=xᵒˡᵈ,reg=[reg])
 
     # exit if residual is below tolerance
-    rᵏ = norm(x-z)
-    ɛᵖʳⁱ = σᵃᵇˢ + ɛʳᵉˡ*max( norm(x), norm(z) );
-    sᵏ = norm(ρ * (z - zᵒˡᵈ))
-    ɛᴰᵘᵃˡ = σᵃᵇˢ + ɛʳᵉˡ*norm(ρ*u);
+    rᵏ = norm(x-z)  # primal residual (x-z)
+    ɛᵖʳⁱ = σᵃᵇˢ + relTol*max( norm(x), norm(z) );
+    sᵏ = norm(ρ * (z - zᵒˡᵈ)) # dual residual (concerning f(x))
+    ɛᴰᵘᵃˡ = σᵃᵇˢ + relTol*norm(ρ*u);
     if (rᵏ < ɛᵖʳⁱ) && (sᵏ < ɛᴰᵘᵃˡ)
       @info "FADMM converged at iteration $(k)"
       break;
