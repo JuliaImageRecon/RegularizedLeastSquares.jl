@@ -41,6 +41,7 @@ function admm(A, b::Vector, reg::Regularization
               , absTol::Float64=1.e-8
               , relTol::Float64=1.e-6
               , tolInner::Float64=1.e-3
+              , adaptRho::Bool=false
               , solverInfo = nothing
               , kargs...)
 
@@ -72,7 +73,8 @@ function admm(A, b::Vector, reg::Regularization
     # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 ||x+u-z||²
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
     xᵒˡᵈ[:] = x[:]
-    cg!(x,op,β+ρ*(z-u),Pl=precon,maxiter=iterationsInner,tol=tolInner)
+    # cg!(x,op,β+ρ*(z-u),Pl=precon,maxiter=iterationsInner,tol=tolInner)
+    cg!(x,A'*A+ρ*opEye(length(x)),β+ρ*(z-u),Pl=precon,maxiter=iterationsInner,tol=tolInner)
 
     # 2. update z using the proximal map of 1/ρ*g(x)
     zᵒˡᵈ[:] = z
@@ -94,6 +96,17 @@ function admm(A, b::Vector, reg::Regularization
       @info "ADMM converged at iteration $(k)"
       break;
     end
+
+    # adapt ρ to given residuals
+    if adaptRho
+      τ=2.0
+      μ=10.0
+      if rᵏ > μ*sᵏ
+        ρ = τ*ρ
+      elseif sᵏ > μ*rᵏ
+        ρ = ρ/τ
+      end
+    end
   end
 
   return x
@@ -110,6 +123,7 @@ function fadmm(A, b::Vector, reg::Regularization
               , absTol::Float64=1.e-8
               , relTol::Float64=1.e-6
               , tolInner::Float64=1.e-3
+              , adaptRho::Bool=false
               , solverInfo = nothing
               , kargs...)
 
@@ -148,7 +162,8 @@ function fadmm(A, b::Vector, reg::Regularization
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
     xᵒˡᵈ[:] = x[:]
     # x[:] = cg(op, x,  β+ρ*(ẑ-û), iterations=iterationsInner)
-    cg!(x,op,β+ρ*(ẑ-û),Pl=precon,maxiter=iterationsInner,tol=tolInner)
+    # cg!(x,op,β+ρ*(ẑ-û),Pl=precon,maxiter=iterationsInner,tol=tolInner)
+    cg!(x,A'*A+ρ*opEye(length(x)),β+ρ*(ẑ-û),Pl=precon,maxiter=iterationsInner,tol=tolInner)
 
     # 2. update z using the proximal map of 1/ρ*g(x)
     zᵒˡᵈ[:] = z
@@ -186,6 +201,17 @@ function fadmm(A, b::Vector, reg::Regularization
     if (rᵏ < ɛᵖʳⁱ) && (sᵏ < ɛᴰᵘᵃˡ)
       @info "FADMM converged at iteration $(k)"
       break;
+    end
+
+    # adapt ρ to given residuals
+    if adaptRho
+      τ=2.0
+      μ=10.0
+      if rᵏ > μ*sᵏ
+        ρ = τ*ρ
+      elseif sᵏ > μ*rᵏ
+        ρ = ρ/τ
+      end
     end
   end
 
