@@ -74,7 +74,12 @@ function admm(A, b::Vector, reg::Regularization
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
     xᵒˡᵈ[:] = x[:]
     # cg!(x,op,β+ρ*(z-u),Pl=precon,maxiter=iterationsInner,tol=tolInner)
-    cg!(x,A'*A+ρ*opEye(length(x)),β+ρ*(z-u),Pl=precon,maxiter=iterationsInner,tol=tolInner)
+    # cg!(x,A'*A+ρ*opEye(length(x)),β+ρ*(z-u),Pl=precon,maxiter=iterationsInner,tol=tolInner)
+    if isa(precon, Identity)
+      x[:] = cg(A'*A+ρ*opEye(length(x)),x,β+ρ*(z-u),iterations=iterationsInner,relTol=tolInner)
+    else
+      x[:] = cg(A'*A+ρ*opEye(length(x)),x,β+ρ*(z-u),precon,iterations=iterationsInner,relTol=tolInner)
+    end
 
     # 2. update z using the proximal map of 1/ρ*g(x)
     zᵒˡᵈ[:] = z
