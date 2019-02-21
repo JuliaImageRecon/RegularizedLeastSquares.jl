@@ -27,7 +27,7 @@ end
 """
  create a Regularization object containing all the infos necessary to calculate a proximal map
 """
-function getRegularization(name::String, λ::Float64; kargs...)
+function getRegularization(name::String, λ::Float; kargs...)
   if name=="L2"
     return Regularization(proxL2!, normL2, λ, kargs)
   elseif name=="L1"
