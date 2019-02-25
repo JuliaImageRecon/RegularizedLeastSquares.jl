@@ -10,10 +10,11 @@ mutable struct SolverInfo
   relSolutionChange::Vector{Float64}
   nrmse::Vector{Float64}
   x_ref::Union{Vector,Nothing}
+  iterations::Union{Vector,Nothing}
 end
 
 function SolverInfo(x_ref::Union{Vector,Nothing}=nothing;kargs...)
-  SolverInfo(Vector{Float64}(),Vector{Float64}(),Vector{Float64}(),Vector{Float64}(),x_ref)
+  SolverInfo(Vector{Float64}(),Vector{Float64}(),Vector{Float64}(),Vector{Float64}(),x_ref,Vector{Int64}())
 end
 
 function storeInfo(solverinfo::Nothing, res, x)
@@ -43,6 +44,12 @@ function storeInfo(solverInfo::SolverInfo,A,y::Vector{U},x::Vector{U};xᵒˡᵈ:
   if solverInfo.x_ref != nothing
     nrmse = nrmsd(solverInfo.x_ref,x)
     push!(solverInfo.nrmse, nrmse)
+  end
+end
+
+function storeIter(solverInfo::SolverInfo, iterations::Int64)
+  if solverInfo.iterations != nothing
+    push!(solverInfo.iterations, iterations)
   end
 end
 

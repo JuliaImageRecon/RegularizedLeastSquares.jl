@@ -8,13 +8,15 @@ function cg(A
             , b::Vector
             ; iterations::Int = 30
             , relTol = 1.e-3
-            , solverInfo = nothing )
+            , solverInfo = nothing
+            , storeIterations::Bool=false )
 
   r = b-A*x
   p = r
   rsold = BLAS.dotc(r,r)
   rsnew = rsold
-  r0= sqrt(abs(rsold))
+  r0= norm(b)
+  iter_conv = iterations
 
   for i=1:iterations
     Ap = A*p
@@ -28,6 +30,7 @@ function cg(A
     #r = r-alpha*Ap
     rsnew = BLAS.dotc(r,r)
     if sqrt(abs(rsnew))/r0<relTol
+      iter_conv = i
       break
     end
 
@@ -36,8 +39,13 @@ function cg(A
     rsold = rsnew
   end
 
-  solverInfo != nothing && storeInfo(solverInfo,A,b,x;residual=rsnew)
-
+  if solverInfo != nothing
+    if storeIterations
+      storeIter(solverInfo,iter_conv)
+    else
+      storeInfo(solverInfo,A,b,x;residual=rsnew)
+    end
+  end
   return x
 end
 
@@ -50,14 +58,16 @@ function cg(A
             , M
             ; iterations::Int = 30
             , relTol = 1.e-3
-            , solverInfo = nothing)
+            , solverInfo = nothing
+            , storeIterations::Bool=false )
 
   r = b-A*x
   z = M*r
   p = z
   rsold = BLAS.dotc(z,r) # r^T * z
   rsnew = rsold
-  r0= sqrt(abs(rsold))
+  r0= norm(b)
+  iter_conv = iterations
 
   for i=1:iterations
     Ap = A*p
@@ -73,6 +83,7 @@ function cg(A
 
     rsnew = BLAS.dotc(z,r)
     if sqrt(abs(rsnew))/r0<relTol
+      iter_conv = i
       break
     end
 
@@ -81,7 +92,13 @@ function cg(A
     rsold = rsnew
   end
 
-  solverInfo != nothing && storeInfo(solverInfo,A,b,x;residual=rsnew)
+  if solverInfo != nothing
+    if storeIterations
+      storeIter(solverInfo,iter_conv)
+    else
+      storeInfo(solverInfo,A,b,x;residual=rsnew)
+    end
+  end
 
   return x
 end

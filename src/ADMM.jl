@@ -73,12 +73,11 @@ function admm(A, b::Vector, reg::Regularization
     # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 ||x+u-z||²
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
     xᵒˡᵈ[:] = x[:]
-    # cg!(x,op,β+ρ*(z-u),Pl=precon,maxiter=iterationsInner,tol=tolInner)
     # cg!(x,A'*A+ρ*opEye(length(x)),β+ρ*(z-u),Pl=precon,maxiter=iterationsInner,tol=tolInner)
     if isa(precon, Identity)
-      x[:] = cg(A'*A+ρ*opEye(length(x)),x,β+ρ*(z-u),iterations=iterationsInner,relTol=tolInner)
+      x[:] = cg(A'*A+ρ*opEye(length(x)),x,β+ρ*(z-u),iterations=iterationsInner,relTol=tolInner,solverInfo=solverInfo,storeIterations=true)
     else
-      x[:] = cg(A'*A+ρ*opEye(length(x)),x,β+ρ*(z-u),precon,iterations=iterationsInner,relTol=tolInner)
+      x[:] = cg(A'*A+ρ*opEye(length(x)),x,β+ρ*(z-u),precon,iterations=iterationsInner,relTol=tolInner,solverInfo=solverInfo,storeIterations=true)
     end
 
     # 2. update z using the proximal map of 1/ρ*g(x)
@@ -166,9 +165,12 @@ function fadmm(A, b::Vector, reg::Regularization
     # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 ||x+û-ẑ||²
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
     xᵒˡᵈ[:] = x[:]
-    # x[:] = cg(op, x,  β+ρ*(ẑ-û), iterations=iterationsInner)
-    # cg!(x,op,β+ρ*(ẑ-û),Pl=precon,maxiter=iterationsInner,tol=tolInner)
-    cg!(x,A'*A+ρ*opEye(length(x)),β+ρ*(ẑ-û),Pl=precon,maxiter=iterationsInner,tol=tolInner)
+    # cg!(x,A'*A+ρ*opEye(length(x)),β+ρ*(ẑ-û),Pl=precon,maxiter=iterationsInner,tol=tolInner)
+    if isa(precon, Identity)
+      x[:] = cg(A'*A+ρ*opEye(length(x)),x,β+ρ*(z-u),iterations=iterationsInner,relTol=tolInner,solverInfo=solverInfo)
+    else
+      x[:] = cg(A'*A+ρ*opEye(length(x)),x,β+ρ*(z-u),precon,iterations=iterationsInner,relTol=tolInner,solverInfo=solverInfo)
+    end
 
     # 2. update z using the proximal map of 1/ρ*g(x)
     zᵒˡᵈ[:] = z
