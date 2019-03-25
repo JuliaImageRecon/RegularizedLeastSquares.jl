@@ -91,21 +91,28 @@ This funtion implements the kaczmarz algorithm.
 * `enforcePositive::Bool`: Enable projection of solution onto positive halfplane during iteration.
 """
 function kaczmarz(S, u::Vector;
- iterations=10, λ=0.0, weights=nothing, enforceReal=false, enforcePositive=false, sparseTrafo=nothing, startVector=nothing, solverInfo=nothing, kargs...)
+ iterations=10, λ=0.0, weights=nothing, enforceReal=false, shuffleRows=false, enforcePositive=false,
+ sparseTrafo=nothing, startVector=nothing, solverInfo=nothing, seed=1234, kargs...)
   T = typeof(real(u[1]))
   λ = convert(T,λ)
   weights==nothing ? weights=ones(T,size(S,1)) : nothing #search for positive solution as default
   startVector==nothing ? startVector=zeros(typeof(u[1]),size(S,2)) : nothing
-  return kaczmarz(S, u, startVector, iterations, λ, weights, enforceReal, enforcePositive, sparseTrafo, solverInfo)
+  return kaczmarz(S, u, startVector, iterations, λ, weights, enforceReal, enforcePositive,
+                  sparseTrafo, solverInfo)
 end
 
 function kaczmarz(S, u::Vector{T}, startVector, iterations, λ, weights, enforceReal,
-            enforcePositive, sparseTrafo, solverInfo) where T
+            enforcePositive, sparseTrafo, solverInfo, shuffleRows=false, seed=1234) where T
   # fast implementation of kaczmarz using SIMD instructions
   M::Int64 = size(S,1)      #number of rows of system matrix
   N::Int64 = size(S,2)      #number of cols of system matrix
   denom, rowindex = initkaczmarz(S,λ,weights) #denom necessary to update αl, if rownorm ≠ 0. rowindex contains the indeces of nonzero rows.
   rowIndexCycle = collect(1:length(rowindex))
+
+  if shuffleRows
+    Random.seed!(seed)
+    shuffle(rowIndexCycle)
+  end
 
   cl = startVector     #solution vector
   vl = zeros(T,M)     #residual vector

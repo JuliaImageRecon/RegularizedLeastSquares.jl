@@ -9,6 +9,7 @@ using LinearOperators
 using SparseArrays
 using ProgressMeter
 using IterativeSolvers
+using Random
 
 export createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
 
