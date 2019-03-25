@@ -68,12 +68,8 @@ All solvers return an approximate solution to STx = u.
 
 Function returns choosen solver.
 """
-function createLinearSolver(solver::AbstractString, A, reg=nothing; lambdL2::Float64=0.0, λ::Float64=0.0, log::Bool=false, kargs...)
-
-  # hack for compatibility with MPIReco.jl -> FIXME
-  if lambdL2 != 0
-     λ = lambdL2
-  end
+function createLinearSolver(solver::AbstractString, A, reg=nothing;
+                lambdL2::Float64=0.0, λ::Float64=lambdL2, log::Bool=false, kargs...)
 
   log ? solverInfo = SolverInfo(;kargs...) : solverInfo=nothing
 
