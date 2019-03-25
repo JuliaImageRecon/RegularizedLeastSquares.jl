@@ -111,7 +111,7 @@ function kaczmarz(S, u::Vector{T}, startVector, iterations, λ, weights, enforce
 
   if shuffleRows
     Random.seed!(seed)
-    shuffle(rowIndexCycle)
+    shuffle!(rowIndexCycle)
   end
 
   cl = startVector     #solution vector
