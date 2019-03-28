@@ -15,6 +15,7 @@ export createLinearSolver, init, deinit, solve, linearSolverList,linearSolverLis
 
 abstract type AbstractLinearSolver end
 const Trafo = Union{AbstractMatrix, AbstractLinearOperator, Nothing}
+const FuncOrNothing = Union{Function, Nothing}
 
 # Fallback function
 setlambda(S::AbstractMatrix, λ::Real) = nothing

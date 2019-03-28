@@ -1,9 +1,11 @@
 using LinearOperators
+import Base: \
 
 include("linearOperators/FFTOp.jl")
 include("linearOperators/DCTOp.jl")
 include("linearOperators/DSTOp.jl")
 include("linearOperators/WaveletOp.jl")
+include("linearOperators/SamplingOp.jl")
 
 export linearOperator, linearOperatorList
 
