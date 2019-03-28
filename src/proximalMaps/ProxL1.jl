@@ -3,7 +3,7 @@ export proxL1!, proxL1, normL1
 """
 soft-thresholding for the Lasso problem.
 """
-function proxL1!(x::Vector{T}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T
+function proxL1!(x::Array{T}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T
   if sparseTrafo != nothing
     z = sparseTrafo*x
   else
@@ -25,7 +25,7 @@ end
 """
 return the value of the L1-regularization term
 """
-function normL1(x::Vector{T}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T
+function normL1(x::Array{T}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T
   if sparseTrafo != nothing
     l1Norm = λ*norm(sparseTrafo*x,1)
   else

@@ -15,7 +15,14 @@ mutable struct Regularization <: AbstractRegularization
   params::Dict{Symbol,Any}
 end
 
-Regularization(;prox = x->x, norm = x->0.0, λ=0.0) = Regularization(prox!,norm,λ,Dict{Symbol,Any}())
+function Regularization(;prox!::Function = x->x, norm::Function = x->0.0, λ::AbstractFloat=0.0, params=nothing)
+  if params != nothing
+    par = params
+  else
+    par = Dict{Symbol,Any}()
+  end
+  Regularization(prox!,norm,λ,par)
+end
 
 """
 Return a list of all available Regularizations
