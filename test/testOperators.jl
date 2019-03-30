@@ -16,7 +16,7 @@ function testDCT1d(N=32)
   @test norm(y1 - y2) / norm(y1) ≈ 0 atol=0.01
 
   x1 = adjoint(D1)*x
-  x2 = D2*x # FIXME: adjoint(D2)*x would be correct
+  x2 = adjoint(D2)*x # D2*x # FIXME: adjoint(D2)*x would be correct
   @test norm(x1 - x2) / norm(x1) ≈ 0 atol=0.01
 end
 
