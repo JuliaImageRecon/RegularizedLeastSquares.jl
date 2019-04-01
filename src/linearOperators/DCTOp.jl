@@ -14,10 +14,11 @@ end
 # Linear Operator to perform a DCT-I
 #
 function DCTOp(T::Type, shape::Tuple)
+  @info "DCTOp"
   return DCTOp{T,Function,Nothing,Function}(prod(shape), prod(shape), true, false
-            , x->vec((dct(reshape(x,shape))))/sqrt(prod(shape)/2.0)
+            , x->vec((dct(reshape(x,shape))))
             , nothing
-            , y->vec((idct(reshape(y,shape)))) * sqrt(prod(shape)/2.0) )
+            , y->vec((idct(reshape(y,shape)))))
 end
 
 \(A::DCTOp, x::Vector) = adjoint(A) * x

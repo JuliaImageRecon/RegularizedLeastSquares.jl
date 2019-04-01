@@ -1,23 +1,18 @@
 function testDCT1d(N=32)
-  Random.seed!(1234)
+  Random.seed!(1235)
   x = zeros(N^2)
   for i=1:5
     x .+= rand()*cos.(rand(1:N^2)*collect(1:N^2))
   end
   D1 = DCTOp(Float64,(N^2,))
-  D2 = zeros(N^2,N^2)
-  D2[:,1]  .= 0.5
-  D2[:,end] .= 0.5*[(-1)^k for k=0:N^2-1]
-  D2[:,2:end-1] .=  [cos(pi/(N^2-1)*j*k) for j=0:N^2-1,k=1:N^2-2]
-  D2 = 2*sqrt(2.0/N^2)*D2
+  D2 = sqrt(2/N^2)*[cos(pi/(N^2)*j*(k+0.5)) for j=0:N^2-1,k=0:N^2-1]
 
   y1 = D1*x
   y2 = D2*x
   @test norm(y1 - y2) / norm(y1) ≈ 0 atol=0.01
 
-  x1 = adjoint(D1)*x
-  x2 = adjoint(D2)*x # D2*x # FIXME: adjoint(D2)*x would be correct
-  @test norm(x1 - x2) / norm(x1) ≈ 0 atol=0.01
+  x1 = adjoint(D1)*y1
+  @test norm(x1 - x) / norm(x) ≈ 0 atol=0.01
 end
 
 function testFFT1d(N=32,shift=true)

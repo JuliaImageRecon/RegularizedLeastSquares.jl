@@ -18,12 +18,12 @@ function FFTOp(T::Type, shape::Tuple, shift=true)
   iplan = plan_ifft(zeros(T, shape);flags=FFTW.MEASURE)
 
   if shift
-    return FFTOp(prod(shape), prod(shape), false, false
+    return FFTOp{T,Function, Nothing,Function}(prod(shape), prod(shape), false, false
               , x->vec(fftshift(plan*fftshift(reshape(x,shape))))/sqrt(prod(shape))
               , nothing
               , y->vec(ifftshift(iplan*ifftshift(reshape(y,shape)))) * sqrt(prod(shape)) )
   else
-    return FFTOp(prod(shape), prod(shape), false, false
+    return FFTOp{T,Function, Nothing,Function}(prod(shape), prod(shape), false, false
             , x->vec(plan*(reshape(x,shape)))/sqrt(prod(shape))
             , nothing
             , y->vec(iplan*(reshape(y,shape))) * sqrt(prod(shape)) )
