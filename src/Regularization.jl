@@ -15,7 +15,7 @@ mutable struct Regularization <: AbstractRegularization
   params::Dict{Symbol,Any}
 end
 
-function Regularization(;prox!::Function = x->x, norm::Function = x->0.0, λ::AbstractFloat=0.0, params=nothing)
+function Regularization(;prox!::Function = x->x, norm::Function = norm0, λ::AbstractFloat=0.0, params=nothing)
   if params != nothing
     par = params
   else
@@ -65,3 +65,5 @@ function normalize!(reg::Regularization, data)
   meanEnergy = norm(data,1)/length(data)
   reg.λ = meanEnergy*reg.λ
 end
+
+norm0(x::Array{T}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T = 0.0

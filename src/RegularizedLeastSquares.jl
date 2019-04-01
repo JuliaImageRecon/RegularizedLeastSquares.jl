@@ -41,6 +41,7 @@ include("Direct.jl")
 include("FusedLasso.jl")
 include("FISTA.jl")
 include("ADMM.jl")
+include("SplitBregman.jl")
 
 """
 Return a list of all available linear solvers
@@ -69,7 +70,7 @@ All solvers return an approximate solution to STx = u.
 
 Function returns choosen solver.
 """
-function createLinearSolver(solver::AbstractString, A, reg=nothing;
+function createLinearSolver(solver::AbstractString, A, reg=nothing, reg2=nothing;
                 lambdL2::Float64=0.0, λ::Float64=lambdL2, log::Bool=false, kargs...)
 
   log ? solverInfo = SolverInfo(;kargs...) : solverInfo=nothing
@@ -96,6 +97,10 @@ function createLinearSolver(solver::AbstractString, A, reg=nothing;
   elseif solver == "admm"
     reg==nothing ? reg = Regularization(;kargs...) : nothing
     return ADMM(A, reg;kargs...)
+  elseif solver == "splitBregman"
+    reg==nothing ? reg = Regularization() : nothing
+    reg2==nothing ? reg2 = Regularization() : nothing
+    return SplitBregman(A,reg,reg2;kargs...)
   else
     error("Solver $solver not found.")
   end
