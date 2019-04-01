@@ -11,13 +11,22 @@ mutable struct DCTOp{T,F1<:FuncOrNothing,F2<:FuncOrNothing,F3<:FuncOrNothing} <:
 end
 
 #
-# Linear Operator to perform a DCT-I
+# Linear Operator to perform a DCT
 #
-function DCTOp(T::Type, shape::Tuple)
-  return DCTOp{T,Function,Nothing,Function}(prod(shape), prod(shape), true, false
+function DCTOp(T::Type, shape::Tuple, dcttype=2)
+  if dcttype == 2
+    return DCTOp{T,Function,Nothing,Function}(prod(shape), prod(shape), true, false
             , x->vec((dct(reshape(x,shape))))
             , nothing
             , y->vec((idct(reshape(y,shape)))))
+  elseif dcttype == 4
+    return DCTOp{T,Function,Function,Nothing}(prod(shape), prod(shape), true, false
+            , x->vec((FFTW.r2r(reshape(x,shape),FFTW.REDFT11).*sqrt(1.0/prod(shape)/2.0)))
+            , x->vec((FFTW.r2r(reshape(x,shape),FFTW.REDFT11).*sqrt(1.0/prod(shape)/2.0)))
+            , nothing )
+  else
+    error("DCT type $(dcttype) not supported")
+  end
 end
 
 \(A::DCTOp, x::Vector) = adjoint(A) * x

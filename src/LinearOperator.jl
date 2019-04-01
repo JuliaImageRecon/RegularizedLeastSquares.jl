@@ -12,16 +12,19 @@ export linearOperator, linearOperatorList
 linearOperator(op::Nothing,shape) = nothing
 
 function linearOperatorList()
-  return ["DCT", "Cheb", "FFT"]
+  return ["DCT-II", "DCT-IV", "FFT"]
 end
 
 function linearOperator(op::AbstractString, shape)
   shape_ = tuple(shape...)
   if op == "FFT"
     trafo = FFTOp(ComplexF32, shape_, false) #FFTOperator(shape)
-  elseif op == "DCT"
+  elseif op == "DCT" || op == "DCT-II"
     shape_ = tuple(shape[shape .!= 1]...)
-    trafo = DCTOp(ComplexF32, shape_)
+    trafo = DCTOp(ComplexF32, shape_, 2)
+  elseif op == "DCT-IV"
+    shape_ = tuple(shape[shape .!= 1]...)
+    trafo = DCTOp(ComplexF32, shape_, 4)
   elseif op == "DST"
     trafo = DSTOp(ComplexF32, shape_)
   elseif op == "Wavelet"

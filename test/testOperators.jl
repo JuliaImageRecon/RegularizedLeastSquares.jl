@@ -1,18 +1,29 @@
 function testDCT1d(N=32)
   Random.seed!(1235)
-  x = zeros(N^2)
+  x = zeros(ComplexF64, N^2)
   for i=1:5
-    x .+= rand()*cos.(rand(1:N^2)*collect(1:N^2))
+    x .+= rand()*cos.(rand(1:N^2)*collect(1:N^2)) .+ 1im*rand()*cos.(rand(1:N^2)*collect(1:N^2))
   end
-  D1 = DCTOp(Float64,(N^2,))
+  D1 = DCTOp(Float64,(N^2,),2)
   D2 = sqrt(2/N^2)*[cos(pi/(N^2)*j*(k+0.5)) for j=0:N^2-1,k=0:N^2-1]
+  D2[1,:] .*= 1/sqrt(2)
+  D3 = DCTOp(Float64,(N^2,),4)
+  D4 = sqrt(2/N^2)*[cos(pi/(N^2)*(j+0.5)*(k+0.5)) for j=0:N^2-1,k=0:N^2-1]
 
   y1 = D1*x
   y2 = D2*x
+
   @test norm(y1 - y2) / norm(y1) ≈ 0 atol=0.01
+  
+  y3 = D3*x
+  y4 = D4*x
+  @test norm(y3 - y4) / norm(y1) ≈ 0 atol=0.01
 
   x1 = adjoint(D1)*y1
   @test norm(x1 - x) / norm(x) ≈ 0 atol=0.01
+
+  x2 = adjoint(D3)*y3
+  @test norm(x2 - x) / norm(x) ≈ 0 atol=0.01
 end
 
 function testFFT1d(N=32,shift=true)
@@ -72,8 +83,8 @@ function testFFT2d(N=32,shift=true)
 end
 
 @testset "Linear Operators" begin
-  @info "test DCT-I"
-  for N in [8,16,32]
+  @info "test DCT-II and DCT-IV"
+  for N in [2,8,16,32]
     testDCT1d(N)
   end
   @info "test FFT"
