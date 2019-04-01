@@ -20,9 +20,10 @@ function DCTOp(T::Type, shape::Tuple, dcttype=2)
             , nothing
             , y->vec((idct(reshape(y,shape)))))
   elseif dcttype == 4
+    factor = sqrt(1.0/(prod(shape)* 2^length(shape)) )
     return DCTOp{T,Function,Function,Nothing}(prod(shape), prod(shape), true, false
-            , x->vec((FFTW.r2r(reshape(x,shape),FFTW.REDFT11).*sqrt(1.0/prod(shape)/2.0)))
-            , x->vec((FFTW.r2r(reshape(x,shape),FFTW.REDFT11).*sqrt(1.0/prod(shape)/2.0)))
+            , x->vec((FFTW.r2r(reshape(x,shape),FFTW.REDFT11).*factor))
+            , x->vec((FFTW.r2r(reshape(x,shape),FFTW.REDFT11).*factor))
             , nothing )
   else
     error("DCT type $(dcttype) not supported")

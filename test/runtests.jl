@@ -3,5 +3,5 @@ using RegularizedLeastSquares, LinearAlgebra, FFTW
 using Random, Test
 
 include("testOperators.jl")
-#include("testProxMaps.jl")
-#include("testSolvers.jl")
+include("testProxMaps.jl")
+include("testSolvers.jl")
