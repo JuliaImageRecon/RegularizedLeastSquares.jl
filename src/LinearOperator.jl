@@ -19,7 +19,7 @@ function linearOperator(op::AbstractString, shape)
   shape_ = tuple(shape...)
   if op == "FFT"
     trafo = FFTOp(ComplexF32, shape_, false) #FFTOperator(shape)
-  elseif op == "DCT" || op == "DCT-II"
+  elseif op == "DCT-II"
     shape_ = tuple(shape[shape .!= 1]...)
     trafo = DCTOp(ComplexF32, shape_, 2)
   elseif op == "DCT-IV"
