@@ -85,7 +85,7 @@ This funtion implements the kaczmarz algorithm.
 * `iterations::Int`: Number of iterations of the iterative solver
 * `solver::AbstractString`: Algorithm used to solve the imaging equation (currently "kaczmarz" or "cgnr")
 * `normWeights::Bool`: Enable row normalization (true/false)
-* `sparseTrafo::AbstractString`: Enable sparseTrafo if set to "DCT" or "FFT".
+* `sparseTrafo::AbstractString`: Enable sparseTrafo if set to "DCT-IV" or "FFT".
 * `shuff::Bool`: Enable shuffeling of rows during iterations in the kaczmarz algorithm.
 * `enforceReal::Bool`: Enable projection of solution on real plane during iteration.
 * `enforcePositive::Bool`: Enable projection of solution onto positive halfplane during iteration.
