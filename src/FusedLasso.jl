@@ -1,9 +1,97 @@
 export FusedLasso
 export fusedlasso
 
+mutable struct FusedLasso{T} <: AbstractLinearSolver
+    # System matrix
+    A::Array{T,2}
+    # Regularizer
+    reg::Vector{Regularization}
+    # Solution
+    x::Vector{T}
+    # Measurement vector
+    b::Vector{T}
+    # 3D dimensions of solution
+    shape::Array{Int64,1}
+    # Row energies of system matrix
+    rowEnergy
+    # user params
+    iterations::Int64
+    nhood::Array{Int64,2}
+    omega::Vector{T}
+    gamma::T
+    lambda::T
+end
+
+function FusedLasso(S::Matrix{T};
+                    λ=[0.0002,0.0016],
+                    shape::Array{Int64,1}=[size(S,2),1,1],
+                    iterations = Int64(50),
+                    directions = 3,
+                    kappa = T(0.5),
+                    gamma = T(10.0^-3),
+                    kargs...) where T
+
+    reg = Regularization(["TV","L1"], λ)
+
+    # Determine direction vectors and weights for proximal mapping
+  	if directions == 3
+              nhood = Int64[1 0 0;0 1 0; 0 0 1]
+              omega = T[1,1,1]
+
+  	elseif directions == 13
+  		 nhood = Int64[
+  		    1 0 0;
+  		    0 1 0;
+  		    0 0 1;
+  		    1 1 0;
+  		    1 -1 0;
+  		    1 0 1;
+  		    1 0 -1;
+  		    0 1 1;
+  		    0 1 -1;
+  		    1 1 1;
+  		    1 1 -1;
+  		    1 -1 -1;
+  		    -1 1 -1
+  		   ]
+  		omega = T[
+  		(2/sqrt(3) - 1)
+  		(2/sqrt(3) - 1)
+  		(2/sqrt(3) - 1)
+  		((3 * sqrt(2) - 2 * sqrt(3)) / 6)
+  		((3 * sqrt(2) - 2 * sqrt(3)) / 6)
+  		((3 * sqrt(2) - 2 * sqrt(3)) / 6)
+  		((3 * sqrt(2) - 2 * sqrt(3)) / 6)
+  		((3 * sqrt(2) - 2 * sqrt(3)) / 6)
+  		((3 * sqrt(2) - 2 * sqrt(3)) / 6)
+  		((3 - 3 * sqrt(2) + sqrt(3)) / 6)
+  		((3 - 3 * sqrt(2) + sqrt(3)) / 6)
+  		((3 - 3 * sqrt(2) + sqrt(3)) / 6)
+  		((3 - 3 * sqrt(2) + sqrt(3)) / 6)
+  		]
+    else
+      @warn "No corresponding neighbourhood for direction number. 3 directions will be used!"
+      nhood = Int64[1 0 0;0 1 0; 0 0 1]
+      omega = T[1,1,1]
+  	end
+
+    # Call constructor interface (function below) and get linear solver object
+    solver = FusedLasso(copy(S), reg,
+               zeros(eltype(S),shape[1]*shape[2]*shape[3]),
+               zeros(eltype(S), div(length(S),shape[1]*shape[2]*shape[3])),shape,
+               zeros(eltype(S),size(S,1)),
+               iterations,nhood,omega,gamma,kappa
+            )
+
+   # Store row energies and normalize rows of system matrix
+   normalize!(solver.A, solver.b, solver.rowEnergy)
+
+   return solver
+end
+
 
 #==============================================================================#
-# Private tools
+# Parameter Settings
 #==============================================================================#
 
 function normalize!(A::Array{T,2},b::Vector{T},energy::Vector{T}) where {T<:Real}
@@ -25,213 +113,38 @@ function normalize!(b::Vector{T},energy::Vector{T}) where T
     end
 end
 
-#==============================================================================#
-# User Parameter
-#==============================================================================#
-
-mutable struct FusedLassoUserParams{T}
-    cached::Bool
-    maxIter::Int64
-    nhood::Array{Int64,2}
-    omega::Vector{T}
-    gamma::T
-    lambda::T
-    alpha::T
-    beta::T
-    lib::AbstractString
-    recompile::Bool
-end
-
-function FusedLassoUserParams(T::Type;
-                                # Flag for using the cached version of fused lasso
-                                cached = false,
-                                # Number of performed iterations
-                                iterations = Int64(50),
-                                # Number of proximal mapping directions
-                                directions = 3,
-                                # Weight for update steps
-                                kappa = T(0.5),
-                                # Weight for proximal mapping
-                                lambdaTV = T(0.0002),
-                                # Weight for soft thresholding
-                                lambdaL1 = T(0.0016),
-                                # Weight for gradient descent step, proximal mapping and soft thresholding
-                                gamma = T(10.0^-3),
-                                # Library for gradient calculation
-                                lib = "",
-                                # Flag to recompile selected gradient library
-                                recompile = false,
-                                # Others
-                                kargs...
-                            )
-
-  # Determine direction vectors and weights for proximal mapping
-	if directions == 3
-            nhood = Int64[1 0 0;0 1 0; 0 0 1]
-            omega = T[1,1,1]
-
-	elseif directions == 13
-		 nhood = Int64[
-		    1 0 0;
-		    0 1 0;
-		    0 0 1;
-		    1 1 0;
-		    1 -1 0;
-		    1 0 1;
-		    1 0 -1;
-		    0 1 1;
-		    0 1 -1;
-		    1 1 1;
-		    1 1 -1;
-		    1 -1 -1;
-		    -1 1 -1
-		   ]
-		omega = T[
-		(2/sqrt(3) - 1)
-		(2/sqrt(3) - 1)
-		(2/sqrt(3) - 1)
-		((3 * sqrt(2) - 2 * sqrt(3)) / 6)
-		((3 * sqrt(2) - 2 * sqrt(3)) / 6)
-		((3 * sqrt(2) - 2 * sqrt(3)) / 6)
-		((3 * sqrt(2) - 2 * sqrt(3)) / 6)
-		((3 * sqrt(2) - 2 * sqrt(3)) / 6)
-		((3 * sqrt(2) - 2 * sqrt(3)) / 6)
-		((3 - 3 * sqrt(2) + sqrt(3)) / 6)
-		((3 - 3 * sqrt(2) + sqrt(3)) / 6)
-		((3 - 3 * sqrt(2) + sqrt(3)) / 6)
-		((3 - 3 * sqrt(2) + sqrt(3)) / 6)
-		]
-        else
-            warn("No corresponding neighbourhood for direction number. 3 directions will be used!")
-            nhood = Int64[1 0 0;0 1 0; 0 0 1]
-            omega = T[1,1,1]
-
-	end
-
-    return FusedLassoUserParams(cached,iterations,nhood,omega,gamma,kappa,T(lambdaTV),T(lambdaL1),lib,recompile)
-end
-
-#==============================================================================#
-# Linear Problem
-#==============================================================================#
-mutable struct FusedLassoProblem{T}
-    # System matrix
-    A::Array{T,2}
-    # Solution
-    x::Vector{T}
-    # Measurement vector
-    b::Vector{T}
-    # 3D dimensions of solution
-    shape::Array{Int64,1}
-end
-
-#==============================================================================#
-# Temp Parameter
-#==============================================================================#
-
-mutable struct FusedLassoTempParams
-    # Row energies of system matrix
-    rowEnergy
-    # Temporary vector
-    y
-end
-
-#==============================================================================#
-# Linear Solver
-#==============================================================================#
-
-mutable struct FusedLasso{T} <: AbstractLinearSolver
-    # Could be linear problem of cached or non cached fused lasso
-    linearProblem::T
-    userParams::FusedLassoUserParams
-    tempParams::FusedLassoTempParams
-end
-
-function FusedLasso(S::Matrix{T}; shape::Array{Int64,1}=[size(S,2),1,1], kwargs...) where T
-    userParams = FusedLassoUserParams(T;kwargs...)
-
-    linearProblem = FusedLassoProblem(copy(S),zeros(eltype(S),shape[1]*shape[2]*shape[3]),
-               zeros(eltype(S), div(length(S),shape[1]*shape[2]*shape[3])),shape)
-
-    # Call constructor interface (function below) and get linear solver object
-    solver = FusedLasso(linearProblem,userParams)
-
-    return solver
-end
-
-
-function FusedLasso(linearProblem,userParams::FusedLassoUserParams)
-
-    # Create object for temporary parameters
-    tempParams = FusedLassoTempParams(
-                     zeros(eltype(linearProblem.A),size(linearProblem.A,1)),
-                     zeros(eltype(linearProblem.x),size(linearProblem.A,linearProblem.shape[1]),
-                                                   size(linearProblem.A,linearProblem.shape[2]),
-                                                   size(linearProblem.A,linearProblem.shape[3]))
-                     )
-
-    # Create linear solver object
-    solver = FusedLasso(
-                 linearProblem,
-                 userParams,
-                 tempParams
-                 )
-
-    # Create shorthand notations for parameters
-    S = solver.linearProblem.A
-    shape = solver.linearProblem.shape
-    u = solver.linearProblem.b
-    energy = solver.tempParams.rowEnergy
-
-    # Store row energies and normalize rows of system matrix
-    normalize!(S,u,energy)
-
-    #linearSolver.linearProblem.x = zeros(eltype(linearSolver.linearProblem.x),shape[1]*shape[2]*shape[3])
-    solver.linearProblem.A = S
-
-    return solver
-end
-
-
-#==============================================================================#
-# Parameter Settings
-#==============================================================================#
-
-function setMeasurement!(linearSolver::FusedLasso,measurement::Vector)
+function setMeasurement!(solver::FusedLasso, measurement::Vector)
    m = copy(measurement)
    # Multiply measurement vector with row energies of system matrix
-   normalize!(m,linearSolver.tempParams.rowEnergy)
+   normalize!(m,solver.rowEnergy)
    # Store result
-   linearSolver.linearProblem.b = m
+   solver.b = m
 end
 
 #==============================================================================#
 # Solve interface
 #==============================================================================#
 
-function solve(linearSolver::FusedLasso, measurement::Vector)
-    setMeasurement!(linearSolver,measurement)
-    solve(linearSolver.linearProblem,linearSolver.userParams,linearSolver.tempParams)
+function solve(solver::FusedLasso, measurement::Vector)
+    setMeasurement!(solver, measurement)
+    solve(solver)
 end
 
-function solve(linearProblem::FusedLassoProblem,userParams::FusedLassoUserParams,tempParams::FusedLassoTempParams)
-      S = linearProblem.A
-      shape = linearProblem.shape
-      linearProblem.x[:] .= 0.0
+function solve(solver::FusedLasso{T}) where T
+      shape = solver.shape
+      solver.x[:] .= 0.0
       #linearProblem.x = zeros(eltype(linearProblem.x),shape[1]*shape[2]*shape[3])
-      linearProblem.x = reshape(fusedlasso(
-                reshape(S,size(S,1),shape[1],shape[2],shape[3]),
-                linearProblem.b,
-                reshape(linearProblem.x,shape[1],shape[2],shape[3]);
-                maxIter=userParams.maxIter,
-                nhood=userParams.nhood,
-                omega=userParams.omega,
-                lambda=userParams.lambda,
-                alpha=userParams.alpha,
-                beta=userParams.beta,
-                gamma=userParams.gamma),
-                shape[1]*shape[2]*shape[3]
-                )
+      solver.x = vec(fusedlasso(
+                reshape(solver.A ,size(solver.A,1),shape[1],shape[2],shape[3]),
+                solver.b,
+                reshape(solver.x,shape[1],shape[2],shape[3]);
+                iterations = solver.iterations,
+                nhood = solver.nhood,
+                omega = solver.omega,
+                lambda = solver.lambda,
+                alpha = T(solver.reg[1].λ),
+                beta = T(solver.reg[2].λ),
+                gamma = solver.gamma)   )
 end
 
 #==============================================================================#
@@ -251,7 +164,7 @@ Base.getindex(R::StartRange,i::Int) = if i==1 R.x elseif i==2 R.y elseif i==3 R.
 """This function implements the base version of fused lasso reconstruction.
 
 ### Keyword/Optional Arguments
-* 'maxIter::Int64' Maximum number of Iterations.
+* 'iterations::Int64' Maximum number of Iterations.
 * 'tol::Float32' Tolerance for the stopping criterion.
 * 'nhood::Array{Int64,N,3}' Neighborhood relationships for tv problem.
 * 'omega::Array{Float32,N}' Vector with weights for the tv results.
@@ -261,7 +174,7 @@ Base.getindex(R::StartRange,i::Int) = if i==1 R.x elseif i==2 R.y elseif i==3 R.
 * 'gamma::Float32' Weight for the gradient descent step.
 """
 function fusedlasso(S::Array{T,4},u::Vector{T},c::Array{T,3};
-  maxIter = Int64(50),
+  iterations = Int64(50),
   tol = T(5.0*10.0^-6),
   nhood = Int64[1 0 0;0 1 0; 0 0 1],
   omega = T[1 1 1],
@@ -285,7 +198,7 @@ function fusedlasso(S::Array{T,4},u::Vector{T},c::Array{T,3};
   zTemp = Array{eltype(yTemp)}(undef, size(yTemp))
 
   @debug "Residuum pre reconstruction: " residuum(S,c,u)
-  for i=1:maxIter
+  for i=1:iterations
 
       # Calculate gradient
       gradientFunc!(c,S,u,y,gamma)
@@ -335,22 +248,6 @@ function gradient_base!(c::Array{T,3},A::Array{T,4},u::Array{T,1},y::Array{T,3},
 
 end
 
-function gradient_base_cached!(c::Array{T,3},ATA::Array{T,2},
-                    ATu::Array{T,1},y::Array{T,3}) where {T<:Real}
-
-  aSize = size(ATA)
-  cSize = size(c)
-  ySize = size(y)
-
-  c = reshape(c,cSize[1]*cSize[2]*cSize[3])
-  y = reshape(y,ySize[1]*ySize[2]*ySize[3])
-
-  BLAS.blascopyto!(length(y),ATu,1,y,1)
-
-  BLAS.symv!('U',one(T),ATA,c,one(T),y)
-
-end
-
 """
 This function performs the proximal mapping.
 """
@@ -362,7 +259,7 @@ function proxmap!(y::Array{T,3},yTemp::Array{T,3},z::Array{T,4},c::Array{T,3},
 
   updateTemp = Array{eltype(y)}(undef, ySize[1]*ySize[2]*ySize[3])
 
-  c=reshape(c,cSize[1]*cSize[2]*cSize[3])
+  c = reshape(c,cSize[1]*cSize[2]*cSize[3])
   y = reshape(y,ySize[1]*ySize[2]*ySize[3])
   yTemp = reshape(yTemp,ySize[1]*ySize[2]*ySize[3])
 
@@ -372,15 +269,15 @@ function proxmap!(y::Array{T,3},yTemp::Array{T,3},z::Array{T,4},c::Array{T,3},
 
       # Solve TV problems
       yTemp = reshape(yTemp,ySize[1],ySize[2],ySize[3])
-      tv_denoise_3d_condat!(yTemp,nhood[s,:],gamma*omega[s]*alpha/t[s])
+      tv_denoise_3d_condat!(yTemp, nhood[s,:], gamma*omega[s]*alpha/t[s])
 
       # Soft thresholding
       softthresh!(yTemp,gamma * beta/(N*t[s]))
 
       # Update step
-      c=reshape(c,cSize[1],cSize[2],cSize[3])
+      c = reshape(c,cSize[1],cSize[2],cSize[3])
       update!(z,s,yTemp,c,lambda)
-      c=reshape(c,cSize[1]*cSize[2]*cSize[3])
+      c = reshape(c,cSize[1]*cSize[2]*cSize[3])
 
   end
 end
@@ -454,7 +351,7 @@ end
 """
 This function performs the 1d tv algorithm.
 """
-function tv_denoise_1d_condat!(c::Array{T,1},width::Int64,lambda::T) where {T<:Real}
+function tv_denoise_1d_condat!(c::Array{T,1},width::Int64,lambda) where {T<:Real}
 
   cLength = width
 
@@ -566,7 +463,7 @@ end
 """
 This function applies soft thresholding on given data y.
 """
-function softthresh!(y::Array{T,3},threshold::T) where {T<:Real}
+function softthresh!(y::Array{T,3}, threshold) where {T<:Real}
 
   ySize = size(y)
   y = reshape(y,ySize[1]*ySize[2]*ySize[3])
@@ -579,7 +476,7 @@ end
 """
 This function performs the update step.
 """
-function update!(z::Array{T,4},s::Int64,y::Array{T,3},c::Array{T,3},lambda::T) where {T<:Real}
+function update!(z::Array{T,4}, s::Int64, y::Array{T,3}, c::Array{T,3}, lambda) where {T<:Real}
   dataSize = size(c)
   flatSize = dataSize[1]*dataSize[2]*dataSize[3];
   y = reshape(y,flatSize)
