@@ -1,7 +1,4 @@
-export Regularization, Regularization, lambdList, prox! #, norm
-
-# deprecate:
-Regularization(args...; kargs...) = Regularization(args...; kargs...)
+export Regularization, lambdList, prox! #, norm
 
 abstract type AbstractRegularization end
 
@@ -15,8 +12,11 @@ mutable struct Regularization <: AbstractRegularization
   prox!::Function
   norm::Function
   λ::Float64
-  params::Dict{Symbol,Any}
+  params::Dict{Symbol,Any}  # @TODO in die funcs
 end
+
+Base.vec(reg::Regularization) = [reg]
+Base.vec(reg::Vector{Regularization}) = reg
 
 function Regularization(;prox!::Function = x->x, norm::Function = norm0,
                          λ::AbstractFloat=0.0, params=Dict{Symbol,Any}())

@@ -6,7 +6,12 @@ mutable struct Kaczmarz <: AbstractLinearSolver
   params
 end
 
-Kaczmarz(A, reg; kargs...) = Kaczmarz(A,reg,kargs)
+function Kaczmarz(A; λ = 0.0, reg = Regularization("L2", λ), kargs...)
+  if (reg.prox!) != (proxL2!)
+    @error "Kaczmarz only supports L2 regularizer"
+  end
+  return Kaczmarz(A,reg,kargs)
+end
 
 function solve(solver::Kaczmarz, u::Vector)
   return kaczmarz(solver.A, u; λ=solver.reg.λ, solver.params... )

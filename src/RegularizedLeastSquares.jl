@@ -70,24 +70,16 @@ All solvers return an approximate solution to STx = u.
 
 Function returns choosen solver.
 """
-createLinearSolver(args...; regName::String = "L2", λ::Float64 = 0.0, kargs...) =
-   createLinearSolver(args...; regName=[regName], λ=[λ], kargs...)
 
-function createLinearSolver(solver::AbstractString, A, reg=nothing, reg2=nothing;
-                            regName::Vector{String}} = "L2"
-                            λ::Vector{Float64} = 0.0,
+function createLinearSolver(solver::AbstractString, A;
                             log::Bool=false, kargs...)
 
   log ? solverInfo = SolverInfo(;kargs...) : solverInfo=nothing
 
-  regu = Regularization(regName, λ; kargs...)
-
   if solver == "kaczmarz"
-    reg =  Regularization("L2",λ)
-    return Kaczmarz(A, reg; kargs...)
+    return Kaczmarz(A; kargs...)
   elseif solver == "cgnr"
-    reg =  Regularization("L2",λ)
-    return CGNR(A, reg; kargs...)
+    return CGNR(A; kargs...)
   elseif solver == "direct"
     return DirectSolver(A; kargs...)
   elseif solver == "daxkaczmarz"
@@ -99,17 +91,14 @@ function createLinearSolver(solver::AbstractString, A, reg=nothing, reg2=nothing
   elseif solver == "fusedlasso"
     return FusedLasso(A; kargs...)
   elseif solver == "fista"
-    reg==nothing ? reg = Regularization(;kargs...) : nothing
-    return FISTA(A, reg;kargs...)
+    return FISTA(A; kargs...)
   elseif solver == "admm"
-    reg==nothing ? reg = Regularization(;kargs...) : nothing
-    return ADMM(A, reg;kargs...)
+    return ADMM(A; kargs...)
   elseif solver == "splitBregman"
-    reg==nothing ? reg = Regularization() : nothing
-    reg2==nothing ? reg2 = Regularization() : nothing
-    return SplitBregman(A,reg,reg2;kargs...)
+    return SplitBregman(A; kargs...)
   else
     error("Solver $solver not found.")
+    return Kaczmarz(A; kargs...)
   end
 end
 

@@ -1,19 +1,23 @@
 export splitBregman
 
+
 mutable struct SplitBregman <: AbstractLinearSolver
   A
-  reg1::Regularization
-  reg2::Regularization
+  reg::Vector{Regularization}
   params
 end
 
-function SplitBregman(A, reg1, reg2=nothing; kargs...)
-  reg2==nothing ? reg2 = Regularization() : nothing
-  return SplitBregman(A,reg1,reg2,kargs)
+function SplitBregman(A; reg=nothing, regName=["L1","TV"], λ=[0.0,0.0], kargs...)
+
+  if reg == nothing
+    reg = Regularization(regName, λ, kargs...)
+  end
+
+  return SplitBregman(A, vec(reg), kargs)
 end
 
 function solve(solver::SplitBregman, b::Vector)
-  return splitBregman(solver.A, b, solver.reg1, solver.reg2; solver.params...)
+  return splitBregman(solver.A, b, solver.reg; solver.params...)
 end
 
 """
@@ -30,7 +34,7 @@ end
   T. Goldstein, S. Osher ,
   The Split Bregman Method for l1 Regularized Problems,
 """
-function splitBregman(A, y::Vector, reg1::Regularization, reg2::Regularization
+function splitBregman(A, y::Vector, reg::Vector{Regularization}
               ; λ::Float64=1.e2
               , μ::Float64=1.e2
               , ρ::Float64=1.e2
@@ -84,21 +88,21 @@ function splitBregman(A, y::Vector, reg1::Regularization, reg2::Regularization
       wᵒˡᵈ[:] .= w
       w[:] .= u .+ bw
       if λ != 0
-        reg1.prox!(w,1.0/λ; reg1.params...)
+        reg[1].prox!(w,1.0/λ; reg[1].params...)
       end
 
       # proximal map for LR regularization
       vᵒˡᵈ .= v
       v[:]  .= u .+ bv
       if ρ != 0
-        reg2.prox!(v,reg2.λ/ρ; reg2.params...)
+        reg[2].prox!(v,reg2.λ/ρ; reg[2].params...)
       end
 
       # update bv and bw
       bv = bv + u -v
       bw = bw + u -w
 
-      solverInfo != nothing && storeInfo(solverInfo,A,y,u;xᵒˡᵈ=uᵒˡᵈ,reg=[reg1,reg2])
+      solverInfo != nothing && storeInfo(solverInfo,A,y,u;xᵒˡᵈ=uᵒˡᵈ,reg=reg)
 
       rk_1 = norm(u-v)
       rk_2 = norm(u-w)

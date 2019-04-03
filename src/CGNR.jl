@@ -7,12 +7,16 @@ mutable struct CGNR <: AbstractLinearSolver
   params
 end
 
-CGNR(A, reg; kargs...) = CGNR(A,reg,kargs)
+function CGNR(A; λ = 0.0, reg = Regularization("L2", λ), kargs...)
+  if (reg.prox!) != (proxL2!)
+    @error "CGNR only supports L2 regularizer"
+  end
+  return CGNR(A,reg,kargs)
+end
 
 function solve(solver::CGNR, u::Vector)
   return cgnr(solver.A, u; λ=solver.reg.λ, solver.params... )
 end
-
 
 
 """
