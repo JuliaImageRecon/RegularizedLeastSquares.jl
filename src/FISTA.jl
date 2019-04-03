@@ -6,7 +6,14 @@ mutable struct FISTA <: AbstractLinearSolver
   params
 end
 
-FISTA(A, regularization; kargs...) = FISTA(A,regularization,kargs)
+function FISTA(A; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
+
+  if reg == nothing
+    reg = Regularization(regName, λ, kargs...)
+  end
+
+  return FISTA(A,vec(reg)[1],kargs)
+end
 
 function solve(solver::FISTA, b::Vector)
   return fista(solver.A, b, solver.regularizer; solver.params...)

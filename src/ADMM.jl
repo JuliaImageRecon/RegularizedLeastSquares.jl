@@ -6,7 +6,14 @@ mutable struct ADMM <: AbstractLinearSolver
   params
 end
 
-ADMM(A, regularization; kargs...) = ADMM(A,regularization,kargs)
+function ADMM(A; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
+
+  if reg == nothing
+    reg = Regularization(regName, λ, kargs...)
+  end
+
+  return ADMM(A,vec(reg)[1],kargs)
+end
 
 function solve(solver::ADMM, b::Vector)
   if get(solver.params, :accelerate, false)

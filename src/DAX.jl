@@ -108,7 +108,7 @@ function daxrand(S::AbstractMatrix{T}, u::Vector, iterations::Int, iterationsInn
     ɛw[i] = sqrt(λ)/weights[j]
   end
 
-  reg = getRegularization("L2", λ)
+  reg = Regularization("L2", λ)
 
   for k=1:iterations #could be replaced by a while loop based on errorbound if smallest singular value of A is known
     # bk = u-S'*zk
@@ -313,7 +313,7 @@ function daxcon(S::AbstractMatrix{T}, u::Vector, B, iterations::Int,
     ɛw[i] = sqrt(λ)/weights[j]
   end
 
-  reg = getRegularization("L2", λ)
+  reg = Regularization("L2", λ)
 
   for k=1:iterations
     # bk = u-S'*zk
@@ -378,7 +378,7 @@ function daxcon(S::AbstractMatrix{T}, u::Vector, B::AbstractMatrix, iterations::
     ɛw[i] = sqrt(λ)/weights[j]
   end
 
-  reg = getRegularization("L2", λ)
+  reg = Regularization("L2", λ)
 
   for k=1:iterations
     # bk = u-S'*zk

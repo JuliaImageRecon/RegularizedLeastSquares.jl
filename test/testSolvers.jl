@@ -49,17 +49,18 @@ end
   F = F[idx,:]
 
   for solver in ["fista","admm"]
-    reg = getRegularization("L1",1.e-3)
+    reg = Regularization("L1",1.e-3)
     solverInfo = SolverInfo()
-    S = createLinearSolver(solver,F,reg; iterations=200, solverInfo=solverInfo)
+    S = createLinearSolver(solver,F; reg=reg, iterations=200, solverInfo=solverInfo)
     x_approx = solve(S, b)
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
     @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
   end
   for solver in ["splitBregman"]
-    reg = getRegularization("L1",1.e-3)
+    reg = Regularization("L1",1.e-3)
     solverInfo = SolverInfo()
-    S = createLinearSolver(solver,F,reg; iterations=5,iterationsInner=40,μ=1.e3,λ=1.e3,ρ=0.0,solverInfo=solverInfo)
+    S = createLinearSolver(solver,F; reg=reg,iterations=5,iterationsInner=40,μ=1.e3,
+                                     λ=1.e3,ρ=0.0,solverInfo=solverInfo)
     x_approx = solve(S, b)
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
     @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
