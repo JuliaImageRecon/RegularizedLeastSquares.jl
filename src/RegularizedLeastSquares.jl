@@ -70,16 +70,23 @@ All solvers return an approximate solution to STx = u.
 
 Function returns choosen solver.
 """
+createLinearSolver(args...; regName::String = "L2", λ::Float64 = 0.0, kargs...) =
+   createLinearSolver(args...; regName=[regName], λ=[λ], kargs...)
+
 function createLinearSolver(solver::AbstractString, A, reg=nothing, reg2=nothing;
-                lambdL2::Float64=0.0, λ::Float64=lambdL2, log::Bool=false, kargs...)
+                            regName::Vector{String}} = "L2"
+                            λ::Vector{Float64} = 0.0,
+                            log::Bool=false, kargs...)
 
   log ? solverInfo = SolverInfo(;kargs...) : solverInfo=nothing
 
+  regu = Regularization(regName, λ; kargs...)
+
   if solver == "kaczmarz"
-    reg =  getRegularization("L2",λ)
+    reg =  Regularization("L2",λ)
     return Kaczmarz(A, reg; kargs...)
   elseif solver == "cgnr"
-    reg =  getRegularization("L2",λ)
+    reg =  Regularization("L2",λ)
     return CGNR(A, reg; kargs...)
   elseif solver == "direct"
     return DirectSolver(A; kargs...)

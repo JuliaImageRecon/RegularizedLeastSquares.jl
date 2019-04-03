@@ -123,7 +123,7 @@ function kaczmarz(S, u::Vector{T}, startVector, iterations, λ, weights, enforce
     ɛw[i] = sqrt(λ)/weights[j]
   end
 
-  reg = getRegularization("L2", λ)
+  reg = Regularization("L2", λ)
 
   for l=1:iterations
     for i in rowIndexCycle

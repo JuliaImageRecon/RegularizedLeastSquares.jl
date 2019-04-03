@@ -1,4 +1,7 @@
-export Regularization, getRegularization, lambdList, prox! #, norm
+export Regularization, Regularization, lambdList, prox! #, norm
+
+# deprecate:
+Regularization(args...; kargs...) = Regularization(args...; kargs...)
 
 abstract type AbstractRegularization end
 
@@ -15,13 +18,9 @@ mutable struct Regularization <: AbstractRegularization
   params::Dict{Symbol,Any}
 end
 
-function Regularization(;prox!::Function = x->x, norm::Function = norm0, λ::AbstractFloat=0.0, params=nothing)
-  if params != nothing
-    par = params
-  else
-    par = Dict{Symbol,Any}()
-  end
-  Regularization(prox!,norm,λ,par)
+function Regularization(;prox!::Function = x->x, norm::Function = norm0,
+                         λ::AbstractFloat=0.0, params=Dict{Symbol,Any}())
+  Regularization(prox!,norm,λ,params)
 end
 
 """
@@ -34,7 +33,7 @@ end
 """
  create a Regularization object containing all the infos necessary to calculate a proximal map
 """
-function getRegularization(name::String, λ::AbstractFloat; kargs...)
+function Regularization(name::String, λ::AbstractFloat; kargs...)
   if name=="L2"
     return Regularization(proxL2!, normL2, λ, kargs)
   elseif name=="L1"
@@ -56,6 +55,19 @@ function getRegularization(name::String, λ::AbstractFloat; kargs...)
   end
 
   return Regularization(proxL2!, normL2, 0.0, kargs)
+end
+
+function Regularization(names::Vector{String},
+                        λ::Vector{Float64}; kargs...)
+  #@Mirco I do not know what to do with kargs here
+  if length(names) != length(λ)
+    @error names " and " λ " need to have the same length "
+  end
+  reg = Regularization[]
+  for l=1:length(names)
+    push!(reg, Regularization(names[l],λ[l]; kargs...))
+  end
+  return reg
 end
 
 ###################

@@ -39,7 +39,7 @@ solverInfo = nothing, kargs... ) where T
   βl = zero(T)        #temporary scalar
   ζl = zero(T)        #temporary scalar
 
-  reg = getRegularization("L2", λ)
+  reg = Regularization("L2", λ)
 
   #pre iteration
   #rl = u - Sᵗ*cl

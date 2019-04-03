@@ -125,20 +125,6 @@ mutable struct FusedLassoProblem{T}
     shape::Array{Int64,1}
 end
 
-mutable struct FusedLassoProblemCached{T}
-    # System matrix
-    A::Array{T,2}
-    # Precalculation for gradient descent step
-    ATA::Array{T,2}
-    # Precalculation for gradient descent step
-    ATb::Vector{T}
-    # Solution vector
-    x::Vector{T}
-    # Measurement vector
-    b::Vector{T}
-    # 3D dimensions of solution
-    shape::Array{Int64,1}
-end
 #==============================================================================#
 # Temp Parameter
 #==============================================================================#
@@ -164,18 +150,8 @@ end
 function FusedLasso(S::Matrix{T}; shape::Array{Int64,1}=[size(S,2),1,1], kwargs...) where T
     userParams = FusedLassoUserParams(T;kwargs...)
 
-    # Create linear problem for cached or non cached fused lasso
-    if userParams.cached == false
-      linearProblem = FusedLassoProblem(copy(S),zeros(eltype(S),shape[1]*shape[2]*shape[3]),zeros(eltype(S), div(length(S),shape[1]*shape[2]*shape[3])),shape)
-    else
-      linearProblem = FusedLassoProblemCached(copy(S),
-                                              zeros(eltype(S),shape[1]*shape[2]*shape[3],shape[1]*shape[2]*shape[3]),
-                                              zeros(eltype(S),shape[1]*shape[2]*shape[3]),
-                                              zeros(eltype(S),shape[1]*shape[2]*shape[3]),
-                                              zeros(eltype(S), div(length(S),shape[1]*shape[2]*shape[3])),
-                                              shape
-                                             )
-    end
+    linearProblem = FusedLassoProblem(copy(S),zeros(eltype(S),shape[1]*shape[2]*shape[3]),
+               zeros(eltype(S), div(length(S),shape[1]*shape[2]*shape[3])),shape)
 
     # Call constructor interface (function below) and get linear solver object
     solver = FusedLasso(linearProblem,userParams)
@@ -213,22 +189,6 @@ function FusedLasso(linearProblem,userParams::FusedLassoUserParams)
     #linearSolver.linearProblem.x = zeros(eltype(linearSolver.linearProblem.x),shape[1]*shape[2]*shape[3])
     solver.linearProblem.A = S
 
-    if solver.userParams.cached == true
-        @debug "Calculating ATA"
-        #=
-	BLAS.gemm!('T','N',
-                   linearSolver.userParams.gamma,
-                   linearSolver.linearProblem.A,
-                   linearSolver.linearProblem.A,
-                   zero(eltype(linearSolver.linearProblem.A)),
-                   linearSolver.linearProblem.ATA)
-        =#
-        BLAS.syrk!('U','T',solver.userParams.gamma,
-                    solver.linearProblem.A,
-                    zero(eltype(solver.linearProblem.A)),
-                    solver.linearProblem.ATA)
-    end
-
     return solver
 end
 
@@ -236,19 +196,6 @@ end
 #==============================================================================#
 # Parameter Settings
 #==============================================================================#
-
-function setParameter!(linearSolver::FusedLasso,parameter::AbstractString,data)
-    if parameter == "iterations"
-    elseif parameter == "directions"
-    elseif parameter == "omega"
-    elseif parameter == "gamma"
-    elseif parameter == "lambd"
-    elseif parameter == "alpha"
-    elseif parameter == "beta"
-    else
-        warn("Invalid parameter: ",parameter)
-    end
-end
 
 function setMeasurement!(linearSolver::FusedLasso,measurement::Vector)
    m = copy(measurement)
@@ -285,24 +232,6 @@ function solve(linearProblem::FusedLassoProblem,userParams::FusedLassoUserParams
                 gamma=userParams.gamma),
                 shape[1]*shape[2]*shape[3]
                 )
-end
-
-function solve(linearProblem::FusedLassoProblemCached,userParams::FusedLassoUserParams,tempParams::FusedLassoTempParams)
-      S = linearProblem.A
-      shape = linearProblem.shape
-      linearProblem.x = reshape(fusedlassoCached(
-                reshape(S,size(S,1),shape[1],shape[2],shape[3]),
-                linearProblem.ATA,
-                linearProblem.b,
-                linearProblem.ATb,
-                reshape(linearProblem.x,shape[1],shape[2],shape[3]);
-                maxIter=userParams.maxIter,
-                nhood=userParams.nhood,
-                omega=userParams.omega,
-                lambda=userParams.lambda,
-                alpha=userParams.alpha,
-                beta=userParams.beta,
-                gamma=userParams.gamma),shape[1]*shape[2]*shape[3])
 end
 
 #==============================================================================#
@@ -382,59 +311,6 @@ function fusedlasso(S::Array{T,4},u::Vector{T},c::Array{T,3};
   return c
 
 end
-
-function fusedlassoCached(S::Array{T,4},STS::Array{T,2},u::Vector{T},STu::Vector{T},c::Array{T,3};
-  maxIter = Int64(50),
-  tol = T(5.0*10.0^-6),
-  nhood = Int64[1 0 0;0 1 0; 0 0 1],
-  omega = T[1 1 1],
-  lambda = T(1),
-  alpha = T(0.000017),
-  beta = T(0.001),
-  gamma = T(10.0^-3),
-  kargs...
-  ) where T
-  gradientFuncCached! = gradient_base_cached!
-
-  cSize = size(c)
-  N = size(collect(omega),1)
-  z = zeros(eltype(c),N+1,cSize[1],cSize[2],cSize[3])
-  y = zeros(eltype(c),cSize[1],cSize[2],cSize[3])
-  t = ones(T,N+1)/(N+1)
-  yTemp = Array{eltype(y)}(size(y))
-  #cOld = copy(c)
-  zTemp = Array{eltype(yTemp)}(size(yTemp))
-
-  @debug "Residuum pre reconstruction: " residuum(S,c,u)
-  #residuum(S,c,u)
-  for i=1:maxIter
-
-      # Calculate gradient
-      gradientFuncCached!(c,STS,STu,y)
-      #gradient!(c,S,u,y,gamma)
-
-      # Proximal mapping
-      proxmap!(y,yTemp,z,c,N,nhood,alpha,beta,gamma,omega,lambda,t)
-
-      # Pointwise maximum
-      pointwise_max!(c,z,N+1,y,yTemp)
-
-      # Update step
-      update!(z,N+1,yTemp,c,lambda)
-
-      # Averaging over single results
-      c = reshape(c,cSize[1],cSize[2],cSize[3])
-      weighted_sum!(t,z,c)
-      # Evaluate stopping criterion
-      #check_stop(cOld,c,tol) && break;
-      #cOld = copy(c)
-
-  end
-  @debug "Residuum post reconstruction: " residuum(S,c,u)
-  return c
-
-end
-
 
 """
 This function calculates the error gradient according to y = γA*(Ac-u).
@@ -834,13 +710,12 @@ function check_stop(cOld::Array{T,3},c::Array{T,3},tol::T) where {T<:Real}
 end
 
 function residuum(A::Array{T,4},c::Array{T,3},u::Array{T,1}) where {T<:Real}
-aSize = size(A)
-cSize = size(c)
-uSize = size(u)
+  aSize = size(A)
+  cSize = size(c)
+  uSize = size(u)
 
-A = reshape(A,aSize[1],aSize[2]*aSize[3]*aSize[4])
-c = reshape(c,cSize[1]*cSize[2]*cSize[3])
+  A = reshape(A,aSize[1],aSize[2]*aSize[3]*aSize[4])
+  c = reshape(c,cSize[1]*cSize[2]*cSize[3])
 
-return(norm(A*c-u)^2/norm(u))
-
+  return (norm(A*c-u)^2/norm(u))
 end
