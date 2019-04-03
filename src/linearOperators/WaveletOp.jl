@@ -12,7 +12,7 @@ mutable struct WaveletOp{T,F1<:FuncOrNothing,F2<:FuncOrNothing,F3<:FuncOrNothing
 end
 
 function WaveletOp(shape, wt=wavelet(WT.db2))
-  return WaveletOp(maximum(shape)^2, prod(shape), false, false
+  return WaveletOp{Float64,Function,Nothing,Function}(maximum(shape)^2, prod(shape), false, false
             , x->waveletProd(x,shape,wt)
             , nothing
             , y->waveletCTProd(y,shape,wt) )
