@@ -6,6 +6,7 @@ include("linearOperators/DCTOp.jl")
 include("linearOperators/DSTOp.jl")
 include("linearOperators/WaveletOp.jl")
 include("linearOperators/SamplingOp.jl")
+include("linearOperators/WeightingOp.jl")
 
 export linearOperator, linearOperatorList
 

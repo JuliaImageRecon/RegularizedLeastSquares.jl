@@ -14,7 +14,7 @@ function testDCT1d(N=32)
   y2 = D2*x
 
   @test norm(y1 - y2) / norm(y1) ≈ 0 atol=0.01
-  
+
   y3 = D3*x
   y4 = D4*x
   @test norm(y3 - y4) / norm(y1) ≈ 0 atol=0.01
@@ -82,6 +82,24 @@ function testFFT2d(N=32,shift=true)
   @test norm(x1 - x2) / norm(x1) ≈ 0 atol=0.01
 end
 
+function testWeighting(N=512)
+  Random.seed!(1234)
+  x1 = rand(N)
+  weights = rand(N)
+  W = WeightingOp(weights)
+  y1 = W*x1
+  y = weights .* x1
+
+  @test norm(y1 - y) / norm(y) ≈ 0 atol=0.01
+
+  x2 = rand(2*N)
+  W2 = WeightingOp(weights,2)
+  y2 = W2*x2
+  y = repeat(weights,2) .* x2
+
+  @test norm(y2 - y) / norm(y) ≈ 0 atol=0.01
+end
+
 @testset "Linear Operators" begin
   @info "test DCT-II and DCT-IV"
   for N in [2,8,16,32]
@@ -94,5 +112,6 @@ end
     testFFT2d(N,false)
     testFFT2d(N,true)
   end
-
+  @info "test Weighting"
+  testWeighting(512)
 end
