@@ -95,7 +95,7 @@ function splitBregman(A, y::Vector, reg::Vector{Regularization}
       vᵒˡᵈ .= v
       v[:]  .= u .+ bv
       if ρ != 0
-        reg[2].prox!(v,reg2.λ/ρ; reg[2].params...)
+        reg[2].prox!(v,reg[2].λ/ρ; reg[2].params...)
       end
 
       # update bv and bw
