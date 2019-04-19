@@ -70,7 +70,6 @@ All solvers return an approximate solution to STx = u.
 
 Function returns choosen solver.
 """
-
 function createLinearSolver(solver::AbstractString, A;
                             log::Bool=false, kargs...)
 
