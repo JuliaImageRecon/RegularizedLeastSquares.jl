@@ -10,9 +10,16 @@ mutable struct DCTOp{T,F1<:FuncOrNothing,F2<:FuncOrNothing,F3<:FuncOrNothing} <:
   ctprod :: F3 # apply the transpose conjugate operator to a vector
 end
 
-#
-# Linear Operator to perform a DCT
-#
+"""
+  DCTOp(T::Type, shape::Tuple, dcttype=2)
+
+returns a `DCTOp <: AbstractLinearOperator` which performs a DCT on a given input array.
+
+# Arguments:
+* `T::Type`       - type of the array to transform
+* `shape::Tuple`  - size of the array to transform
+* `dcttype`       - type of DCT (currently `2` and `4` are supported)
+"""
 function DCTOp(T::Type, shape::Tuple, dcttype=2)
   if dcttype == 2
     return DCTOp{T,Function,Nothing,Function}(prod(shape), prod(shape), true, false

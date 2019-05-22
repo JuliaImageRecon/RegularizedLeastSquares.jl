@@ -1,14 +1,18 @@
 export proxProj!, normProj
 
 """
-projection operator.
+    proxProj!(x::Vector{T}, λ::Float64; projFunc=x->x, kargs...)
+
+applies the projection given by `projFunc`.
 """
 function proxProj!(x::Vector{T}, λ::Float64; projFunc=x->x, kargs...) where T
   x[:] = projFunc(x)
 end
 
 """
-evaluate indicator function of set to be projected onto
+    normProj(x::Vector{T}, λ::Float64=0.0; projFunc=x->x, kargs...) where T
+
+evaluate indicator function of set to be projected onto.
 """
 function normProj(x::Vector{T}, λ::Float64=0.0; projFunc=x->x, kargs...) where T
   y = copy(x)

@@ -6,6 +6,16 @@ mutable struct Kaczmarz <: AbstractLinearSolver
   params
 end
 
+"""
+    Kaczmarz(A; λ = 0.0, reg = Regularization("L2", λ), kargs...)
+
+creates an `Kaczmarz` object for the system matrix `A`.
+
+# Arguments
+* `A`                             - system matrix
+* (`λ=0.0`)                       - Regularization paramter
+* (`reg=Regularization("L2", λ)`) - Regularization object
+"""
 function Kaczmarz(A; λ = 0.0, reg = Regularization("L2", λ), kargs...)
   if (reg.prox!) != (proxL2!)
     @error "Kaczmarz only supports L2 regularizer"
@@ -13,6 +23,15 @@ function Kaczmarz(A; λ = 0.0, reg = Regularization("L2", λ), kargs...)
   return Kaczmarz(A,reg,kargs)
 end
 
+"""
+    solve(solver::Kaczmarz, u::Vector)
+
+solves Thkhonov-regularized inverse problem using Kaczmarz algorithm.
+
+# Arguments
+* `solver::Kaczmarz  - the solver containing both system matrix and regularizer
+* `u::Vector`        - data vector
+"""
 function solve(solver::Kaczmarz, u::Vector)
   return kaczmarz(solver.A, u; λ=solver.reg.λ, solver.params... )
 end
@@ -20,6 +39,8 @@ end
 ### initkaczmarz ###
 
 """
+    initkaczmarz(S::AbstractMatrix,λ,weights::Vector)
+
 This funtion saves the denominators to compute αl in denom and the rowindices,
 which lead to an update of cl in rowindex.
 """
@@ -41,6 +62,8 @@ end
 ### kaczmarz_update! ###
 
 """
+    kaczmarz_update!(A::DenseMatrix{T}, x::Vector, k::Integer, beta) where T
+
 This funtion updates x during the kaczmarz algorithm for dense matrices.
 """
 function kaczmarz_update!(A::DenseMatrix{T}, x::Vector, k::Integer, beta) where T
@@ -50,6 +73,9 @@ function kaczmarz_update!(A::DenseMatrix{T}, x::Vector, k::Integer, beta) where 
 end
 
 """
+    kaczmarz_update!(B::Transpose{T,S}, x::Vector,
+                          k::Integer, beta) where {T,S<:DenseMatrix}
+
 This funtion updates x during the kaczmarz algorithm for dense matrices.
 """
 function kaczmarz_update!(B::Transpose{T,S}, x::Vector,
@@ -68,6 +94,9 @@ end
 =#
 
 """
+    kaczmarz_update!(B::Transpose{T,S}, x::Vector,
+                          k::Integer, beta) where {T,S<:SparseMatrixCSC}
+
 This funtion updates x during the kaczmarz algorithm for sparse matrices.
 """
 function kaczmarz_update!(B::Transpose{T,S}, x::Vector,
@@ -82,10 +111,11 @@ end
 ### kaczmarz ###
 
 """
+    kaczmarz(S, u::Vector; kargs...)
+
 This funtion implements the kaczmarz algorithm.
 
-### Keyword/Optional Arguments
-
+# Keyword/Optional Arguments
 * `λ::Float64`: The regularization parameter, relative to the matrix trace
 * `iterations::Int`: Number of iterations of the iterative solver
 * `solver::AbstractString`: Algorithm used to solve the imaging equation (currently "kaczmarz" or "cgnr")

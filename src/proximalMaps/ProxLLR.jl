@@ -1,13 +1,16 @@
 export proxLLR!, normLLR
 
 """
+    proxLLR!(x::Vector{T}, λ::Float64=1e-6; kargs...) where T
+
 proximal map for LLR regularization using singular-value-thresholding
 
-### parameters:
-
-* λ::Float64: regularization parameter (threshold)
-* shape::Tuple{Int}: dimensions of the image
-* blockSize::Tuple{Int}: size of patches to perform singluar value thresholding on
+# Arguments
+* `x::Vector{T}`                - Vector to apply proximal map to
+* `λ::Float64`                  - regularization parameter
+* `shape::Tuple{Int}=[]`        - dimensions of the image
+* `blockSize::Tuple{Int}=[2;2]` - size of patches to perform singluar value thresholding on
+* `randshift::Bool=true`        - randomly shifts the patches to ensure translation invariance
 """
 function proxLLR!(x::Vector{T}, λ::Float64=1e-6; shape::NTuple=[],
    blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...) where T
@@ -72,7 +75,10 @@ function svt(x::Vector{T}, shape::Tuple, λ::Float64=1e-6;
 end
 
 """
-return the value of the LLR-regularization term
+    normLLR(x::Vector{T}, λ::Float64; kargs...) where T
+
+returns the value of the LLR-regularization term.
+Arguments are the same is in `proxLLR!`
 """
 function normLLR(x::Vector{T}, λ::Float64; shape::NTuple=[], L=1, blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...) where T
 

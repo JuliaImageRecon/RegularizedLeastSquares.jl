@@ -2,12 +2,15 @@ export Regularization, lambdList, prox! #, norm
 
 abstract type AbstractRegularization end
 
-#
-# each Regularization should contain:
-#   1. prox!(x,λ;kargs...) : function to evaluate the proximal mapping (in-place in x)
-#   2. norm(x,λ;kargs...) : function to evaluate the Regularization norm
-#   3. λ :         Regularization parameter
-#
+"""
+Type describing Regularizers
+
+# Fields
+* `prox!::Function`           - proximal map for the regularizer
+* `norm::Function`            - (semi-)norm for the regularizer
+* `λ::Float64`                - regularization paramter
+* `params::Dict{Symbol,Any}`  - additional parameters
+"""
 mutable struct Regularization <: AbstractRegularization
   prox!::Function
   norm::Function
@@ -24,14 +27,28 @@ function Regularization(;prox!::Function = x->x, norm::Function = norm0,
 end
 
 """
-Return a list of all available Regularizations
+    RegularizationList()
+
+Returns a list of all available Regularizations
 """
 function RegularizationList()
   Any["L2", "L1", "L21", "TV", "LLR", "Positive", "Proj", "Nuclear"]
 end
 
 """
- create a Regularization object containing all the infos necessary to calculate a proximal map
+    Regularization(name::String, λ::AbstractFloat; kargs...)
+
+create a Regularization object containing all the infos necessary to calculate a proximal map.
+
+# valid names
+* `"L2"`
+* `"L1"`
+* `"L21"`
+* `"TV"`
+* `"LLR"`
+* `"Nuclear"`
+* `"Positive"`
+* `"Proj"`
 """
 function Regularization(name::String, λ::AbstractFloat; kargs...)
   if name=="L2"
@@ -57,6 +74,12 @@ function Regularization(name::String, λ::AbstractFloat; kargs...)
   return Regularization(proxL2!, normL2, 0.0, kargs)
 end
 
+"""
+    Regularization(names::Vector{String}, λ::Vector{Float64}; kargs...)
+
+create a Regularization object containing all the infos necessary to calculate a proximal map.
+Valid names are the same as in `Regularization(name::String, λ::AbstractFloat; kargs...)`.
+"""
 function Regularization(names::Vector{String},
                         λ::Vector{Float64}; kargs...)
   #@Mirco I do not know what to do with kargs here
@@ -70,9 +93,11 @@ function Regularization(names::Vector{String},
   return reg
 end
 
-###################
-# utility functions
-###################
+"""
+    normalize!(reg::Regularization, data)
+
+scales the regularization parameter depending of the energy of the data (in-place).
+"""
 function normalize!(reg::Regularization, data)
   meanEnergy = norm(data,1)/length(data)
   reg.λ = meanEnergy*reg.λ

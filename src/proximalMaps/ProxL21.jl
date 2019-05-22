@@ -2,7 +2,15 @@ export proxL21!, normL21
 
 
 """
+    proxL21!(x::Vector{T},λ::Float64; sparseTrafo::Trafo=nothing, slices::Int64=1, kargs...)
+
 group-soft-thresholding for l1/l2-regularization.
+
+# Arguments:
+* `x::Array{T}`                 - Vector to apply proximal map to
+* `λ::Float64`                  - regularization paramter
+* `sparseTrafo::Trafo=nothing`  - sparsifying transform to apply
+* `slices::Int64=1`             - number of elements per group
 """
 function proxL21!(x::Vector{T},λ::Float64; sparseTrafo::Trafo=nothing, slices::Int64=1, kargs...) where T
   if sparseTrafo != nothing
@@ -28,7 +36,10 @@ function proxL21!(x::Vector{T}, λ::Float64, slices::Int64) where T
 end
 
 """
-return the value of the L21-regularization term
+    normL21(x::Vector{T}, λ::Float64; sparseTrafo::Trafo=nothing, slices::Int64=1, kargs...) where T
+    
+return the value of the L21-regularization term.
+Arguments are the same as in `proxL21!`
 """
 function normL21(x::Vector{T}, λ::Float64; sparseTrafo::Trafo=nothing, slices::Int64=1, kargs...) where T
   if sparseTrafo != nothing

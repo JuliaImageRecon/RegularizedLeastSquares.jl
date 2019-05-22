@@ -58,17 +58,23 @@ end
 
 
 """
-This file contains linear solver that are commonly used in MPI
-Currently implemented are
- - kaczmarz method (the default)
- - CGNR
- - A direct solver using the backslash operator
+    createLinearSolver(solver::AbstractString, A; log::Bool=false, kargs...)
 
-
+This method creates a solver. The supported solvers are methods typically used in MPI/MRI.
 All solvers return an approximate solution to STx = u.
-
-
 Function returns choosen solver.
+
+# solvers:
+* `"kaczmarz"`        - kaczmarz method (the default)
+* `"cgnr`             - CGNR
+* `"direct"`          - A direct solver using the backslash operator
+* `"daxkaczmarz"`     - Dax algorithm (with Kaczmarz) for unconstrained problems
+* `"daxconstrained"`  - Dax algorithm for constrained problems
+* `"pseudoinverse"`   - approximates a solution using the More-Penrose pseudo inverse
+* `"fusedlasso"`      - solver for the Fused-Lasso problem
+* `"fista"`           - Fast Iterative Shrinkage Thresholding Algorithm
+* `"admm"`            - Alternating Direcion of Multipliers Method
+* `"splitBregman"`    - Split Bregman method for constrained & regularized inverse problems
 """
 function createLinearSolver(solver::AbstractString, A;
                             log::Bool=false, kargs...)

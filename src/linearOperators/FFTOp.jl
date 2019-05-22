@@ -10,9 +10,16 @@ mutable struct FFTOp{T,F1<:FuncOrNothing,F2<:FuncOrNothing,F3<:FuncOrNothing} <:
   ctprod :: F3 # apply the transpose conjugate operator to a vector
 end
 
-#
-# Linear Operator to perform an FFT
-#
+"""
+  FFTOp(T::Type, shape::Tuple, shift=true)
+
+returns an operator which performs an FFT on Arrays of type T
+
+# Arguments:
+* `T::Type`       - type of the array to transform
+* `shape::Tuple`  - size of the array to transform
+* (`shift=true`)  - if true, fftshifts are performed
+"""
 function FFTOp(T::Type, shape::Tuple, shift=true)
   plan = plan_fft(zeros(T, shape);flags=FFTW.MEASURE)
   iplan = plan_ifft(zeros(T, shape);flags=FFTW.MEASURE)

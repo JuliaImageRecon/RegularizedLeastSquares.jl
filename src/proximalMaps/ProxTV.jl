@@ -1,7 +1,16 @@
 export proxTV!, normTV
 
 """
-proximal map for TV regularization using the String-Taut algorithm
+    proxTV!(x::Vector{T}, λ::Float64; kargs...) where T
+
+proximal map for ansitropic TV regularization using the Fast Gradient Projection algorithm.
+
+# Arguments
+* `x::Array{T}`             - Vector to apply proximal map to
+* `λ::Float64`              - regularization paramter
+* `shape::NTuple=[]`        - size of the underlying image
+* `iterationsTV::Int64=20`  - number of FGP iterations
+* `weights::Array=[]`       - weights to apply to the image gradients
 """
 function proxTV!(x::Vector{T}, λ::Float64; shape::NTuple=[], iterationsTV::Int64=20, weights::Array=[], kargs...) where T
   m,n = shape
@@ -83,6 +92,12 @@ function restrictMagnitude(x::Array, w::Array=[])
   return x./max.(1.0, abs.(x)./maxval)
 end
 
+"""
+    normTV(x::Vector{T},λ::Float64;shape::NTuple=[],kargs...) where T
+
+returns the value of the ansisotropic TV-regularization term.
+Arguments are the same as in `proxTV!`
+"""
 function normTV(x::Vector{T},λ::Float64;shape::NTuple=[],kargs...) where T
   x = reshape(x,shape)
   tv = norm(vec(x[1:end-1,1:end-1]-x[2:end,1:end-1]),1)

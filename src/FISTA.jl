@@ -6,6 +6,17 @@ mutable struct FISTA <: AbstractLinearSolver
   params
 end
 
+"""
+    FISTA(A; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
+
+creates a `FISTA` object for the system matrix `A`.
+
+# Arguments
+* `A` - system matrix
+* (`reg=nothing`)     - Regularization object
+* (`regName=["L1"]`)  - name of the Regularization to use (if reg==nothing)
+* (`λ=[0.0]`)         - Regularization paramter
+"""
 function FISTA(A; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
 
   if reg == nothing
@@ -15,10 +26,42 @@ function FISTA(A; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
   return FISTA(A,vec(reg)[1],kargs)
 end
 
+"""
+    solve(solver::FISTA, b::Vector)
+
+solves an inverse problem using FISTA.
+
+# Arguments
+* `solver::FISTA`  - the solver containing both system matrix and regularizer
+* `b::Vector`     - data vector
+"""
 function solve(solver::FISTA, b::Vector)
   return fista(solver.A, b, solver.regularizer; solver.params...)
 end
 
+
+"""
+    fista(A,b::Vector{T}, reg::Regularization; kargs...) where T
+
+This funtion implements the fista algorithm.
+Solve the problem: X = arg min_x 1/2*|| Ax-b||² + λ*g(X) where:
+   x: variable (vector)
+   b: measured data
+   A: a general linear operator
+   g(X): a convex but not necessarily a smooth function
+
+# Arguments
+* `A`                       - system matrix
+* `b::Vector{T}`            - data vector (right-hand side)
+* `reg::Regularization`     - regularization object
+* (`AHA=nothing`)           - normal operator adjoint(A)*A
+* (`startVector=nothing`)   - start vector
+* (`iterations::Int64=50`)  - maximum number of iterations
+* (`ρ::Float64=1.0`)        - step size for gradient step
+* (`t::Float64=1.0`)        - step size for predictor-corrector step
+* (`relTol::Float64=1.e-4`) - relative tolerance for stopping criterion
+* (`solverInfo = nothing`)  - `solverInfo` object used to store convergence metrics
+"""
 function fista(A,b::Vector{T}, reg::Regularization; AHA=nothing, kargs...) where T
   if AHA==nothing
     return fista1(A,b,reg;kargs...)
@@ -27,7 +70,8 @@ function fista(A,b::Vector{T}, reg::Regularization; AHA=nothing, kargs...) where
   end
 end
 
-"""This funtion implements the fista algorithm.
+"""
+This funtion implements the fista algorithm.
 Solve the problem: X = arg min_x 1/2*|| Ax-b||² + λ*g(X) where:
    x: variable (vector)
    b: measured data

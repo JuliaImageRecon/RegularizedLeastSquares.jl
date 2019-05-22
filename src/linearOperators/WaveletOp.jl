@@ -11,6 +11,17 @@ mutable struct WaveletOp{T,F1<:FuncOrNothing,F2<:FuncOrNothing,F3<:FuncOrNothing
   ctprod :: F3 # apply the transpose conjugate operator to a vector
 end
 
+"""
+  WaveletOp(shape, wt=wavelet(WT.db2))
+
+returns a `ẀaveletOp <: AbstractLinearOperator`, which performs a Wavelet transform on
+a given input array.
+
+# Arguments
+
+* `shape`                 - size of the Array to transform
+* (`wt=wavelet(WT.db2)`)  - Wavelet to apply
+"""
 function WaveletOp(shape, wt=wavelet(WT.db2))
   return WaveletOp{Float64,Function,Nothing,Function}(maximum(shape)^2, prod(shape), false, false
             , x->waveletProd(x,shape,wt)

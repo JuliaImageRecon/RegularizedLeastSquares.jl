@@ -1,7 +1,14 @@
 export proxL1!, proxL1, normL1
 
 """
-soft-thresholding for the Lasso problem.
+    proxL1!(x::Array{T}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T
+
+performs soft-thresholding - i.e. proximal map for the Lasso problem.
+
+# Arguments:
+* `x::Array{T}`                 - Vector to apply proximal map to
+* `λ::Float64`                  - regularization paramter
+* `sparseTrafo::Trafo=nothing`  - sparsifying transform to apply
 """
 function proxL1!(x::Array{T}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T
   if sparseTrafo != nothing
@@ -23,7 +30,10 @@ function proxL1!(x::Array{T}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...)
 end
 
 """
-return the value of the L1-regularization term
+    normL1(x::Array{T}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T
+
+returns the value of the L1-regularization term.
+Arguments are the same as in `proxL1!`
 """
 function normL1(x::Array{T}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T
   if sparseTrafo != nothing

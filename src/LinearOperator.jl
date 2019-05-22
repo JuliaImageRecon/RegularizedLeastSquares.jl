@@ -12,10 +12,25 @@ export linearOperator, linearOperatorList
 
 linearOperator(op::Nothing,shape) = nothing
 
+"""
+  returns a list of currently implemented `LinearOperator`s
+"""
 function linearOperatorList()
   return ["DCT-II", "DCT-IV", "FFT"]
 end
 
+"""
+    linearOperator(op::AbstractString, shape)
+
+returns the `LinearOperator` with name `op`.
+
+# valid names
+* `"FFT"`
+* `"DCT-II"`
+* `"DCT-IV"`
+* `"DST"`
+* `"Wavelet"`
+"""
 function linearOperator(op::AbstractString, shape)
   shape_ = tuple(shape...)
   if op == "FFT"

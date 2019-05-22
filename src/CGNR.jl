@@ -7,6 +7,16 @@ mutable struct CGNR <: AbstractLinearSolver
   params
 end
 
+"""
+    CGNR(A; λ = 0.0, reg = Regularization("L2", λ), kargs...)
+
+creates an `CGNR` object for the system matrix `A`.
+
+# Arguments
+* `A`                             - system matrix
+* (`λ=0.0`)                       - Regularization paramter
+* (`reg=Regularization("L2", λ)`) - Regularization object
+"""
 function CGNR(A; λ = 0.0, reg = Regularization("L2", λ), kargs...)
   if (reg.prox!) != (proxL2!)
     @error "CGNR only supports L2 regularizer"
@@ -14,13 +24,38 @@ function CGNR(A; λ = 0.0, reg = Regularization("L2", λ), kargs...)
   return CGNR(A,reg,kargs)
 end
 
+"""
+    solve(solver::CGNR, u::Vector)
+
+solves Thkhonov-regularized inverse problem using CGNR.
+
+# Arguments
+* `solver::CGNR  - the solver containing both system matrix and regularizer
+* `u::Vector`    - data vector
+"""
 function solve(solver::CGNR, u::Vector)
   return cgnr(solver.A, u; λ=solver.reg.λ, solver.params... )
 end
 
 
 """
-This funtion implements the cgnr algorithm.
+    cgnr(S, u::Vector{T};iterations = 10, λ::Real = 0.0, startVector = nothing, weights = nothing,
+        enforceReal = false, enforcePositive = false, sparseTrafo = nothing,
+        solverInfo = nothing, kargs... ) where T
+
+This function solves the problem min ||S*c - u||_2^2 + λ*||u||_2^2 using CGNR
+
+# Arguments
+* `S`                       - system matrix
+* `u::Vector{T}`            - data vector (right-hand side)
+* `iterations = 10`         - number of iterations
+* ` λ::Real = 0.0`          - regularization parameter
+* `startVector = nothing`   - start vector
+* `weights = nothing`       - weights to apply (l2-norm --> W-norm)
+* `enforceReal = false`     - forces the solution to be real
+* `enforcePositive = false` - forces the solution to be positive
+* `sparseTrafo = nothing`   - sparsifying transform
+* `solverInfo = nothing`    - `solverInfo` object used to store convergence metrics
 """
 function cgnr(S, u::Vector{T};
 iterations = 10, λ::Real = 0.0, startVector = nothing, weights = nothing,

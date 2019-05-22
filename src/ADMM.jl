@@ -6,6 +6,17 @@ mutable struct ADMM <: AbstractLinearSolver
   params
 end
 
+"""
+    ADMM(A; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
+
+creates an `ADMM` object for the system matrix `A`.
+
+# Arguments
+* `A` - system matrix
+* (`reg=nothing`)     - Regularization object
+* (`regName=["L1"]`)  - name of the Regularization to use (if reg==nothing)
+* (`λ=[0.0]`)         - Regularization paramter
+"""
 function ADMM(A; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
 
   if reg == nothing
@@ -15,6 +26,15 @@ function ADMM(A; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
   return ADMM(A,vec(reg)[1],kargs)
 end
 
+"""
+    solve(solver::ADMM, b::Vector)
+
+solves an inverse problem using ADMM.
+
+# Arguments
+* `solver::ADMM`  - the solver containing both system matrix and regularizer
+* `b::Vector`     - data vector
+"""
 function solve(solver::ADMM, b::Vector)
   if get(solver.params, :accelerate, false)
     return fadmm(solver.A, b, solver.regularizer; solver.params...)
@@ -24,19 +44,37 @@ function solve(solver::ADMM, b::Vector)
 end
 
 """
- Alternating Direction Method of Multipliers
+    admm(A, b::Vector, reg::Regularization; kargs...)
 
- Solve the problem: X = arg min_x 1/2*|| Ax-b||² + λ*g(X) where:
-    x: variable (vector)
-    b: measured data
-    A: a general linear operator
-    g(X): a convex but not necessarily a smooth function
+Alternating Direction Method of Multipliers
 
-  For details see:
-  Boyd et al.,
-  Distributed Optimization and Statistical Learning via the Alternating Direction
-    Method of Multipliers,
-  Foundations and Trends in Machine Learning, Vol. 3, No. 1 (2010) 1–122
+Solve the problem: X = arg min_x 1/2*|| Ax-b||² + λ*g(X) where:
+  x: variable (vector)
+  b: measured data
+  A: a general linear operator
+  g(X): a convex but not necessarily a smooth function
+
+For details see:
+Boyd et al.,
+Distributed Optimization and Statistical Learning via the Alternating Direction
+  Method of Multipliers,
+Foundations and Trends in Machine Learning, Vol. 3, No. 1 (2010) 1–122
+
+# Arguments
+* `A`                           - system matrix
+* `b::Vector`                   - data vector (right hand size)
+* `reg::Regularization`         - Regularization object
+* (`AHA=nothing`)               - normal operator adjoint(A)*A
+* (`ρ::Float64=1.e-2`)          - scaling factor to enforce constrained in augm. Lagrangian
+* (`precon=Identity()`)         - precondionner to use with CG
+* (`startVector=nothing`)       - start vector
+* (`iterations::Int64=50`)      - maximum number of iterations
+* (`iterationsInner::Int64=10`) - maximum number of CG iterations
+* (`absTol::Float64=1.e-8`)     - absolute tolerance for stopping criterion
+* (`relTol::Float64=1.e-6`)     - relative tolerance for stopping criterion
+* (`tolInner::Float64=1.e-3`)   - tolerance for CG
+* (`adaptRho::Bool=false`)      - if true, `rho` is adapted to balance primal and dual residuals
+* (`solverInfo = nothing`)      - `solverInfo` object used to store convergence metrics
 """
 function admm(A, b::Vector, reg::Regularization
               ; AHA=nothing
