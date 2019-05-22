@@ -8,7 +8,10 @@ makedocs(
     pages = [
         "Home" => "index.md",
         "Getting Started" => "gettingStarted.md",
-        "Operator Interface" => "operators.md",
+        "Matrices & Operators" => "operators.md",
+        "Regularization" => "regularization.md",
+        "Solvers" => "solvers.md",
+        "API" => "API.md",
     ],
     html_prettyurls = false, #!("local" in ARGS),
 )

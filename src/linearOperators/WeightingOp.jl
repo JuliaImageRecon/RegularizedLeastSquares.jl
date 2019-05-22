@@ -3,7 +3,7 @@ export WeightingOp
 """
   WeightingOp(weights::Vector{T}, rep::Int=1) where T
 
-generates a `LinearOperator` which multiplies an input vector `weights`
+generates a `LinearOperator` which multiplies an input vector index-weise with `weights`
 
 # Arguments
 * `weights::Vector{T}` - weights vector

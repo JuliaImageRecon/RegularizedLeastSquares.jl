@@ -16,7 +16,7 @@ linearOperator(op::Nothing,shape) = nothing
   returns a list of currently implemented `LinearOperator`s
 """
 function linearOperatorList()
-  return ["DCT-II", "DCT-IV", "FFT"]
+  return ["DCT-II", "DCT-IV", "FFT", "DST", "Wavelet"]
 end
 
 """
