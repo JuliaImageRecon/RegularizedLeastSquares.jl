@@ -1,3 +1,5 @@
+BLAS.dot(a::Vector{Complex{T}}, b::Vector{Complex{T}}) where T = BLAS.dotc(a,b)
+
 """
     cg(A, x::Vector, b::Vector; iterations::Int = 30, relTol = 1.e-3
       , solverInfo = nothing, storeIterations::Bool=false )
@@ -25,14 +27,14 @@ function cg(A
 
   r = b-A*x
   p = r
-  rsold = BLAS.dotc(r,r)
+  rsold = BLAS.dot(r,r)
   rsnew = rsold
   r0= norm(b)
   iter_conv = iterations
 
   for i=1:iterations
     Ap = A*p
-    bla = BLAS.dotc(p,Ap)
+    bla = BLAS.dot(p,Ap)
 
     alpha = rsold/ bla
     #x = x+alpha*p;
@@ -40,7 +42,7 @@ function cg(A
     # BLAS.axpy!(a,X,Y) overwrites Y with a*X + Y
     BLAS.axpy!(-alpha,Ap,r)
     #r = r-alpha*Ap
-    rsnew = BLAS.dotc(r,r)
+    rsnew = BLAS.dot(r,r)
     if sqrt(abs(rsnew))/r0<relTol
       iter_conv = i
       break
@@ -84,14 +86,14 @@ function cg(A
   r = b-A*x
   z = M*r
   p = z
-  rsold = BLAS.dotc(z,r) # r^T * z
+  rsold = BLAS.dot(z,r)
   rsnew = rsold
   r0= norm(b)
   iter_conv = iterations
 
   for i=1:iterations
     Ap = A*p
-    bla = BLAS.dotc(p,Ap)
+    bla = BLAS.dot(p,Ap)
 
     alpha = rsold/ bla
     #x = x+alpha*p;
@@ -101,7 +103,7 @@ function cg(A
     BLAS.axpy!(-alpha,Ap,r)
     z = M*r
 
-    rsnew = BLAS.dotc(z,r)
+    rsnew = BLAS.dot(z,r)
     if sqrt(abs(rsnew))/r0<relTol
       iter_conv = i
       break
