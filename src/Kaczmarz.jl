@@ -133,7 +133,7 @@ function kaczmarz(S, u::Vector;
   weights==nothing ? weights=ones(T,size(S,1)) : nothing #search for positive solution as default
   startVector==nothing ? startVector=zeros(typeof(u[1]),size(S,2)) : nothing
   return kaczmarz(S, u, startVector, iterations, λ, weights, enforceReal, enforcePositive,
-                  sparseTrafo, solverInfo)
+                  sparseTrafo, solverInfo, shuffleRows)
 end
 
 function kaczmarz(S, u::Vector{T}, startVector, iterations, λ, weights, enforceReal,
