@@ -85,7 +85,7 @@ function admm(A, b::Vector, reg::Regularization
               , iterationsInner::Int64=10
               , absTol::Float64=1.e-8
               , relTol::Float64=1.e-6
-              , tolInner::Float64=1.e-3
+              , tolInner::Float64=1.e-5
               , adaptRho::Bool=false
               , solverInfo = nothing
               , kargs...)
@@ -118,12 +118,7 @@ function admm(A, b::Vector, reg::Regularization
     # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 ||x+u-z||²
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
     xᵒˡᵈ[:] = x[:]
-    # cg!(x,A'*A+ρ*opEye(length(x)),β+ρ*(z-u),Pl=precon,maxiter=iterationsInner,tol=tolInner)
-    if isa(precon, Identity)
-      x[:] = cg(A'*A+ρ*opEye(length(x)),x,β+ρ*(z-u),iterations=iterationsInner,relTol=tolInner,solverInfo=solverInfo,storeIterations=true)
-    else
-      x[:] = cg(A'*A+ρ*opEye(length(x)),x,β+ρ*(z-u),precon,iterations=iterationsInner,relTol=tolInner,solverInfo=solverInfo,storeIterations=true)
-    end
+    cg!(x,A'*A+ρ*opEye(length(x)),β+ρ*(z-u),Pl=precon,maxiter=iterationsInner,tol=tolInner)
 
     # 2. update z using the proximal map of 1/ρ*g(x)
     zᵒˡᵈ[:] = z
@@ -171,7 +166,7 @@ function fadmm(A, b::Vector, reg::Regularization
               , iterationsInner::Int64=10
               , absTol::Float64=1.e-8
               , relTol::Float64=1.e-6
-              , tolInner::Float64=1.e-3
+              , tolInner::Float64=1.e-5
               , adaptRho::Bool=false
               , solverInfo = nothing
               , kargs...)
@@ -210,12 +205,7 @@ function fadmm(A, b::Vector, reg::Regularization
     # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 ||x+û-ẑ||²
     # <=> (A'A+ρ)*x = A'b+ρ(z-u)
     xᵒˡᵈ[:] = x[:]
-    # cg!(x,A'*A+ρ*opEye(length(x)),β+ρ*(ẑ-û),Pl=precon,maxiter=iterationsInner,tol=tolInner)
-    if isa(precon, Identity)
-      x[:] = cg(A'*A+ρ*opEye(length(x)),x,β+ρ*(z-u),iterations=iterationsInner,relTol=tolInner,solverInfo=solverInfo)
-    else
-      x[:] = cg(A'*A+ρ*opEye(length(x)),x,β+ρ*(z-u),precon,iterations=iterationsInner,relTol=tolInner,solverInfo=solverInfo)
-    end
+    cg!(x,A'*A+ρ*opEye(length(x)),β+ρ*(ẑ-û),Pl=precon,maxiter=iterationsInner,tol=tolInner)
 
     # 2. update z using the proximal map of 1/ρ*g(x)
     zᵒˡᵈ[:] = z

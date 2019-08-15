@@ -84,7 +84,7 @@ function splitBregman(A, y::Vector, reg::Vector{Regularization}
               , iterationsCG::Int64=10
               , absTol::Float64=1.e-8
               , relTol::Float64=1.e-6
-              , tolInner::Float64=1.e-3
+              , tolInner::Float64=1.e-6
               , solverInfo = nothing
               , kargs...)
 
@@ -117,11 +117,7 @@ function splitBregman(A, y::Vector, reg::Vector{Regularization}
     for k = 1:iterationsInner
       # update u analytically
       β[:] .= β_yj .+ λ*(w-bw) .+ ρ*(v-bv)
-      if isa(precon, Identity)
-        u[:] = cg(op,u,β,iterations=iterationsCG,relTol=tolInner,solverInfo=solverInfo,storeIterations=true)
-      else
-        u[:] = cg(op,u,β,precon,iterations=iterationsCG,relTol=tolInner,solverInfo=solverInfo,storeIterations=true)
-      end
+      cg!(u,op,β,Pl=precon,maxiter=iterationsCG,tol=tolInner)
 
       #  proximal map for L1 regularization
       wᵒˡᵈ[:] .= w
