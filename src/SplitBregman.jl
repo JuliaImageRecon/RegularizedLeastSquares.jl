@@ -1,5 +1,4 @@
-export splitBregman
-
+export SplitBregman
 
 mutable struct SplitBregman{matT,opT,T,preconT} <: AbstractLinearSolver
   # oerators and regularization
@@ -51,9 +50,19 @@ creates a `SplitBregman` object for the system matrix `A`.
 
 # Arguments
 * `A` - system matrix
-* (`reg=nothing`)          - Regularization object
-* (`regName=["L1","TV"]`)  - name of the regularizations to use (if reg==nothing)
-* (`λ=[0.0, 0.0]`)         - Regularization paramters
+* (`reg=nothing`)               - Regularization object
+* (`regName=["L1","TV"]`)       - name of the regularizations to use (if reg==nothing)
+* (`λ=[0.0, 0.0]`)              - Regularization paramters
+* (`precon=Identity()`)         - preconditionner for the internal CG algorithm
+* (`μ::Float64=1.e2`)           - weight for the data term
+* (`ν::Float64=1.e2`)           - weight for condition on 1. regularized variable
+* (`ρ::Float64=1.e2`)           - weight for condition on 2. regularized variable
+* (`iterations::Int64=10`)      - number of outer iterations
+* (`iterationsInner::Int64=50`) - maximum number of inner iterations
+* (`iterationsCG::Int64=10`)    - maximum number of CG iterations
+* (`absTol::Float64=1.e-8`)     - abs tolerance for stopping criterion
+* (`relTol::Float64=1.e-6`)     - rel tolerance for stopping criterion
+* (`tolInner::Float64=1.e-5`)   - tolerance for CG stopping criterion
 """
 function SplitBregman(A, b=nothing; reg=nothing, regName=["L1","TV"]
                     , λ=[0.0,0.0]
@@ -106,10 +115,8 @@ end
 """
   init!(solver::SplitBregman{matT,opT,T,preconT}
               ; A::matT=solver.A
-              , AHA::opT=solver.op
               , b::Vector{T}=T[]
-              , x::Vector{T}=T[]
-              , ρ::Float64=1.e-2
+              , u::Vector{T}=T[]
               , kargs...) where {matT,opT,T,preconT}
 
 (re-) initializes the SplitBregman iterator
@@ -164,8 +171,11 @@ end
 solves an inverse problem using the Split Bregman method.
 
 # Arguments
-* `solver::SplitBregman`  - the solver containing both system matrix and regularizer
-* `b::Vector`             - data vector
+* `solver::SplitBregman`          - the solver containing both system matrix and regularizer
+* `b::Vector`                     - data vector
+* (`A::matT=solver.A`)            - operator for the data-term of the problem
+* (`startVector::Vector{T}=T[]`)  - initial guess for the solution
+* (`solverInfo=nothing`)          - solverInfo for logging
 """
 function solve(solver::SplitBregman, b::Vector{T}; A::matT=solver.A, startVector::Vector{T}=T[], solverInfo=nothing, kargs...) where {matT,T}
   # initialize solver parameters

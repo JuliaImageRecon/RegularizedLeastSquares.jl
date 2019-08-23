@@ -95,7 +95,6 @@ end
               , AHA::opT=solver.op
               , b::Vector{T}=T[]
               , x::Vector{T}=T[]
-              , ρ::Float64=1.e-2
               , kargs...) where {matT,opT,T,preconT}
 
 (re-) initializes the ADMM iterator
@@ -148,14 +147,17 @@ end
 """
     solve(solver::ADMM, b::Vector{T}
           ; A::matT=solver.A, startVector::Vector{T}=T[]
-          , ρ::Float64=1.e-2, solverInfo=nothing
+          , startVector::Vector{T}=T[], solverInfo=nothing
           , kargs...) where {matT,T}
 
 solves an inverse problem using ADMM.
 
 # Arguments
-* `solver::ADMM`  - the solver containing both system matrix and regularizer
-* `b::Vector`     - data vector
+* `solver::ADMM`                  - the solver containing both system matrix and regularizer
+* `b::Vector`                     - data vector
+* (`A::matT=solver.A`)            - operator for the data-term of the problem
+* (`startVector::Vector{T}=T[]`)  - initial guess for the solution
+* (`solverInfo=nothing`)          - solverInfo for logging
 """
 function solve(solver::ADMM, b::Vector{T}; A::matT=solver.A, startVector::Vector{T}=T[], solverInfo=nothing, kargs...) where {matT,T}
   # initialize solver parameters

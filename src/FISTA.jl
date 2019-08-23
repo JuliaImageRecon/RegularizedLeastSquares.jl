@@ -89,6 +89,7 @@ solves an inverse problem using FISTA.
 # Arguments
 * `solver::FISTA`                 - the solver containing both system matrix and regularizer
 * `b::Vector`                     - data vector
+* `A::matT=solver.A`            - operator for the data-term of the problem
 * (`startVector::Vector{T}=T[]`)  - initial guess for the solution
 * (`solverInfo=nothing`)          - solverInfo object
 """
@@ -99,7 +100,7 @@ function solve(solver::FISTA, b::Vector{T}; A::matT=solver.A, startVector::Vecto
   # log solver information
   solverInfo != nothing && storeInfo(solverInfo,solver.A,b,solver.x;xᵒˡᵈ=solver.xᵒˡᵈ,reg=[solver.reg],residual=solver.res)
 
-  # perform FISTA iterations TODO: add logging -> solverInfo
+  # perform FISTA iterations
   for (iteration, item) = enumerate(solver)
     solverInfo != nothing && storeInfo(solverInfo,solver.A,b,solver.x;xᵒˡᵈ=solver.xᵒˡᵈ,reg=[solver.reg],residual=solver.res)
   end
@@ -113,7 +114,7 @@ end
 performs one fista iteration.
 """
 function iterate(solver::FISTA{matT,T}, iteration::Int=0) where {matT,T}
-  if done(solver, 0) return nothing end
+  if done(solver, iteration) return nothing end
 
   # gradient step
   solver.xᵒˡᵈ[:] .= solver.x
