@@ -12,17 +12,16 @@ mutable struct SplitBregman{matT,opT,T,preconT} <: AbstractLinearSolver
   y_j::Vector{T}
   # fields for primal & dual variables
   u::Vector{T}
-  v::Vector{T}
-  w::Vector{T}
-  vᵒˡᵈ::Vector{T}
-  wᵒˡᵈ::Vector{T}
-  bv::Vector{T}
-  bw::Vector{T}
+  v1::Vector{T}
+  v2::Vector{T}
+  v1ᵒˡᵈ::Vector{T}
+  v2ᵒˡᵈ::Vector{T}
+  b1::Vector{T}
+  b2::Vector{T}
   # other parameters
   precon::preconT
-  μ::Float64
-  ν::Float64
-  ρ::Float64
+  ρ1::Float64
+  ρ2::Float64
   iterations::Int64
   iterationsInner::Int64
   iterationsCG::Int64
@@ -67,9 +66,8 @@ creates a `SplitBregman` object for the system matrix `A`.
 function SplitBregman(A, b=nothing; reg=nothing, regName=["L1","TV"]
                     , λ=[0.0,0.0]
                     , precon=Identity()
-                    , μ::Float64=1.e2
-                    , ν::Float64=1.e2
-                    , ρ::Float64=1.e2
+                    , ρ1::Float64=1.e2
+                    , ρ2::Float64=1.e2
                     , iterations::Int64=10
                     , iterationsInner::Int64=50
                     , iterationsCG::Int64=10
@@ -88,7 +86,7 @@ function SplitBregman(A, b=nothing; reg=nothing, regName=["L1","TV"]
   end
 
   # operator and fields for the update of x
-  op = μ*A'*A + (ν+ρ)*opEye(size(A,2))
+  op = A'*A + (ρ1+ρ2)*opEye(size(A,2))
   β = zeros(eltype(A),size(A,2))
   β_yj = zeros(eltype(A),size(A,2))
   y_j = zeros(eltype(A),size(A,1))
@@ -99,8 +97,8 @@ function SplitBregman(A, b=nothing; reg=nothing, regName=["L1","TV"]
   vᵒˡᵈ = zeros(eltype(A),size(A,2))
   w = zeros(eltype(A),size(A,2))
   wᵒˡᵈ = zeros(eltype(A),size(A,2))
-  bv = zeros(eltype(A),size(A,2))
-  bw = zeros(eltype(A),size(A,2))
+  b1 = zeros(eltype(A),size(A,2))
+  b2 = zeros(eltype(A),size(A,2))
 
   # statevariables for CG
   # we store them here to prevent CG from allocating new fields at each call
@@ -108,7 +106,7 @@ function SplitBregman(A, b=nothing; reg=nothing, regName=["L1","TV"]
 
   iter_cnt = 1
 
-  return SplitBregman(A,vec(reg),y,op,β,β_yj,y_j,u,v,w,vᵒˡᵈ,wᵒˡᵈ,bv,bw,precon,μ,ν,ρ
+  return SplitBregman(A,vec(reg),y,op,β,β_yj,y_j,u,v,w,vᵒˡᵈ,wᵒˡᵈ,b1,b2,precon,ρ1,ρ2
               ,iterations,iterationsInner,iterationsCG,statevars, 0.0,0.0,0.0,0.0,0.0,0.0,0.0,absTol,relTol,tolInner,iter_cnt)
 end
 
@@ -130,7 +128,7 @@ function init!(solver::SplitBregman{matT,opT,T,preconT}
   # operators
   if A != solver.A
     solver.A = A
-    solver.op = μ*A'*A + (solver.ν+solver.ρ)*opEye(length(u))
+    solver.op = A'*A + (solver.ρ1+solver.ρ2)*opEye(length(u))
   end
   solver.y = b
 
@@ -144,19 +142,19 @@ function init!(solver::SplitBregman{matT,opT,T,preconT}
   else
     solver.u[:] .= u
   end
-  solver.v[:] .= 0
-  solver.w[:] .= 0
+  solver.v1[:] .= 0
+  solver.v2[:] .= 0
 
   # right hand side for the x-update
   solver.y_j[:] .= b
-  solver.β_yj .= solver.μ * adjoint(A) * b
+  solver.β_yj .= adjoint(A) * b
 
   # primal and dual variables
 
-  solver.vᵒˡᵈ[:] .= 0
-  solver.wᵒˡᵈ[:] .= 0
-  solver.bv[:] .= 0
-  solver.bw[:] .= 0
+  solver.v1ᵒˡᵈ[:] .= 0
+  solver.v2ᵒˡᵈ[:] .= 0
+  solver.b1[:] .= 0
+  solver.b2[:] .= 0
 
   # convergence parameter
   solver.σᵃᵇˢ = sqrt(length(b))*solver.absTol
@@ -212,14 +210,13 @@ The Split Bregman Method for l1 Regularized Problems
   * `A`                           - system matrix
   * `y::Vector`                   - data vector (right hand size)
   * `reg::Vector{Regularization}` - Regularization objects
-  * (`λ::Float64=1.e-2`)          - factor to enforce constrained with resp. to w (reg[1])
-  * (`μ::Float64=1.e-2`)          - factor to enforce constrained with resp. to v (reg[2])
-  * (`ρ::Float64=1.e-2`)          - factor to enforce constrained with resp. to y
+  * (`ρ1::Float64=1.0`)           - weighting factor for constraint u=v1
+  * (`ρ2::Float64=1.0`)           - weighting factor for constraint u=v2
   * (`precon=Identity()`)         - precondionner to use with CG
   * (`startVector=nothing`)       - start vector
   * (`iterations::Int64=50`)      - maximum number of iterations
   * (`iterationsInner::Int64=50`) - maximum number of inner iterations
-  * (`iterationsCG::Int64=10`) - maximum number of CG iterations
+  * (`iterationsCG::Int64=10`)    - maximum number of CG iterations
   * (`absTol::Float64=1.e-8`)     - absolute tolerance for stopping criterion
   * (`relTol::Float64=1.e-6`)     - relative tolerance for stopping criterion
   * (`tolInner::Float64=1.e-3`)   - tolerance for CG
@@ -229,41 +226,38 @@ function iterate(solver::SplitBregman{matT,opT,T,preconT}, iteration::Int=1) whe
   if done(solver, iteration) return nothing end
 
   # update u
-  solver.β[:] .= solver.β_yj .+ solver.ν*(solver.w.-solver.bw) .+ solver.ρ*(solver.v.-solver.bv)
+  solver.β[:] .= solver.β_yj .+ solver.ρ1*(solver.v1.-solver.b1) .+ solver.ρ2*(solver.v2.-solver.b2)
   cg!(solver.u,solver.op,solver.β,Pl=solver.precon,maxiter=solver.iterationsCG,tol=solver.tolInner)
 
   #  proximal map for 1. regularization
-  copyto!(solver.wᵒˡᵈ, solver.w) #solver.wᵒˡᵈ[:] .= solver.w
-  solver.w[:] .= solver.u .+ solver.bw
-  if solver.ν != 0
-    solver.reg[1].prox!(solver.w,1.0/solver.ν; solver.reg[1].params...)
-    # reg[1].prox!(w,reg[1].λ/solver.ν; reg[1].params...)
+  copyto!(solver.v1ᵒˡᵈ, solver.v1)
+  solver.v1[:] .= solver.u .+ solver.b1
+  if solver.ρ1 != 0
+    solver.reg[1].prox!(solver.v1,solver.reg[1].λ/solver.ρ1; solver.reg[1].params...)
   end
 
   # proximal map for 2. regularization
-  copyto!(solver.vᵒˡᵈ, solver.v)
-  solver.v[:]  .= solver.u .+ solver.bv
-  if solver.ρ != 0
-    solver.reg[2].prox!(solver.v,solver.reg[2].λ/solver.ρ; solver.reg[2].params...)
+  copyto!(solver.v2ᵒˡᵈ, solver.v2)
+  solver.v2[:]  .= solver.u .+ solver.b2
+  if solver.ρ2 != 0
+    solver.reg[2].prox!(solver.v2,solver.reg[2].λ/solver.ρ2; solver.reg[2].params...)
   end
 
-  # update bv and bw
-  # solver.bv = solver.bv + solver.u - solver.v
-  # solver.bw = solver.bw + solver.u - solver.w
-  solver.bv .+= solver.u .- solver.v
-  solver.bw .+= solver.u .- solver.w
+  # update b1 and b2
+  solver.b1 .+= solver.u .- solver.v1
+  solver.b2 .+= solver.u .- solver.v2
 
 
-  solver.rk_1 = norm(solver.u-solver.v)
-  solver.rk_2 = norm(solver.u-solver.w)
-  solver.eps_pri_1 = solver.σᵃᵇˢ + solver.relTol*max( norm(solver.u), norm(solver.v) )
-  solver.eps_pri_2 = solver.σᵃᵇˢ + solver.relTol*max( norm(solver.u), norm(solver.w) )
-  solver.sk = norm(solver.ρ*(solver.v.-solver.vᵒˡᵈ) + solver.ν*(solver.w.-solver.wᵒˡᵈ))
-  solver.eps_dual = solver.σᵃᵇˢ + solver.relTol*norm(solver.ρ*solver.v.+solver.ν*solver.w)
+  solver.rk_1 = norm(solver.u-solver.v1)
+  solver.rk_2 = norm(solver.u-solver.v2)
+  solver.eps_pri_1 = solver.σᵃᵇˢ + solver.relTol*max( norm(solver.u), norm(solver.v1) )
+  solver.eps_pri_2 = solver.σᵃᵇˢ + solver.relTol*max( norm(solver.u), norm(solver.v2) )
+  solver.sk = norm(solver.ρ1*(solver.v1.-solver.v1ᵒˡᵈ) + solver.ρ2*(solver.v2.-solver.v2ᵒˡᵈ))
+  solver.eps_dual = solver.σᵃᵇˢ + solver.relTol*norm(solver.ρ1*solver.v1.+solver.ρ2*solver.v2)
 
   if update_y(solver,iteration)
     solver.y_j[:] .+= solver.y .- solver.A*solver.u
-    solver.β_yj[:] .= solver.μ * adjoint(solver.A) * solver.y_j
+    solver.β_yj[:] .= adjoint(solver.A) * solver.y_j
     solver.iter_cnt += 1
     iteration = 0
   end
