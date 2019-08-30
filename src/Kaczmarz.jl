@@ -47,25 +47,29 @@ creates a Kaczmarz object
 * (`seed::Int=1234`)                              - seed for randomized algorithm
 * (iterations::Int64=10)                          - number of iterations
 """
-function Kaczmarz(S, b=nothing; λ::Real=0.0, reg = Regularization("L2", λ)
-              , weights::Vector{R}=ones(Float64,size(S,1))
+function Kaczmarz(S; b=nothing, λ::Real=0.0, reg = Regularization("L2", λ)
+              , weights=nothing
               , sparseTrafo=nothing
               , enforceReal::Bool=false
               , enforcePositive::Bool=false
               , shuffleRows::Bool=false
               , seed::Int=1234
               , iterations::Int64=10
-              , kargs...) where R <: Real
+              , kargs...)
 
   if (reg.prox!) != (proxL2!)
     @error "Kaczmarz only supports L2 regularizer"
   end
 
+  T = real(eltype(S))
+
+  # make sure weights are not empty
+  w = (weights!=nothing ? weights : ones(T,size(S,1)))
+
   # setup denom and rowindex
-  denom, rowindex = initkaczmarz(S,λ,weights)
+  denom, rowindex = initkaczmarz(S,λ,w)
   rowIndexCycle=collect(1:length(rowindex))
 
-  T = typeof(real(S[1]))
   M,N = size(S)
   if b != nothing
     u = b
@@ -79,7 +83,7 @@ function Kaczmarz(S, b=nothing; λ::Real=0.0, reg = Regularization("L2", λ)
   αl = zero(eltype(S))
 
   return Kaczmarz(S,u,reg,denom,rowindex,rowIndexCycle,cl,vl,εw,τl,αl
-                  ,T.(weights),enforceReal,enforcePositive,shuffleRows
+                  ,T.(w),enforceReal,enforcePositive,shuffleRows
                   ,Int64(seed),sparseTrafo,iterations)
 end
 
@@ -96,8 +100,8 @@ function init!(solver::Kaczmarz
               ; S::matT=solver.S
               , u::Vector{T}=T[]
               , cl::Vector{T}=T[]
-              , weights::Vector{Float64}=solver.weights
-              , shuffleRows=solver.shuffleRows) where {T,matT}
+              , weights::Vector{R}=solver.weights
+              , shuffleRows=solver.shuffleRows) where {T,matT,R}
 
   if S != solver.S
     solver.denom, solver.rowindex = initkaczmarz(S,solver.reg.λ,weights)
@@ -113,7 +117,7 @@ function init!(solver::Kaczmarz
 
   # start vector
   if isempty(cl)
-    solver.cl[:] .= zeros(T,size(S,2))
+    solver.cl[:] .= zero(T)
   else
     solver.cl[:] .= cl
   end
