@@ -1,6 +1,6 @@
 module RegularizedLeastSquares
 
-import Base: length
+import Base: length, iterate
 using FFTW
 using LinearAlgebra
 import LinearAlgebra.BLAS: gemv, gemv!
@@ -34,9 +34,9 @@ include("Regularization.jl")
 include("LinearOperator.jl")
 include("Utils.jl")
 include("Kaczmarz.jl")
-include("DAX.jl")
+include("DAXKaczmarz.jl")
+include("DAXConstrained.jl")
 include("CGNR.jl")
-# include("CG.jl")
 include("Direct.jl")
 include("FusedLasso.jl")
 include("FISTA.jl")
@@ -76,7 +76,7 @@ Function returns choosen solver.
 * `"admm"`            - Alternating Direcion of Multipliers Method
 * `"splitBregman"`    - Split Bregman method for constrained & regularized inverse problems
 """
-function createLinearSolver(solver::AbstractString, A;
+function createLinearSolver(solver::AbstractString, A, b=nothing;
                             log::Bool=false, kargs...)
 
   log ? solverInfo = SolverInfo(;kargs...) : solverInfo=nothing
@@ -100,6 +100,7 @@ function createLinearSolver(solver::AbstractString, A;
   elseif solver == "admm"
     return ADMM(A; kargs...)
   elseif solver == "splitBregman"
+    # return SplitBregman(A,b; kargs...)
     return SplitBregman(A; kargs...)
   else
     error("Solver $solver not found.")

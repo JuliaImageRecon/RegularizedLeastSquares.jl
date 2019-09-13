@@ -1,9 +1,18 @@
 export fista
 
-mutable struct FISTA <: AbstractLinearSolver
-  A
-  regularizer::Regularization
-  params
+mutable struct FISTA{matT,T} <: AbstractLinearSolver
+  A::matT
+  reg::Regularization
+  x::Vector{T}
+  xᵒˡᵈ::Vector{T}
+  res::Vector{T}
+  res_norm::Float64
+  res_norm_old::Float64
+  ρ::Float64
+  t::Float64
+  tᵒˡᵈ::Float64
+  iterations::Int64
+  relTol::Float64
 end
 
 """
@@ -13,17 +22,63 @@ creates a `FISTA` object for the system matrix `A`.
 
 # Arguments
 * `A` - system matrix
-* (`reg=nothing`)     - Regularization object
-* (`regName=["L1"]`)  - name of the Regularization to use (if reg==nothing)
-* (`λ=[0.0]`)         - Regularization paramter
+* (`reg=nothing`)           - Regularization object
+* (`regName=["L1"]`)        - name of the Regularization to use (if reg==nothing)
+* (`λ=[0.0]`)               - Regularization paramter
+* (`ρ::Float64=1`)          - step size for gradient step
+* (`t::Float64=1.0`)        - parameter for predictor-corrector step
+* (`relTol::Float64=1.e-5`) - tolerance for stopping criterion
+* (`iterations::Int64=50`)  - maximum number of iterations
 """
-function FISTA(A; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
+function FISTA(A::matT; reg=nothing, regName=["L1"]
+              , λ=[0.0]
+              , ρ::Float64=1.0
+              , t::Float64=1.0
+              , relTol::Float64=1.e-5
+              , iterations::Int64=50
+              , kargs...) where matT
 
   if reg == nothing
     reg = Regularization(regName, λ, kargs...)
   end
 
-  return FISTA(A,vec(reg)[1],kargs)
+  x = zeros(eltype(A),size(A,2))
+  xᵒˡᵈ = zeros(eltype(A),size(A,2))
+  res = zeros(eltype(A),size(A,1))
+
+  return FISTA(A,vec(reg)[1],x,xᵒˡᵈ,res,0.0,0.0,ρ,t,t,iterations,relTol)
+end
+
+"""
+    init!(it::FISTA{matT,T}
+              ; A::matT=solver.A
+              , b::Vector{T}=zeros(T,size(A,1))
+              , x::Vector{T}=zeros(T,size(A,1))
+              , t::Float64=1.0) where T
+
+(re-) initializes the FISTA iterator
+"""
+function init!(solver::FISTA{matT,T}
+              ; A::matT=solver.A
+              , b::Vector{T}=T[]
+              , x::Vector{T}=T[]
+              , t::Float64=1.0
+              ) where {matT,T}
+
+  solver.A = A
+  if isempty(x)
+    if !isempty(b) #!iszero(b)
+      solver.x[:] .= adjoint(A) * b
+    else
+      solver.x[:] .= zeros(T,size(A,2))
+    end
+  end
+  solver.xᵒˡᵈ[:] .= solver.x  # this could also be zero
+  solver.res[:] .= A*solver.x-b
+  solver.res_norm_old = 0.0
+  solver.res_norm = norm(solver.res)
+  solver.t = t
+  solver.tᵒˡᵈ = t
 end
 
 """
@@ -32,128 +87,57 @@ end
 solves an inverse problem using FISTA.
 
 # Arguments
-* `solver::FISTA`  - the solver containing both system matrix and regularizer
-* `b::Vector`     - data vector
+* `solver::FISTA`                 - the solver containing both system matrix and regularizer
+* `b::Vector`                     - data vector
+* `A::matT=solver.A`            - operator for the data-term of the problem
+* (`startVector::Vector{T}=T[]`)  - initial guess for the solution
+* (`solverInfo=nothing`)          - solverInfo object
 """
-function solve(solver::FISTA, b::Vector)
-  return fista(solver.A, b, solver.regularizer; solver.params...)
-end
+function solve(solver::FISTA, b::Vector{T}; A::matT=solver.A, startVector::Vector{T}=T[], solverInfo=nothing, kargs...) where {matT,T}
+  # initialize solver parameters
+  init!(solver; A=A, b=b, x=startVector)
 
+  # log solver information
+  solverInfo != nothing && storeInfo(solverInfo,solver.A,b,solver.x;xᵒˡᵈ=solver.xᵒˡᵈ,reg=[solver.reg],residual=solver.res)
 
-"""
-    fista(A,b::Vector{T}, reg::Regularization; kargs...) where T
-
-This funtion implements the fista algorithm.
-Solve the problem: X = arg min_x 1/2*|| Ax-b||² + λ*g(X) where:
-   x: variable (vector)
-   b: measured data
-   A: a general linear operator
-   g(X): a convex but not necessarily a smooth function
-
-# Arguments
-* `A`                       - system matrix
-* `b::Vector{T}`            - data vector (right-hand side)
-* `reg::Regularization`     - regularization object
-* (`startVector=nothing`)   - start vector
-* (`iterations::Int64=50`)  - maximum number of iterations
-* (`ρ::Float64=1.0`)        - step size for gradient step
-* (`t::Float64=1.0`)        - step size for predictor-corrector step
-* (`relTol::Float64=1.e-4`) - relative tolerance for stopping criterion
-* (`solverInfo = nothing`)  - `solverInfo` object used to store convergence metrics
-"""
-function fista(A, b::Vector{T}, reg::Regularization
-                ; startVector=nothing
-                , iterations::Int64=50
-                , ρ::Float64=1.0
-                , t::Float64=1.0
-                , relTol::Float64=1.e-4
-                , solverInfo = nothing
-                , kargs...) where T
-
-  if startVector == nothing
-    x = A' * b
-  else
-    x = startVector
-  end
-  res = A*x-b
-
-  xᵒˡᵈ = copy(x)
-
-  solverInfo != nothing && storeInfo(solverInfo,A,b,x;xᵒˡᵈ=xᵒˡᵈ,reg=[reg],residual=res)
-
-  costFunc = 0.5*norm(res)^2+reg.norm(x,reg.λ)
-
-  @showprogress 1 "Computing..." for l=1:iterations
-    xᵒˡᵈ[:] = x[:]
-
-    x[:] = x[:] - ρ* (A' * res)
-
-    reg.prox!(x, ρ*reg.λ; reg.params...)
-
-    tᵒˡᵈ = t
-
-    t = (1. + sqrt(1. + 4. * tᵒˡᵈ^2)) / 2.
-    x[:] = x + (tᵒˡᵈ-1)/t*(x-xᵒˡᵈ)
-
-    res = A*x-b
-    regNorm = reg.norm(x,reg.λ)
-
-    solverInfo != nothing && storeInfo(solverInfo,A,b,x;xᵒˡᵈ=xᵒˡᵈ,reg=[reg],residual=res)
-
-    # exit if objective functional changes by less then ɛ
-    costFuncOld = costFunc
-    costFunc = 0.5*norm(res)^2+regNorm
-    abs(costFunc-costFuncOld)/costFuncOld < relTol && return x
+  # perform FISTA iterations
+  for (iteration, item) = enumerate(solver)
+    solverInfo != nothing && storeInfo(solverInfo,solver.A,b,solver.x;xᵒˡᵈ=solver.xᵒˡᵈ,reg=[solver.reg],residual=solver.res)
   end
 
-  return x
+  return solver.x
 end
 
-# alternative implementation allowing for an optimized AHA
-# does not contain a stopping condition
-# function fista2(A, b::Vector{T}, reg::Regularization
-#                 ; AHA=nothing
-#                 , startVector=nothing
-#                 , iterations::Int64=50
-#                 , ρ::Float64=1.0
-#                 , t::Float64=1.0
-#                 , solverInfo = nothing
-#                 , kargs...) where T
-#
-#   if startVector == nothing
-#     x = A' * b
-#   else
-#     x = startVector
-#   end
-#
-#   # if AHA!=nothing
-#     op = AHA
-#   # else
-#   #   op = A'*A
-#   # end
-#
-#   β = A'*b
-#
-#   xᵒˡᵈ = copy(x)
-#
-#   solverInfo != nothing && storeInfo(solverInfo,A,b,x;xᵒˡᵈ=xᵒˡᵈ,reg=[reg])
-#
-#   costFunc = 0.5*norm(res)^2+norm(reg,x)
-#
-#   for l=1:iterations
-#     xᵒˡᵈ[:] = x[:]
-#
-#     x[:] = x[:] - ρ*(op*x-β)
-#
-#     reg.prox!(x, ρ*reg.λ)
-#
-#     tᵒˡᵈ = t
-#
-#     t = (1. + sqrt(1. + 4. * tᵒˡᵈ^2)) / 2.
-#     x[:] = x + (tᵒˡᵈ-1)/t*(x-xᵒˡᵈ)
-#
-#     solverInfo != nothing && storeInfo(solverInfo,A,b,x;xᵒˡᵈ=xᵒˡᵈ,reg=[reg])
-#   end
-#
-#   return x
-# end
+"""
+  iterate(it::FISTA, iteration::Int=0)
+
+performs one fista iteration.
+"""
+function iterate(solver::FISTA{matT,T}, iteration::Int=0) where {matT,T}
+  if done(solver, iteration) return nothing end
+
+  # gradient step
+  solver.xᵒˡᵈ[:] .= solver.x
+  solver.x[:] .= solver.x - solver.ρ* (solver.A' * solver.res)
+
+  # proximal map
+  solver.reg.prox!(solver.x, solver.ρ*solver.reg.λ; solver.reg.params...)
+
+  # predictor-corrector update
+  solver.tᵒˡᵈ = solver.t
+  solver.t = (1. + sqrt(1. + 4. * solver.tᵒˡᵈ^2)) / 2.
+  solver.x[:] .= solver.x + (solver.tᵒˡᵈ-1)/solver.t*(solver.x-solver.xᵒˡᵈ)
+
+  # update residual
+  # solver.res .= solver.A*solver.x-solver.b
+  solver.res .+= solver.A*(solver.x-solver.xᵒˡᵈ)  # this relies on a proper initialization in init()
+  solver.res_norm_old = solver.res_norm
+  solver.res_norm = norm(solver.res)
+
+  # return the residual-norm as item and iteration number as state
+  return solver.res_norm, iteration+1
+end
+
+@inline converged(solver::FISTA) = ( abs(solver.res_norm-solver.res_norm_old)/solver.res_norm_old < solver.relTol )
+
+@inline done(solver::FISTA,iteration::Int) = converged(solver) || iteration>=solver.iterations
