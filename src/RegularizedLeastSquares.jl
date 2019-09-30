@@ -10,6 +10,8 @@ using SparseArrays
 using ProgressMeter
 using IterativeSolvers
 using Random
+using Reexport
+@reexport using SparsityOperators
 
 export createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
 
@@ -31,7 +33,6 @@ include("proximalMaps/ProxTV.jl")
 include("proximalMaps/ProxNuclear.jl")
 
 include("Regularization.jl")
-include("LinearOperator.jl")
 include("Utils.jl")
 include("Kaczmarz.jl")
 include("DAXKaczmarz.jl")
