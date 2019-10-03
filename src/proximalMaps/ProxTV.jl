@@ -12,7 +12,7 @@ proximal map for ansitropic TV regularization using the Fast Gradient Projection
 * `iterationsTV::Int64=20`  - number of FGP iterations
 * `weights::Array=[]`       - weights to apply to the image gradients
 """
-function proxTV!(x::Vector{T}, λ::Float64; shape::NTuple=[], iterationsTV::Int64=20, weights::Array=[], kargs...) where T
+function proxTV!(x::Vector{T}, λ::Float64; shape=[], iterationsTV::Int64=20, weights::Array=[], kargs...) where T
   m,n = shape
 
   # initialize dual variables

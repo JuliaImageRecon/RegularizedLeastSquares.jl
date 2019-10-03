@@ -190,7 +190,7 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
 
   if length(solver.reg) > 1
     # We skip the L2 regularizer, since it has already been applied
-    proxL1!(solver.cl, solver.reg[2:end])
+    prox!(solver.cl, solver.reg[2:end])
   end
 
   return solver.vl, iteration+1
