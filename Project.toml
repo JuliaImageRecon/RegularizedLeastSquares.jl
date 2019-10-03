@@ -1,7 +1,7 @@
 name = "RegularizedLeastSquares"
 uuid = "1e9c538a-f78c-5de5-8ffb-0b6dbe892d23"
 authors = ["Tobias Knopp <tobias@knoppweb.de>"]
-version = "0.4.0"
+version = "0.4.1"
 
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
