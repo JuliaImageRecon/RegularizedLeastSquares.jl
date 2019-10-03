@@ -3,7 +3,7 @@ export kaczmarz
 mutable struct Kaczmarz{matT,T,U,Tsparse} <: AbstractLinearSolver
   S::matT
   u::Vector{T}
-  reg::Regularization
+  reg::Vector{Regularization}
   denom::Vector{U}
   rowindex::Vector{Int64}
   rowIndexCycle::Vector{Int64}
@@ -47,7 +47,8 @@ creates a Kaczmarz object
 * (`seed::Int=1234`)                              - seed for randomized algorithm
 * (iterations::Int64=10)                          - number of iterations
 """
-function Kaczmarz(S; b=nothing, λ::Real=0.0, reg = Regularization("L2", λ)
+function Kaczmarz(S; b=nothing, λ=[0.0], reg = nothing
+              , regName = ["L2"]
               , weights=nothing
               , sparseTrafo=nothing
               , enforceReal::Bool=false
@@ -57,8 +58,16 @@ function Kaczmarz(S; b=nothing, λ::Real=0.0, reg = Regularization("L2", λ)
               , iterations::Int64=10
               , kargs...)
 
-  if (reg.prox!) != (proxL2!)
-    @error "Kaczmarz only supports L2 regularizer"
+  if typeof(λ) <: Number
+    λ = [λ]
+  end
+
+  if reg == nothing
+    reg = Regularization(regName, λ; kargs...)
+  end
+
+  if regName[1] != "L2"
+    error("Kaczmarz only supports L2 regularizer")
   end
 
   T = real(eltype(S))
@@ -67,7 +76,7 @@ function Kaczmarz(S; b=nothing, λ::Real=0.0, reg = Regularization("L2", λ)
   w = (weights!=nothing ? weights : ones(T,size(S,1)))
 
   # setup denom and rowindex
-  denom, rowindex = initkaczmarz(S,λ,w)
+  denom, rowindex = initkaczmarz(S, λ[1], w)
   rowIndexCycle=collect(1:length(rowindex))
 
   M,N = size(S)
@@ -125,7 +134,7 @@ function init!(solver::Kaczmarz
 
   for i=1:length(solver.rowindex)
     j = solver.rowindex[i]
-    solver.ɛw[i] = sqrt(solver.reg.λ)/weights[j]
+    solver.ɛw[i] = sqrt(solver.reg[1].λ) / weights[j]
   end
 end
 
@@ -178,6 +187,11 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
 
   # invoke constraints
   applyConstraints(solver.cl, solver.sparseTrafo, solver.enforceReal, solver.enforcePositive)
+
+  if length(solver.reg) > 1
+    # We skip the L2 regularizer, since it has already been applied
+    proxL1!(solver.cl, solver.reg[2:end])
+  end
 
   return solver.vl, iteration+1
 

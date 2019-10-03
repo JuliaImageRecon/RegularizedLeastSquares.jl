@@ -93,6 +93,12 @@ function Regularization(names::Vector{String},
   return reg
 end
 
+function proxL1!(x::Array, reg::Vector{Regularization})
+  for d=1:length(reg)
+    reg[d].prox!(x, reg[d].λ; reg[d].params...)
+  end
+end
+
 """
     normalize!(reg::Regularization, data)
 
