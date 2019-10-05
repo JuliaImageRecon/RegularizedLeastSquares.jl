@@ -30,6 +30,7 @@ include("proximalMaps/ProxLLR.jl")
 include("proximalMaps/ProxPositive.jl")
 include("proximalMaps/ProxProj.jl")
 include("proximalMaps/ProxTV.jl")
+include("proximalMaps/ProxTVCondat.jl")
 include("proximalMaps/ProxNuclear.jl")
 
 include("Regularization.jl")
