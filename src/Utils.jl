@@ -11,22 +11,32 @@ mutable struct SolverInfo
   nrmse::Vector{Float64}
   x_ref::Union{Vector,Nothing}
   iterations::Union{Vector,Nothing}
+  x_iter::Union{Vector,Nothing}
 end
 
-function SolverInfo(x_ref::Union{Vector,Nothing}=nothing;kargs...)
-  SolverInfo(Vector{Float64}(),Vector{Float64}(),Vector{Float64}(),Vector{Float64}(),x_ref,Vector{Int64}())
+function SolverInfo(x_ref::Union{Vector,Nothing}=nothing; store_solutions=false,
+    kargs...)
+  x_iter = store_solutions ? Vector{Any}() : nothing
+  SolverInfo(Vector{Float64}(), Vector{Float64}(), Vector{Float64}(),
+             Vector{Float64}(), x_ref, Vector{Int64}(), x_iter)
 end
 
 function storeInfo(solverinfo::Nothing, res, x)
   return nothing
 end
 
-function storeInfo(solverInfo::SolverInfo,A,y::Vector{U},x::Vector{U};xᵒˡᵈ::Vector{U}=U[],reg::Union{Vector{T},Nothing}=nothing,residual::Vector{U}=U[]) where {U,T<:AbstractRegularization}
+function storeInfo(solverInfo::SolverInfo,A,y::Vector{U},x::Vector{U};
+                       xᵒˡᵈ::Vector{U}=U[],reg::Union{Vector{T},Nothing}=nothing,
+                       residual::Vector{U}=U[]) where {U,T<:AbstractRegularization}
   # residual
   if isempty(residual)
     residual=A*x-y
   end
   push!(solverInfo.residual,norm(residual))
+  # solution
+  if solverInfo.x_iter != nothing
+    push!(solverInfo.x_iter, deepcopy(x))
+  end
   # cost function
   cost = 0.5*norm(residual)^2
   if reg != nothing
@@ -288,8 +298,8 @@ function nrmsd(I,Ireco)
 
   # This is a little trick. We usually are not interested in simple scalings
   # and therefore "calibrate" them away
-  alpha = (dot(vec(I),vec(Ireco))+dot(vec(Ireco),vec(I))) /
-          (2*dot(vec(Ireco),vec(Ireco)))
+  alpha = norm(Ireco)>0 ? (dot(vec(I),vec(Ireco))+dot(vec(Ireco),vec(I))) /
+          (2*dot(vec(Ireco),vec(Ireco))) : 1.0
   I2 = Ireco.*alpha
 
   RMS =  1.0/sqrt(N)*norm(vec(I)-vec(I2))
