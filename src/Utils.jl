@@ -177,47 +177,49 @@ end
 ### enfReal! / enfPos! ###
 
 """
-This funtion enforces the constraint of a real solution.
+This function enforces the constraint of a real solution.
 """
-function enfReal!(x::Vector{T}) where {T<:Complex}
+function enfReal!(x::Vector{T}, mask=ones(Bool, length(x))) where {T<:Complex}
   #Returns x as complex vector with imaginary part set to zero
   @simd for i in 1:length(x)
-    @inbounds x[i] = complex(x[i].re)
+    @inbounds mask[i] && (x[i] = complex(x[i].re))
   end
 end
 
 """
-This funtion enforces the constraint of a real solution.
+This function enforces the constraint of a real solution.
 """
-enfReal!(x::Vector{T}) where {T<:Real} = nothing
+enfReal!(x::Vector{T}, mask=ones(Bool, length(x))) where {T<:Real} = nothing
 
 """
-This funtion enforces positivity constraints on its input.
+This function enforces positivity constraints on its input.
 """
-function enfPos!(x::Vector{T}) where {T<:Complex}
+function enfPos!(x::Vector{T}, mask=ones(Bool, length(x))) where {T<:Complex}
   #Return x as complex vector with negative parts projected onto 0
   @simd for i in 1:length(x)
-    @inbounds x[i].re < 0 && (x[i] = im*x[i].im)
+    @inbounds (x[i].re < 0 && mask[i]) && (x[i] = im*x[i].im)
   end
 end
 
 """
-This funtion enforces positivity constraints on its input.
+This function enforces positivity constraints on its input.
 """
-function enfPos!(x::Vector{T}) where {T<:Real}
+function enfPos!(x::Vector{T}, mask=ones(Bool, length(x))) where {T<:Real}
   #Return x as complex vector with negative parts projected onto 0
   @simd for i in 1:length(x)
-    @inbounds x[i] < 0 && (x[i] = zero(T))
+    @inbounds (x[i] < 0 && mask[i]) && (x[i] = zero(T))
   end
 end
 
-function applyConstraints(x, sparseTrafo,
-                          enforceReal, enforcePositive)
+function applyConstraints(x, sparseTrafo, enforceReal, enforcePositive, constraintMask)
+
+  mask = (constraintMask != nothing) ? constraintMask : ones(Bool, length(x))
+
   if sparseTrafo != nothing
      x[:] = sparseTrafo * x
   end
-  enforceReal && enfReal!(x)
-  enforcePositive && enfPos!(x)
+  enforceReal && enfReal!(x, mask)
+  enforcePositive && enfPos!(x, mask)
   if sparseTrafo != nothing
     x[:] = sparseTrafo' * x
   end

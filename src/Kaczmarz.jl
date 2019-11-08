@@ -19,6 +19,7 @@ mutable struct Kaczmarz{matT,T,U,Tsparse} <: AbstractLinearSolver
   seed::Int64
   sparseTrafo::Tsparse
   iterations::Int64
+  constraintMask::Union{Nothing,Vector{Bool}}
 end
 
 """
@@ -56,6 +57,7 @@ function Kaczmarz(S; b=nothing, λ=[0.0], reg = nothing
               , shuffleRows::Bool=false
               , seed::Int=1234
               , iterations::Int64=10
+              , constraintMask=nothing
               , kargs...)
 
   if typeof(λ) <: Number
@@ -93,7 +95,7 @@ function Kaczmarz(S; b=nothing, λ=[0.0], reg = nothing
 
   return Kaczmarz(S,u,reg,denom,rowindex,rowIndexCycle,cl,vl,εw,τl,αl
                   ,T.(w),enforceReal,enforcePositive,shuffleRows
-                  ,Int64(seed),sparseTrafo,iterations)
+                  ,Int64(seed),sparseTrafo,iterations, constraintMask)
 end
 
 """
@@ -186,7 +188,10 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
   end
 
   # invoke constraints
-  applyConstraints(solver.cl, solver.sparseTrafo, solver.enforceReal, solver.enforcePositive)
+  applyConstraints(solver.cl, solver.sparseTrafo,
+                              solver.enforceReal,
+                              solver.enforcePositive,
+                              solver.constraintMask)
 
   if length(solver.reg) > 1
     # We skip the L2 regularizer, since it has already been applied
