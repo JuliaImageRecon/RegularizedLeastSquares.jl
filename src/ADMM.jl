@@ -120,7 +120,7 @@ function init!(solver::ADMM{matT,opT,T,preconT}
   if isempty(x)
     if !isempty(b)
       solver.x[:] .= adjoint(A) * b
-      solver.z[:] .= 0.0
+      solver.z[:] .= solver.x[:]
     else
       solver.x[:] .= 0.0
       solver.z[:] .= 0.0
