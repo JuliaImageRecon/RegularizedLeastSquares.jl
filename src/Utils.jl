@@ -211,7 +211,7 @@ function enfPos!(x::Vector{T}, mask=ones(Bool, length(x))) where {T<:Real}
   end
 end
 
-function applyConstraints(x, sparseTrafo, enforceReal, enforcePositive, constraintMask)
+function applyConstraints(x, sparseTrafo, enforceReal, enforcePositive, constraintMask=ones(Bool, length(x)) )
 
   mask = (constraintMask != nothing) ? constraintMask : ones(Bool, length(x))
 

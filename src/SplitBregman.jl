@@ -142,8 +142,8 @@ function init!(solver::SplitBregman{matT,opT,T,preconT}
   else
     solver.u[:] .= u
   end
-  solver.v1[:] .= 0
-  solver.v2[:] .= 0
+  solver.v1[:] .= copy(solver.u)
+  solver.v2[:] .= copy(solver.u)
 
   # right hand side for the x-update
   solver.y_j[:] .= b
