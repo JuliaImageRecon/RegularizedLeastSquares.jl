@@ -5,11 +5,11 @@ using LinearAlgebra
 import LinearAlgebra.BLAS: gemv, gemv!
 import LinearAlgebra: BlasFloat, normalize!, norm, rmul!, lmul!
 using SparseArrays
-using ProgressMeter
 using IterativeSolvers
 using Random
 using SparsityOperators
 @reexport using SparsityOperators
+@reexport using ProgressMeter
 
 export createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
 
