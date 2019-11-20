@@ -1,16 +1,14 @@
 module RegularizedLeastSquares
 
 import Base: length, iterate
-using FFTW
 using LinearAlgebra
 import LinearAlgebra.BLAS: gemv, gemv!
 import LinearAlgebra: BlasFloat, normalize!, norm, rmul!, lmul!
-using LinearOperators
 using SparseArrays
 using ProgressMeter
 using IterativeSolvers
 using Random
-using Reexport
+using SparsityOperators
 @reexport using SparsityOperators
 
 export createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
