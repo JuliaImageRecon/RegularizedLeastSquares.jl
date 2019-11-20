@@ -1,4 +1,4 @@
-using RegularizedLeastSquares, LinearAlgebra, FFTW
+using RegularizedLeastSquares, LinearAlgebra
 # Packages for tetsing only
 using Random, Test
 
