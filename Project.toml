@@ -12,7 +12,7 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 SparsityOperators = "a5ff1dd3-4e0a-50db-9022-6d011c1d5846"
 
 [compat]
-julia = "0.7, 1.0"
+julia = "1.0"
 SparsityOperators = "0.1.4"
 ProgressMeter = "1.2"
 IterativeSolvers = "0.8"
