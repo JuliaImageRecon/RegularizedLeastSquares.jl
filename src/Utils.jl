@@ -221,7 +221,7 @@ function applyConstraints(x, sparseTrafo, enforceReal, enforcePositive, constrai
   enforceReal && enfReal!(x, mask)
   enforcePositive && enfPos!(x, mask)
   if sparseTrafo != nothing
-    x[:] = sparseTrafo' * x
+    x[:] = adjoint(sparseTrafo)*x
   end
 end
 

@@ -22,7 +22,7 @@ function proxL21!(x::Vector{T},λ::Float64; sparseTrafo::Trafo=nothing, slices::
     proxL21!(z, λ, slices)
   end
   if sparseTrafo != nothing
-    x[:] = sparseTrafo\z
+    x[:] = adjoint(sparseTrafo)*z
   else
     x[:] = z
   end
@@ -37,7 +37,7 @@ end
 
 """
     normL21(x::Vector{T}, λ::Float64; sparseTrafo::Trafo=nothing, slices::Int64=1, kargs...) where T
-    
+
 return the value of the L21-regularization term.
 Arguments are the same as in `proxL21!`
 """

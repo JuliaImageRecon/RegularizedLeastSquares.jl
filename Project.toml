@@ -1,7 +1,7 @@
 name = "RegularizedLeastSquares"
 uuid = "1e9c538a-f78c-5de5-8ffb-0b6dbe892d23"
 authors = ["Tobias Knopp <tobias@knoppweb.de>"]
-version = "0.5"
+version = "0.5.1"
 
 [deps]
 IterativeSolvers = "42fd0dbc-a981-5370-80f2-aaf504508153"
@@ -13,7 +13,7 @@ SparsityOperators = "a5ff1dd3-4e0a-50db-9022-6d011c1d5846"
 
 [compat]
 julia = "1.0"
-SparsityOperators = "0.1.4"
+SparsityOperators = "0.1.5"
 ProgressMeter = "1.2"
 IterativeSolvers = "0.8"
 

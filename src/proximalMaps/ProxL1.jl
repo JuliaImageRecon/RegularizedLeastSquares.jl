@@ -20,7 +20,7 @@ function proxL1!(x::Array{T}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...)
     z[:] = [i*max( (abs(i)-λ)/abs(i),0 ) for i in z]
   end
   if sparseTrafo != nothing
-    x[:] = sparseTrafo\z
+    x[:] = adjoint(sparseTrafo)*z
   else
     x[:] = z
   end
