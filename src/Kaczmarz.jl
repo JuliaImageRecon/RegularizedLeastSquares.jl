@@ -168,8 +168,8 @@ function solve(solver::Kaczmarz, u::Vector{T};
   # log solver information
   solverInfo != nothing && storeInfo(solverInfo,solver.S,solver.u,solver.cl;reg=[solver.reg],residual=solver.vl)
 
-  # perform CGNR iterations
-  for (iteration, item) = enumerate(solver)
+  # perform Kaczmarz iterations
+  for item in solver
     solverInfo != nothing && storeInfo(solverInfo,solver.S,solver.u,solver.cl;reg=[solver.reg],residual=solver.vl)
   end
 
