@@ -8,6 +8,8 @@ using SparseArrays
 using IterativeSolvers
 using Random
 using SparsityOperators
+using VectorizationBase
+using SIMDPirates
 @reexport using SparsityOperators
 @reexport using ProgressMeter
 
