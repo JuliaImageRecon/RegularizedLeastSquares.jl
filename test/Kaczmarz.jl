@@ -1,7 +1,7 @@
 @testset "test Kaczmarz update" begin
     for T in [Float32,Float64,ComplexF32,ComplexF64]
         # set up
-	M = 128
+	M = 127
 	N = 16
 	
 	A = rand(T,M,N)
@@ -17,7 +17,7 @@
 
     for T in [Float32,Float64,ComplexF32,ComplexF64]
         # set up
-        M = 128
+        M = 127
         N = 16
 
         A = rand(T,N,M)
