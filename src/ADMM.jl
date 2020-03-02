@@ -3,29 +3,28 @@ export admm
 mutable struct ADMM{matT,opT,T,preconT} <: AbstractLinearSolver
   # oerators and regularization
   A::matT
-  reg::Regularization
+  reg::Vector{Regularization}
   # fields and operators for x update
   op::opT
   β::Vector{T}
+  β_y::Vector{T}
   # fields for primal & dual variables
   x::Vector{T}
-  z::Vector{T}
-  zᵒˡᵈ::Vector{T}
-  u::Vector{T}
+  z::Vector{Vector{T}}
+  zᵒˡᵈ::Vector{Vector{T}}
+  u::Vector{Vector{T}}
   # other parameters
   precon::preconT
-  ρ::Float64
-  ρ0::Float64
-  adaptRho::Bool
+  ρ::Vector{Float64}
   iterations::Int64
   iterationsInner::Int64
   # state variables for CG
   cgStateVars::CGStateVariables
   # convergence parameters
-  rᵏ::Float64
-  sᵏ::Float64
-  ɛᵖʳⁱ::Float64
-  ɛᴰᵘᵃˡ::Float64
+  rᵏ::Vector{Float64}
+  sᵏ::Vector{T}
+  ɛᵖʳⁱ::Vector{Float64}
+  ɛ_dt::Vector{T}
   σᵃᵇˢ::Float64
   absTol::Float64
   relTol::Float64
@@ -55,8 +54,7 @@ function ADMM(A::matT; reg=nothing, regName=["L1"]
             , λ=[0.0]
             , AHA::opT=nothing
             , precon=Identity()
-            , ρ::Float64=1.e-2
-            , adaptRho::Bool=false
+            , ρ=[1.e-1]
             , iterations::Int64=50
             , iterationsInner::Int64=10
             , absTol::Float64=1.e-8
@@ -70,23 +68,38 @@ function ADMM(A::matT; reg=nothing, regName=["L1"]
 
   # operator and fields for the update of x
   if AHA != nothing
-    op = AHA
+    op = AHA + sum(ρ)*opEye(size(A,2))
   else
-    op = A'*A
+    op = A'*A + sum(ρ)*opEye(size(A,2))
   end
   β = zeros(eltype(A),size(A,2))
+  β_y = zeros(eltype(A),size(A,2))
 
   # fields for primal & dual variables
   x = zeros(eltype(A),size(A,2))
-  z = zeros(eltype(A),size(A,2))
-  zᵒˡᵈ = zeros(eltype(A),size(A,2))
-  u = zeros(eltype(A),size(A,2))
+  z = [zeros(eltype(A),size(A,2)) for i=1:length(vec(reg))]
+  zᵒˡᵈ = [zeros(eltype(A),size(A,2)) for i=1:length(vec(reg))]
+  u = [zeros(eltype(A),size(A,2)) for i=1:length(vec(reg))]
 
   # statevariables for CG
   # we store them here to prevent CG from allocating new fields at each call
   statevars = CGStateVariables(zero(x),similar(x),similar(x))
-  return ADMM(A,vec(reg)[1],op,β,x,z,zᵒˡᵈ,u,precon,ρ,ρ,adaptRho
-              ,iterations,iterationsInner,statevars, 0.0,0.0,0.0,0.0,0.0,absTol,relTol,tolInner)
+
+  # convergence parameters
+  rk = [0.0 for i=1:length(vec(reg))]
+  sk = zeros(eltype(A),size(A,2))
+  eps_pri = [0.0 for i=1:length(vec(reg))]
+  eps_dt = zeros(eltype(A),size(A,2))
+
+  # make sure that ρ is a vector
+  if typeof(ρ) <: Real
+    ρ_vec = [ρ]
+  else
+    ρ_vec = ρ
+  end
+
+  return ADMM(A,vec(reg),op,β,β_y,x,z,zᵒˡᵈ,u,precon,ρ_vec,iterations
+              ,iterationsInner,statevars, rk,sk,eps_pri,eps_dt,0.0,absTol,relTol,tolInner)
 end
 
 """
@@ -110,9 +123,9 @@ function init!(solver::ADMM{matT,opT,T,preconT}
   if A != solver.A
     solver.A = A
     if AHA != nothing
-      solver.op = AHA
+      solver.op = AHA + sum(solver.ρ)*opEye(length(x))
     else
-      solver.op = A'*A
+      solver.op = A'*A + sum(solver.ρ)*opEye(length(x))
     end
   end
 
@@ -120,25 +133,22 @@ function init!(solver::ADMM{matT,opT,T,preconT}
   if isempty(x)
     if !isempty(b)
       solver.x[:] .= adjoint(A) * b
-      solver.z[:] .= solver.x[:]
     else
       solver.x[:] .= 0.0
-      solver.z[:] .= 0.0
     end
   else
     solver.x[:] .= x
-    solver.z[:] .= x
+  end
+
+  # primal and dual variables
+  for i=1:length(solver.reg)
+    solver.z[i][:] .= copy(solver.x)
+    solver.zᵒˡᵈ[i][:] .= 0.0
+    solver.u[i] .= 0.0
   end
 
   # right hand side for the x-update
-  solver.β .= adjoint(A)*b
-
-  # primal and dual variables
-  solver.zᵒˡᵈ[:] .= 0
-  solver.u .= 0
-
-  # set ρ
-  solver.ρ=solver.ρ0
+  solver.β_y[:] .= adjoint(A) * b
 
   # convergence parameter
   solver.σᵃᵇˢ = sqrt(length(b))*solver.absTol
@@ -184,36 +194,53 @@ function iterate(solver::ADMM{matT,opT,T,preconT}, iteration::Int=0) where {matT
 
   # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 ||x+u-z||²
   # <=> (A'A+ρ)*x = A'b+ρ(z-u)
-  cg!(solver.x, solver.op+solver.ρ*opEye(length(solver.x))
-      , solver.β+solver.ρ*(solver.z-solver.u), Pl=solver.precon
+  copyto!(solver.β, solver.β_y)
+  for i=1:length(solver.reg)
+    solver.β[:] .+= solver.ρ[i]*(solver.z[i].-solver.u[i])
+  end
+  cg!(solver.x, solver.op, solver.β, Pl=solver.precon
       , maxiter=solver.iterationsInner, tol=solver.tolInner, statevars=solver.cgStateVars)
+
   # 2. update z using the proximal map of 1/ρ*g(x)
-  copyto!(solver.zᵒˡᵈ, solver.z)
-  solver.z[:] .= solver.x .+ solver.u
-  solver.reg.prox!(solver.z, solver.reg.λ/solver.ρ; solver.reg.params...)
+  for i=1:length(solver.reg)
+    copyto!(solver.zᵒˡᵈ[i], solver.z[i])
+    solver.z[i][:] .= solver.x .+ solver.u[i]
+    if solver.ρ[i] != 0
+      solver.reg[i].prox!(solver.z[i], solver.reg[i].λ/solver.ρ[i]; solver.reg[i].params...)
+    end
+  end
 
   # 3. update u
-  solver.u[:] .+= solver.x .- solver.z
+  for i=1:length(solver.reg)
+    solver.u[i][:] .+= solver.x .- solver.z[i]
+  end
 
   # update convergence measures
-  solver.rᵏ = norm(solver.x-solver.z)  # primal residual (x-z)
-  solver.ɛᵖʳⁱ = solver.σᵃᵇˢ + solver.relTol*max( norm(solver.x), norm(solver.z) )
-  solver.sᵏ = norm(solver.ρ * (solver.z .- solver.zᵒˡᵈ)) # dual residual (concerning f(x))
-  solver.ɛᴰᵘᵃˡ = solver.σᵃᵇˢ + solver.relTol*norm(solver.ρ*solver.u);
-
-  # adapt ρ to given residuals
-  if solver.adaptRho
-    if solver.rᵏ > 10.0*solver.sᵏ
-      solver.ρ = 2.0*solver.ρ
-    elseif solver.sᵏ > 10.0*solver.rᵏ
-      solver.ρ = solver.ρ/2.0
-    end
+  for i=1:length(solver.reg)
+    solver.rᵏ[i] = norm(solver.x-solver.z[i])  # primal residual (x-z)
+    solver.ɛᵖʳⁱ[i] = solver.σᵃᵇˢ + solver.relTol*max( norm(solver.x), norm(solver.z[i]) )
+  end
+  solver.sᵏ[:] .= 0.0
+  solver.ɛ_dt[:] .= 0.0
+  for i=1:length(solver.reg)
+    solver.sᵏ[:] .+= norm(solver.ρ[i] * (solver.z[i] .- solver.zᵒˡᵈ[i])) # dual residual (concerning f(x))
+    solver.ɛ_dt[:] .+= solver.ρ[i]*solver.u[i]
   end
 
   # return the primal feasibilty measure as item and iteration number as state
   return solver.rᵏ, iteration+1
 end
 
-@inline converged(solver::ADMM) = (solver.rᵏ<solver.ɛᵖʳⁱ && solver.sᵏ < solver.ɛᴰᵘᵃˡ)
+function converged(solver::ADMM)
+  if norm(solver.sᵏ) >= solver.σᵃᵇˢ+solver.relTol*norm(solver.ɛ_dt)
+    return false
+  else
+    for i=1:length(solver.reg)
+      (solver.rᵏ[i] >= solver.ɛᵖʳⁱ[i]) && return false
+    end
+  end
+
+  return true
+end
 
 @inline done(solver::ADMM,iteration::Int) = converged(solver) || iteration>=solver.iterations
