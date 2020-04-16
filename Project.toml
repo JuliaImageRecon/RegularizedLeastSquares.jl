@@ -18,6 +18,7 @@ IterativeSolvers = "0.8"
 ProgressMeter = "1.2"
 SIMDPirates = "= 0.6.5"
 SparsityOperators = "0.1.5"
+VectorizationBase = "0.10.4"
 julia = "1.0"
 
 [extras]
