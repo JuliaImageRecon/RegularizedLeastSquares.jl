@@ -250,7 +250,7 @@ function kaczmarz_update!(B::Transpose{T,S}, x::Vector,
 			  k::Integer, beta) where {T,S<:DenseMatrix}
   A = B.parent
   @inbounds @simd for n=1:size(A,1)
-    x[n] += beta*conj(A[n,k])
+      x[n] += beta*conj(A[n,k])
   end
 end
 
@@ -260,7 +260,7 @@ for (T,W,shufflevectorMask,vσ) in [(Float32,:WF32,:shufflevectorMaskF32,:vσF32
         const $W = VectorizationBase.pick_vector_width($T)
         const $shufflevectorMask = Val(ntuple(k -> iseven(k-1) ? k : k-2, $W))
         const $vσ = Vec{$W,$T}(ntuple(k -> (-1f0)^(k+1),$W))
-        function kaczmarz_update!(A::Transpose{Complex{$T},S}, b::Vector{Complex{$T}}, k::Integer, beta::Complex{$T}) where {S<:DenseMatrix}
+        function kaczmarz_update!_tmp(A::Transpose{Complex{$T},S}, b::Vector{Complex{$T}}, k::Integer, beta::Complex{$T}) where {S<:DenseMatrix}
             b = reinterpret($T,b)
             A = reinterpret($T,A.parent)
 
