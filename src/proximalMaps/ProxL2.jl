@@ -15,4 +15,4 @@ end
 
 returns the value of the L2-regularization term
 """
-normL2(x::Vector{T}, λ::Float64, kargs...) where T = λ*norm(x,2)^2
+normL2(x::Vector{T}, λ::Float64; kargs...) where T = λ*norm(x,2)^2
