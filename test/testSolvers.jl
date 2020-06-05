@@ -8,7 +8,7 @@ Random.seed!(1234)
   solvers = linearSolverListReal()
 
   for solver in solvers
-    solverInfo = SolverInfo()
+    solverInfo = SolverInfo(Float64)
     S = createLinearSolver(solver, A, iterations=100, solverInfo=solverInfo)
     x_approx = solve(S,b)
     @info "Testing solver $solver ...: $x  == $x_approx"
@@ -24,7 +24,7 @@ end
   solvers = linearSolverList()
 
   for solver in solvers
-    solverInfo = SolverInfo()
+    solverInfo = SolverInfo(ComplexF64)
     S = createLinearSolver(solver, A, iterations=100, solverInfo=solverInfo)
     x_approx = solve(S,b)
     @info "Testing solver $solver ...: $x  == $x_approx"
@@ -50,7 +50,7 @@ end
 
   for solver in ["fista","admm"]
     reg = Regularization("L1",1.e-3)
-    solverInfo = SolverInfo()
+    solverInfo = SolverInfo(ComplexF64)
     S = createLinearSolver(solver,F; reg=reg, iterations=200, solverInfo=solverInfo)
     x_approx = solve(S, b)
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
@@ -58,7 +58,7 @@ end
   end
   for solver in ["splitBregman"]
     reg = Regularization("L1",1.e-3)
-    solverInfo = SolverInfo()
+    solverInfo = SolverInfo(ComplexF64)
     S = createLinearSolver(solver,F; reg=reg,iterations=5,iterationsInner=40,
                                     ρ=1.0,solverInfo=solverInfo)
     x_approx = solve(S, b)
@@ -67,7 +67,7 @@ end
   end
   for solver in ["kaczmarz"]
     reg = [Regularization("L2",1.e-9), Regularization("L1",1.e-3)]
-    solverInfo = SolverInfo()
+    solverInfo = SolverInfo(ComplexF64)
     S = createLinearSolver(solver,F; reg=reg, iterations=200, solverInfo=solverInfo)
     x_approx = solve(S, b)
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"

@@ -127,11 +127,11 @@ function solve(solver::DaxConstrained, u::Vector{T}; λ::Real=solver.λ
   init!(solver; S=S, λ=λ, u=u, zk=startVector, weights=weights)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.S,solver.u,solver.zk;residual=bk)
+  solverInfo != nothing && storeInfo(solverInfo,solver.zk,norm(solver.bk))
 
   # perform CGNR iterations
   for (iteration, item) = enumerate(solver)
-    solverInfo != nothing && storeInfo(solverInfo,solver.S,solver.u,solver.zk;residual=bk)
+    solverInfo != nothing && storeInfo(solverInfo,solver.zk,norm(solver.bk))
   end
 
   return solver.zk

@@ -146,7 +146,7 @@ end
                 , weights::Vector=solver.weights, shuffleRows::Bool=false
                 , solverInfo=nothing, kargs...) where {T,matT}
 
-solves Thkhonov-regularized inverse problem using Kaczmarz algorithm.
+solves Thikhonov-regularized inverse problem using Kaczmarz algorithm.
 
 # Arguments
 * `solver::Kaczmarz  - the solver containing both system matrix and regularizer
@@ -156,6 +156,8 @@ solves Thkhonov-regularized inverse problem using Kaczmarz algorithm.
 * (`weights::Vector{T}=solver.weights`) - weights for the data term
 * (`shuffleRows::Bool=false`)           - randomize Kacmarz algorithm
 * (`solverInfo=nothing`)                - solverInfo for logging
+
+when a `SolverInfo` objects is passed, the residuals are stored in `solverInfo.convMeas`.
 """
 function solve(solver::Kaczmarz, u::Vector{T};
                 S::matT=solver.S, startVector::Vector{T}=eltype(S)[]
@@ -166,11 +168,11 @@ function solve(solver::Kaczmarz, u::Vector{T};
   init!(solver; S=S, u=u, cl=startVector, weights=weights, shuffleRows=shuffleRows)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.S,solver.u,solver.cl;reg=[solver.reg],residual=solver.vl)
+  solverInfo != nothing && storeInfo(solverInfo,solver.cl,solver.vl)
 
   # perform Kaczmarz iterations
   for item in solver
-    solverInfo != nothing && storeInfo(solverInfo,solver.S,solver.u,solver.cl;reg=[solver.reg],residual=solver.vl)
+    solverInfo != nothing && storeInfo(solverInfo,solver.cl,solver.vl)
   end
 
   return solver.cl

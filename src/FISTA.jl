@@ -34,7 +34,7 @@ function FISTA(A::matT; reg=nothing, regName=["L1"]
               , λ=[0.0]
               , ρ::Float64=1.0
               , t::Float64=1.0
-              , relTol::Float64=1.e-5
+              , relTol::Float64=eps()
               , iterations::Int64=50
               , kargs...) where matT
 
@@ -92,17 +92,19 @@ solves an inverse problem using FISTA.
 * `A::matT=solver.A`            - operator for the data-term of the problem
 * (`startVector::Vector{T}=T[]`)  - initial guess for the solution
 * (`solverInfo=nothing`)          - solverInfo object
+
+when a `SolverInfo` objects is passed, the residuals are stored in `solverInfo.convMeas`.
 """
 function solve(solver::FISTA, b::Vector{T}; A::matT=solver.A, startVector::Vector{T}=T[], solverInfo=nothing, kargs...) where {matT,T}
   # initialize solver parameters
   init!(solver; A=A, b=b, x=startVector)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.A,b,solver.x;xᵒˡᵈ=solver.xᵒˡᵈ,reg=[solver.reg],residual=solver.res)
+  solverInfo != nothing && storeInfo(solverInfo,solver.x,solver.res_norm)
 
   # perform FISTA iterations
   for (iteration, item) = enumerate(solver)
-    solverInfo != nothing && storeInfo(solverInfo,solver.A,b,solver.x;xᵒˡᵈ=solver.xᵒˡᵈ,reg=[solver.reg],residual=solver.res)
+    solverInfo != nothing && storeInfo(solverInfo,solver.x,solver.res_norm)
   end
 
   return solver.x

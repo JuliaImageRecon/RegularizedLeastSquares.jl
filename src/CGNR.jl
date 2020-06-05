@@ -17,6 +17,8 @@ mutable struct CGNR{T,Tsparse} <: AbstractLinearSolver
   enforcePositive::Bool
   sparseTrafo::Tsparse
   iterations::Int64
+  relTol::Float64
+  z0::Float64
 end
 
 """
@@ -33,6 +35,7 @@ creates an `CGNR` object for the system matrix `A`.
 * (enforceReal::Bool=false)         - constrain the solution to be real
 * (enforcePositive::Bool=false)     - constrain the solution to have positive real part
 * (iterations::Int64=10)            - number of iterations
+* (`relTol::Float64=eps()`)         - rel tolerance for stopping criterion
 """
 function CGNR(S; λ::Real=0.0, reg = Regularization("L2", λ)
               , weights::Vector{WT}=eltype(S)[]
@@ -40,6 +43,7 @@ function CGNR(S; λ::Real=0.0, reg = Regularization("L2", λ)
               , enforceReal::Bool=false
               , enforcePositive::Bool=false
               , iterations::Int64=10
+              , relTol::Float64=eps()
               , kargs...) where WT
 
   if (reg.prox!) != (proxL2!)
@@ -57,7 +61,7 @@ function CGNR(S; λ::Real=0.0, reg = Regularization("L2", λ)
   αl = zero(T)        #temporary scalar
   βl = zero(T)        #temporary scalar
   ζl = zero(T)        #temporary scalar
-  return CGNR(S,reg,cl,rl,zl,pl,vl,xl,αl,βl,ζl,weights,enforceReal,enforcePositive,sparseTrafo,iterations)
+  return CGNR(S,reg,cl,rl,zl,pl,vl,xl,αl,βl,ζl,weights,enforceReal,enforcePositive,sparseTrafo,iterations,relTol,0.0)
 end
 
 """
@@ -99,6 +103,7 @@ function init!(solver::CGNR{T,Tsparse}
     ## gemv!('C',one(T), S, rl, zero(T), zl)
     solver.zl[:] .= adjoint(S)*solver.rl
   end
+  solver.z0 = norm(solver.zl)
   copyto!(solver.pl,solver.zl)
 end
 
@@ -114,17 +119,19 @@ solves Thikhonov-regularized inverse problem using CGNR.
 * (`startVector::Vector{T}=T[]`)        - initial guess for the solution
 * (`weights::Vector{T}=solver.weights`) - weights for the data term
 * (`solverInfo=nothing`)                - solverInfo for logging
+
+when a `SolverInfo` objects is passed, the residuals `solver.zl` are stored in `solverInfo.convMeas`.
 """
 function solve(solver::CGNR{T,Tsparse}, u::Vector; S::matT=solver.S, startVector::Vector{T}=eltype(S)[], weights::Vector{T}=solver.weights, solverInfo=nothing, kargs...) where {T,Tsparse,matT}
   # initialize solver parameters
   init!(solver; S=S, u=u, cl=startVector, weights=weights)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.S,u,solver.cl;reg=[solver.reg])
+  solverInfo != nothing && storeInfo(solverInfo,solver.cl,norm(solver.zl))
 
   # perform CGNR iterations
   for (iteration, item) = enumerate(solver)
-    solverInfo != nothing && storeInfo(solverInfo,solver.S,u,solver.cl;reg=[solver.reg])
+    solverInfo != nothing && storeInfo(solverInfo,solver.cl,norm(solver.zl))
   end
 
   return solver.cl
@@ -184,4 +191,8 @@ function iterate(solver::CGNR{T,Tsparse}, iteration::Int=0) where {T,Tsparse}
     return solver.rl, iteration+1
 end
 
-@inline done(solver::CGNR,iteration::Int) = iteration>=min(solver.iterations, size(solver.S,2))
+function converged(solver::CGNR)
+  return norm(solver.zl)/solver.z0 <= solver.relTol
+end
+
+@inline done(solver::CGNR,iteration::Int) = converged(solver) || iteration>=min(solver.iterations, size(solver.S,2))

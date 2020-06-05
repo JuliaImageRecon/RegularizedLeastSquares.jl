@@ -2,81 +2,47 @@ export SolverInfo, rownorm², nrmsd
 
 """
 The Solver Info type is used to obtain aditional information
-of linear solvers and their iteration process
+of linear solvers and their iteration process.
+
+# Fields
+* `convMeas::Vector{Float64}` - Vector with convergence parameters
+* `nrmse::Vector{Float64}`    - NRMSD of the current iterate w.r.t some reference (if provided)
+* `x_ref::Vector{T}`          - Reference for computing NRMSD of iterates
+* `x_iter::Vector{Vector{T}}` - Vector for storing iterates
+* `store_solutions::Bool`     - specification whether iterates are to be stored
+
+the content of `convMeas` is specific to each solver. It can be found in the documentation of the
+corresping `solve`-method.
 """
-mutable struct SolverInfo
-  cost::Vector{Float64}
-  residual::Vector
-  relSolutionChange::Vector{Float64}
+mutable struct SolverInfo{T}
+  convMeas::Vector{Float64}
   nrmse::Vector{Float64}
-  x_ref::Union{Vector,Nothing}
-  iterations::Union{Vector,Nothing}
-  x_iter::Union{Vector,Nothing}
+  x_ref::Vector{T}
+  x_iter::Vector{Vector{T}}
+  store_solutions::Bool
 end
 
-function SolverInfo(x_ref::Union{Vector,Nothing}=nothing; store_solutions=false,
+function SolverInfo(x_ref::Vector{T}; store_solutions::Bool=false,
+    kargs...) where T
+  return SolverInfo(Vector{Float64}(), Vector{Float64}(), x_ref, Vector{Vector{T}}(), store_solutions)
+end
+
+function SolverInfo(T::Type=Number; store_solutions::Bool=false,
     kargs...)
-  x_iter = store_solutions ? Vector{Any}() : nothing
-  SolverInfo(Vector{Float64}(), Vector{Float64}(), Vector{Float64}(),
-             Vector{Float64}(), x_ref, Vector{Int64}(), x_iter)
+  return SolverInfo(Vector{Float64}(), Vector{Float64}(), Vector{T}(), Vector{Vector{T}}(), store_solutions)
 end
 
-function storeInfo(solverinfo::Nothing, res, x)
-  return nothing
-end
-
-function storeInfo(solverInfo::SolverInfo,A,y::Vector{U},x::Vector{U};
-                       xᵒˡᵈ::Vector{U}=U[],reg::Union{Vector{T},Nothing}=nothing,
-                       residual::Vector{U}=U[]) where {U,T<:AbstractRegularization}
-  # residual
-  if isempty(residual)
-    residual=A*x-y
-  end
-  push!(solverInfo.residual,norm(residual))
+function storeInfo(solverInfo::SolverInfo,x::Vector{T},convMeas::Vararg{rT,N}) where {T,rT<:Real,N}
+  # convergence criteria
+  push!(solverInfo.convMeas,convMeas...)
   # solution
-  if solverInfo.x_iter != nothing
+  if solverInfo.store_solutions
     push!(solverInfo.x_iter, deepcopy(x))
   end
-  # cost function
-  cost = 0.5*norm(residual)^2
-  if reg != nothing
-    for i=1:length(reg)
-      cost += reg[i].norm(x,reg[i].λ;reg[i].params...)
-    end
-  end
-  push!(solverInfo.cost, cost)
-  # relative change of the solution
-  if !isempty(xᵒˡᵈ)
-    relSolutionChange = norm(x-xᵒˡᵈ)/norm(x)
-    push!(solverInfo.relSolutionChange, relSolutionChange)
-  end
   # nrmse
-  if solverInfo.x_ref != nothing
-    nrmse = nrmsd(solverInfo.x_ref,x)
-    push!(solverInfo.nrmse, nrmse)
+  if !isempty(solverInfo.x_ref)
+    push!( solverInfo.nrmse, nrmsd(solverInfo.x_ref,x) )
   end
-end
-
-function storeIter(solverInfo::SolverInfo, iterations::Int64)
-  if solverInfo.iterations != nothing
-    push!(solverInfo.iterations, iterations)
-  end
-end
-
-function storeInfo(solverinfo::SolverInfo, res, x)
-  push!( solverinfo.xNorm, x)
-  push!( solverinfo.resNorm, res)
-  return nothing
-end
-
-function storeResidual(solverinfo::SolverInfo,res)
-  push!( solverinfo.resNorm, res)
-  return nothing
-end
-
-function storeRegularization(solverinfo::SolverInfo,regNorm)
-  push!( solverinfo.xNorm, regNorm)
-  return nothing
 end
 
 ### rownorm² ###

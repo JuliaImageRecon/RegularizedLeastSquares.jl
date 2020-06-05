@@ -2,7 +2,7 @@ BLAS.dot(a::Vector{Complex{T}}, b::Vector{Complex{T}}) where T = BLAS.dotc(a,b)
 
 """
     cg(A, x::Vector, b::Vector; iterations::Int = 30, relTol = 1.e-3
-      , solverInfo = nothing, storeIterations::Bool=false )
+      , solverInfo = nothing )
 
 Simple conjugate gradient algorithm.
 The system matrix contained in AbstractLinearTrafo MUST be symmetrical and
@@ -15,15 +15,13 @@ and positive definite
 * `iterations::Int = 30`        - maximum number of iterations
 * `relTol = 1.e-3`              - stopping criteria for the relativ residual change
 * `solverInfo = nothing`        - `solverInfo` object used to store convergence metrics
-* `storeIterations::Bool=false` - if true, the number of iterations until convergence are stored
 """
 function cg(A
             , x::Vector
             , b::Vector
             ; iterations::Int = 30
             , relTol = 1.e-3
-            , solverInfo = nothing
-            , storeIterations::Bool=false )
+            , solverInfo = nothing)
 
   r = b-A*x
   p = r
@@ -54,18 +52,14 @@ function cg(A
   end
 
   if solverInfo != nothing
-    if storeIterations
-      storeIter(solverInfo,iter_conv)
-    else
-      storeInfo(solverInfo,A,b,x;residual=rsnew)
-    end
+    storeInfo(solverInfo,A,b,x;residual=rsnew)
   end
   return x
 end
 
 """
     cg(A, x::Vector, b::Vector, M; iterations::Int = 30, relTol = 1.e-3
-      , solverInfo = nothing, storeIterations::Bool=false )
+      , solverInfo = nothing)
 
 Preconditionned conjugate gradient algorithm.
 The system matrix contained in AbstractLinearTrafo MUST be symmetrical and
@@ -80,8 +74,7 @@ function cg(A
             , M
             ; iterations::Int = 30
             , relTol = 1.e-3
-            , solverInfo = nothing
-            , storeIterations::Bool=false )
+            , solverInfo = nothing)
 
   r = b-A*x
   z = M*r
@@ -115,11 +108,7 @@ function cg(A
   end
 
   if solverInfo != nothing
-    if storeIterations
-      storeIter(solverInfo,iter_conv)
-    else
-      storeInfo(solverInfo,A,b,x;residual=rsnew)
-    end
+    storeInfo(solverInfo,A,b,x;residual=rsnew)
   end
 
   return x

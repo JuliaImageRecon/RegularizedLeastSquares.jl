@@ -52,8 +52,8 @@ creates a `SplitBregman` object for the system matrix `A`.
 * (`iterations::Int64=10`)      - number of outer iterations
 * (`iterationsInner::Int64=50`) - maximum number of inner iterations
 * (`iterationsCG::Int64=10`)    - maximum number of CG iterations
-* (`absTol::Float64=1.e-8`)     - abs tolerance for stopping criterion
-* (`relTol::Float64=1.e-6`)     - rel tolerance for stopping criterion
+* (`absTol::Float64=eps()`)     - abs tolerance for stopping criterion
+* (`relTol::Float64=eps()`)     - rel tolerance for stopping criterion
 * (`tolInner::Float64=1.e-5`)   - tolerance for CG stopping criterion
 """
 function SplitBregman(A::matT, b=nothing; reg=nothing, regName=["L1"]
@@ -63,8 +63,8 @@ function SplitBregman(A::matT, b=nothing; reg=nothing, regName=["L1"]
                     , iterations::Int64=10
                     , iterationsInner::Int64=50
                     , iterationsCG::Int64=10
-                    , absTol::Float64=1.e-8
-                    , relTol::Float64=1.e-6
+                    , absTol::Float64=eps()
+                    , relTol::Float64=eps()
                     , tolInner::Float64=1.e-6
                     , kargs...) where matT <: Trafo
 
@@ -177,17 +177,20 @@ solves an inverse problem using the Split Bregman method.
 * (`A::matT=solver.A`)            - operator for the data-term of the problem
 * (`startVector::Vector{T}=T[]`)  - initial guess for the solution
 * (`solverInfo=nothing`)          - solverInfo for logging
+
+when a `SolverInfo` objects is passed, the primal residuals `solver.rk`
+and the dual residual `norm(solver.sk)` are stored in `solverInfo.convMeas`.
 """
 function solve(solver::SplitBregman, b::Vector{T}; A::matT=solver.A, startVector::Vector{T}=T[], solverInfo=nothing, kargs...) where {matT,T}
   # initialize solver parameters
   init!(solver; A=A, b=b, u=startVector)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.A,b,solver.v;xᵒˡᵈ=solver.vᵒˡᵈ,reg=solver.reg)
+  solverInfo != nothing && storeInfo(solverInfo,solver.v,solver.rk...,norm(solver.sk))
 
   # perform SplitBregman iterations
   for (iteration, item) = enumerate(solver)
-    solverInfo != nothing && storeInfo(solverInfo,solver.A,b,solver.v;xᵒˡᵈ=solver.vᵒˡᵈ,reg=solver.reg)
+    solverInfo != nothing && storeInfo(solverInfo,solver.v,solver.rk...,norm(solver.sk))
   end
 
   return solver.u
@@ -220,8 +223,8 @@ The Split Bregman Method for l1 Regularized Problems
   * (`iterations::Int64=50`)      - maximum number of iterations
   * (`iterationsInner::Int64=50`) - maximum number of inner iterations
   * (`iterationsCG::Int64=10`)    - maximum number of CG iterations
-  * (`absTol::Float64=1.e-8`)     - absolute tolerance for stopping criterion
-  * (`relTol::Float64=1.e-6`)     - relative tolerance for stopping criterion
+  * (`absTol::Float64=eps()`)     - absolute tolerance for stopping criterion
+  * (`relTol::Float64=eps()`)     - relative tolerance for stopping criterion
   * (`tolInner::Float64=1.e-3`)   - tolerance for CG
   * (`solverInfo = nothing`)      - `solverInfo` object used to store convergence metrics
 """

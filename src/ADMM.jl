@@ -46,8 +46,8 @@ creates an `ADMM` object for the system matrix `A`.
 * (`adaptRho::Bool=false`)      - adapt rho to balance primal and dual feasibility
 * (`iterations::Int64=50`)      - max number of ADMM iterations
 * (`iterationsInner::Int64=10`) - max number of internal CG iterations
-* (`absTol::Float64=1.e-8`)     - abs tolerance for stopping criterion
-* (`relTol::Float64=1.e-6`)     - rel tolerance for stopping criterion
+* (`absTol::Float64=eps()`)     - abs tolerance for stopping criterion
+* (`relTol::Float64=eps()`)     - rel tolerance for stopping criterion
 * (`tolInner::Float64=1.e-5`)   - tolerance for CG stopping criterion
 """
 function ADMM(A::matT; reg=nothing, regName=["L1"]
@@ -57,8 +57,8 @@ function ADMM(A::matT; reg=nothing, regName=["L1"]
             , ρ=[1.e-1]
             , iterations::Int64=50
             , iterationsInner::Int64=10
-            , absTol::Float64=1.e-8
-            , relTol::Float64=1.e-6
+            , absTol::Float64=eps()
+            , relTol::Float64=eps()
             , tolInner::Float64=1.e-5
             , kargs...) where {matT,opT}
 
@@ -168,17 +168,20 @@ solves an inverse problem using ADMM.
 * (`A::matT=solver.A`)            - operator for the data-term of the problem
 * (`startVector::Vector{T}=T[]`)  - initial guess for the solution
 * (`solverInfo=nothing`)          - solverInfo for logging
+
+when a `SolverInfo` objects is passed, the primal residuals `solver.rk`
+and the dual residual `norm(solver.sk)` are stored in `solverInfo.convMeas`.
 """
 function solve(solver::ADMM, b::Vector{T}; A::matT=solver.A, startVector::Vector{T}=T[], solverInfo=nothing, kargs...) where {matT,T}
   # initialize solver parameters
   init!(solver; A=A, b=b, x=startVector)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.A,b,solver.z;xᵒˡᵈ=solver.zᵒˡᵈ,reg=[solver.reg])
+  solverInfo != nothing && storeInfo(solverInfo,solver.z,solver.rk...,norm(solver.sk))
 
   # perform ADMM iterations
   for (iteration, item) = enumerate(solver)
-    solverInfo != nothing && storeInfo(solverInfo,solver.A,b,solver.z;xᵒˡᵈ=solver.zᵒˡᵈ,reg=[solver.reg])
+    solverInfo != nothing && storeInfo(solverInfo,solver.z,solver.rk...,norm(solver.sk))
   end
 
   return solver.x
