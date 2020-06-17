@@ -1,6 +1,6 @@
 # RegularizedLeastSquares
 
-[![Build Status](https://travis-ci.org/tknopp/RegularizedLeastSquares.jl.svg?branch=master)](https://travis-ci.org/tknopp/RegularizedLeastSquares.jl)
+[![Build Status](https://travis-ci.com/tknopp/RegularizedLeastSquares.jl.svg?branch=master)](https://travis-ci.com/tknopp/RegularizedLeastSquares.jl)
 
 [![codecov.io](http://codecov.io/github/tknopp/RegularizedLeastSquares.jl/coverage.svg?branch=master)](http://codecov.io/github/tknopp/RegularizedLeastSquares.jl?branch=master)
 
