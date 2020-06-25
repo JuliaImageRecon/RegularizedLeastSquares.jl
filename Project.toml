@@ -17,7 +17,7 @@ VectorizationBase = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 IterativeSolvers = "0.8"
 ProgressMeter = "1.2"
 SIMDPirates = "0.6.5, 0.7, 0.8"
-SparsityOperators = "0.1.5"
+SparsityOperators = "0.1.6"
 VectorizationBase = "0.10.4, 0.12"
 julia = "1.0"
 
