@@ -268,6 +268,11 @@ function iterate(solver::SplitBregman{matT,opT,T,preconT}, iteration::Int=1) whe
   if update_y(solver,iteration)
     solver.y_j[:] .+= solver.y .- solver.A*solver.u
     solver.β_yj[:] .= adjoint(solver.A) * solver.y_j
+    # reset v and b
+    for i=1:length(solver.reg)
+      solver.v[i][:] .= solver.u
+      solver.b[i] .= 0
+    end
     solver.iter_cnt += 1
     iteration = 0
   end
