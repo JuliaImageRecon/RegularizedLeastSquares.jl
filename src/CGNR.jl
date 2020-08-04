@@ -2,6 +2,7 @@ export cgnr
 
 mutable struct CGNR{T,Tsparse} <: AbstractLinearSolver
   S
+  SHWS
   reg::Regularization
   cl::Vector{T}
   rl::Vector{T}
@@ -56,12 +57,14 @@ function CGNR(S; λ::Real=0.0, reg = Regularization("L2", λ)
   rl = zeros(T,M)     #residual vector
   zl = zeros(T,N)     #temporary vector
   pl = zeros(T,N)     #temporary vector
-  vl = zeros(T,M)     #temporary vector
+  vl = zeros(T,N)     #temporary vector
   xl = zeros(T,M)     #temporary vector
   αl = zero(T)        #temporary scalar
   βl = zero(T)        #temporary scalar
   ζl = zero(T)        #temporary scalar
-  return CGNR(S,reg,cl,rl,zl,pl,vl,xl,αl,βl,ζl,weights,enforceReal,enforcePositive,sparseTrafo,iterations,relTol,0.0)
+  SHWS = normalOperator(S, isempty(weights) ? I : WeightingOp(weights))
+  return CGNR(S,SHWS,
+             reg,cl,rl,zl,pl,vl,xl,αl,βl,ζl,weights,enforceReal,enforcePositive,sparseTrafo,iterations,relTol,0.0)
 end
 
 """
@@ -80,6 +83,7 @@ function init!(solver::CGNR{T,Tsparse}
               , weights::Vector{T}=solver.weights) where {T,Tsparse,matT}
 
   solver.S = S
+  solver.SHWS = normalOperator(S, isempty(weights) ? I : WeightingOp(weights))
   if isempty(cl)
     solver.cl[:] .= zeros(T,size(S,2))
   else
@@ -149,6 +153,45 @@ function iterate(solver::CGNR{T,Tsparse}, iteration::Int=0) where {T,Tsparse}
       return nothing
     end
 
+    solver.vl[:] .= solver.SHWS*solver.pl
+
+    # αl = zlᴴ⋅zl/(vlᴴ⋅vl+λ*plᴴ⋅pl)
+    solver.ζl= norm(solver.zl)^2
+    normvl = dot(solver.pl,solver.vl) 
+
+    if solver.reg.λ > 0
+      solver.αl = solver.ζl/(normvl+solver.reg.λ*norm(solver.pl)^2)
+    else
+      solver.αl = solver.ζl/normvl
+    end
+
+    #cl += αl*pl
+    BLAS.axpy!(solver.αl,solver.pl,solver.cl)
+
+    #rl += -αl*vl
+    BLAS.axpy!(-solver.αl,solver.vl,solver.zl)
+    
+    if solver.reg.λ > 0
+      BLAS.axpy!(-solver.reg.λ*solver.αl,solver.pl,solver.zl)
+    end
+
+    # βl = zl₊₁ᴴ⋅zl₊₁/zlᴴ⋅zl
+    solver.βl = dot(solver.zl,solver.zl)/solver.ζl
+
+    #pl = zl + βl*pl
+    rmul!(solver.pl,solver.βl)
+    BLAS.axpy!(one(eltype(solver.S)),solver.zl,solver.pl)
+    return solver.zl, iteration+1
+end
+
+
+#=
+function iterate(solver::CGNR{T,Tsparse}, iteration::Int=0) where {T,Tsparse}
+    if done(solver,iteration)
+      applyConstraints(solver.cl, solver.sparseTrafo, solver.enforceReal, solver.enforcePositive)
+      return nothing
+    end
+
     #vl = Sᵗ*pl
     ##gemv!('N',one(T), S, pl, zero(T), vl)
     solver.vl[:] .= solver.S*solver.pl
@@ -190,6 +233,7 @@ function iterate(solver::CGNR{T,Tsparse}, iteration::Int=0) where {T,Tsparse}
     BLAS.axpy!(one(eltype(solver.S)),solver.zl,solver.pl)
     return solver.rl, iteration+1
 end
+=#
 
 function converged(solver::CGNR)
   return norm(solver.zl)/solver.z0 <= solver.relTol
