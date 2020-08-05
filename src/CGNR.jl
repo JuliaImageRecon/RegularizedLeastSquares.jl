@@ -63,6 +63,7 @@ function CGNR(S; λ::Real=0.0, reg = Regularization("L2", λ)
   βl = zero(T)        #temporary scalar
   ζl = zero(T)        #temporary scalar
   SHWS = normalOperator(S, isempty(weights) ? I : WeightingOp(weights))
+
   return CGNR(S,SHWS,
              reg,cl,rl,zl,pl,vl,xl,αl,βl,ζl,weights,enforceReal,enforcePositive,sparseTrafo,iterations,relTol,0.0)
 end
@@ -83,7 +84,8 @@ function init!(solver::CGNR{T,Tsparse}
               , weights::Vector{T}=solver.weights) where {T,Tsparse,matT}
 
   solver.S = S
-  solver.SHWS = normalOperator(S, isempty(weights) ? I : WeightingOp(weights))
+  # TODO, the following line is called a second time...
+  #solver.SHWS = normalOperator(S, isempty(weights) ? I : WeightingOp(weights))
   if isempty(cl)
     solver.cl[:] .= zeros(T,size(S,2))
   else
