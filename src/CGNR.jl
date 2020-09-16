@@ -38,14 +38,18 @@ creates an `CGNR` object for the system matrix `A`.
 * (iterations::Int64=10)            - number of iterations
 * (`relTol::Float64=eps()`)         - rel tolerance for stopping criterion
 """
-function CGNR(S; λ::Real=0.0, reg = Regularization("L2", λ)
+function CGNR(S; λ::Real=0.0, reg::R = Regularization("L2", λ)
               , weights::Vector{WT}=eltype(S)[]
               , sparseTrafo=nothing
               , enforceReal::Bool=false
               , enforcePositive::Bool=false
               , iterations::Int64=10
               , relTol::Float64=eps()
-              , kargs...) where WT
+              , kargs...) where {R<:Union{Regularization, Vector{Regularization}},WT}
+
+  if typeof(reg)==Vector{Regularization}
+    reg = reg[1]
+  end
 
   if (reg.prox!) != (proxL2!)
     @error "CGNR only supports L2 regularizer"

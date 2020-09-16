@@ -123,9 +123,9 @@ function init!(solver::ADMM{matT,opT,T,preconT}
   if A != solver.A
     solver.A = A
     if AHA != nothing
-      solver.op = AHA + sum(solver.ρ)*opEye(length(x))
+      solver.op = AHA + sum(solver.ρ)*opEye(length(solver.x))
     else
-      solver.op = A'*A + sum(solver.ρ)*opEye(length(x))
+      solver.op = A'*A + sum(solver.ρ)*opEye(length(solver.x))
     end
   end
 
