@@ -1,4 +1,4 @@
-Random.seed!(1234)
+Random.seed!(12345)
 
 @testset "Real Linear Solver" begin
   A = rand(3,2);
@@ -9,7 +9,7 @@ Random.seed!(1234)
 
   for solver in solvers
     solverInfo = SolverInfo(Float64)
-    S = createLinearSolver(solver, A, iterations=100, solverInfo=solverInfo)
+    S = createLinearSolver(solver, A, iterations=100, solverInfo=solverInfo, shape=(2,1))
     x_approx = solve(S,b)
     @info "Testing solver $solver ...: $x  == $x_approx"
     @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
@@ -73,4 +73,16 @@ end
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
     @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
   end
+
+  for solver in ["PrimalDualSolver"]
+    reg = [Regularization("L1",1.e-4), Regularization("TV",1.e-4)]
+    solverInfo = SolverInfo(Float64)
+    FR = [real.(F./norm(F)); imag.(F./norm(F))]
+    bR = [real.(b./norm(F)); imag.(b./norm(F))]
+    S = createLinearSolver(solver,FR; reg=reg, iterations=1000, solverInfo=solverInfo)
+    x_approx = solve(S, bR)
+    @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
+    @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
+  end
+
 end

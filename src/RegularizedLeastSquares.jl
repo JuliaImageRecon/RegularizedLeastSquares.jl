@@ -36,6 +36,7 @@ include("proximalMaps/ProxNuclear.jl")
 include("Regularization.jl")
 include("Utils.jl")
 include("Kaczmarz.jl")
+include("PrimalDualSolver.jl")
 include("DAXKaczmarz.jl")
 include("DAXConstrained.jl")
 include("CGNR.jl")
@@ -54,7 +55,7 @@ function linearSolverList()
 end
 
 function linearSolverListReal()
-  Any["kaczmarz","cgnr","daxkaczmarz","daxconstrained"] # These are those passing the tests
+  Any["kaczmarz","PrimalDualSolver","cgnr","daxkaczmarz","daxconstrained"] # These are those passing the tests
     #, "fusedlasso"]
 end
 
@@ -85,6 +86,8 @@ function createLinearSolver(solver::AbstractString, A, b=nothing;
 
   if solver == "kaczmarz"
     return Kaczmarz(A; kargs...)
+  elseif solver == "PrimalDualSolver"
+    return PrimalDualSolver(A; kargs...)
   elseif solver == "cgnr"
     return CGNR(A; kargs...)
   elseif solver == "direct"
