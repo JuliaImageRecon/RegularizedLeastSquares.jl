@@ -74,7 +74,7 @@ end
     @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
   end
 
-  for solver in ["PrimalDualSolver"]
+  for solver in ["primaldualsolver"]
     reg = [Regularization("L1",1.e-4), Regularization("TV",1.e-4)]
     solverInfo = SolverInfo(Float64)
     FR = [real.(F./norm(F)); imag.(F./norm(F))]

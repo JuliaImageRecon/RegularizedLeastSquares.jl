@@ -1,4 +1,4 @@
-export PrimalDualSolver
+export primaldualsolver
 
 mutable struct PrimalDualSolver{matT,matU,T} <: AbstractLinearSolver
     S::matT

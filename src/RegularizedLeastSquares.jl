@@ -36,7 +36,6 @@ include("proximalMaps/ProxNuclear.jl")
 include("Regularization.jl")
 include("Utils.jl")
 include("Kaczmarz.jl")
-include("PrimalDualSolver.jl")
 include("DAXKaczmarz.jl")
 include("DAXConstrained.jl")
 include("CGNR.jl")
@@ -45,6 +44,7 @@ include("FusedLasso.jl")
 include("FISTA.jl")
 include("ADMM.jl")
 include("SplitBregman.jl")
+include("PrimalDualSolver.jl")
 
 """
 Return a list of all available linear solvers
@@ -55,7 +55,7 @@ function linearSolverList()
 end
 
 function linearSolverListReal()
-  Any["kaczmarz","PrimalDualSolver","cgnr","daxkaczmarz","daxconstrained"] # These are those passing the tests
+  Any["kaczmarz","cgnr","daxkaczmarz","daxconstrained","primaldualsolver"] # These are those passing the tests
     #, "fusedlasso"]
 end
 
@@ -78,6 +78,7 @@ Function returns choosen solver.
 * `"fista"`           - Fast Iterative Shrinkage Thresholding Algorithm
 * `"admm"`            - Alternating Direcion of Multipliers Method
 * `"splitBregman"`    - Split Bregman method for constrained & regularized inverse problems
+* `"primaldualsolver"`- First order primal dual method 
 """
 function createLinearSolver(solver::AbstractString, A, b=nothing;
                             log::Bool=false, kargs...)
@@ -86,8 +87,6 @@ function createLinearSolver(solver::AbstractString, A, b=nothing;
 
   if solver == "kaczmarz"
     return Kaczmarz(A; kargs...)
-  elseif solver == "PrimalDualSolver"
-    return PrimalDualSolver(A; kargs...)
   elseif solver == "cgnr"
     return CGNR(A; kargs...)
   elseif solver == "direct"
@@ -107,6 +106,8 @@ function createLinearSolver(solver::AbstractString, A, b=nothing;
   elseif solver == "splitBregman"
     # return SplitBregman(A,b; kargs...)
     return SplitBregman(A; kargs...)
+  elseif solver == "primaldualsolver"
+    return PrimalDualSolver(A; kargs...)
   else
     error("Solver $solver not found.")
     return Kaczmarz(A; kargs...)
