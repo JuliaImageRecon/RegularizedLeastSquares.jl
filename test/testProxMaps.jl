@@ -7,7 +7,7 @@ function testL2Prox(N=1024; numPeaks=5, λ=0.01)
     x[rand(1:N)] = rand()
   end
 
-  x_l2 = 1. / (1. + 2. *λ)*x
+  # x_l2 = 1. / (1. + 2. *λ)*x
   x_l2 = copy(x)
   proxL2!(x_l2,λ)
   @test norm(x_l2 - 1.0/(1.0+2.0*λ)*x) / norm(1.0/(1.0+2.0*λ)*x) ≈ 0 atol=0.001

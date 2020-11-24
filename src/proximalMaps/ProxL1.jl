@@ -10,23 +10,18 @@ performs soft-thresholding - i.e. proximal map for the Lasso problem.
 * `λ::Float64`                  - regularization paramter
 * `sparseTrafo::Trafo=nothing`  - sparsifying transform to apply
 """
-function proxL1!(x::Array{T}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T
+function proxL1!(x::T, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T<:AbstractArray
+  ε = eps(real(eltype(T)))
+  
   if sparseTrafo != nothing
     z = sparseTrafo*x
+    z .= max.((abs.(z).-λ),0) .* (z.+ε)./(abs.(z).+ε)
+    x .= adjoint(sparseTrafo)*z
   else
-    z = x
+    x .= max.((abs.(x).-λ),0) .* (x.+ε)./(abs.(x).+ε)
   end
-  if λ != 0
-    z[:] = [i*max( (abs(i)-λ)/abs(i),0 ) for i in z]
-  end
-  if sparseTrafo != nothing
-    x[:] = adjoint(sparseTrafo)*z
-  else
-    x[:] = z
-  end
-  return x
 
-  # x[:] = [i*max( (abs(i)-λ)/abs(i),0 ) for i in x]
+  return x
 end
 
 """
@@ -35,7 +30,7 @@ end
 returns the value of the L1-regularization term.
 Arguments are the same as in `proxL1!`
 """
-function normL1(x::Array{T}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T
+function normL1(x::T, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T<:AbstractArray
   if sparseTrafo != nothing
     l1Norm = λ*norm(sparseTrafo*x,1)
   else
