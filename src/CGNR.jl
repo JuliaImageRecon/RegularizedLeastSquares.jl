@@ -1,19 +1,19 @@
 export cgnr
 
-mutable struct CGNR{T,Tsparse} <: AbstractLinearSolver
+mutable struct CGNR{vecT,T,Tsparse} <: AbstractLinearSolver
   S
   SHWS
   reg::Regularization
-  cl::Vector{T}
-  rl::Vector{T}
-  zl::Vector{T}
-  pl::Vector{T}
-  vl::Vector{T}
-  xl::Vector{T}
+  cl::vecT
+  rl::vecT
+  zl::vecT
+  pl::vecT
+  vl::vecT
+  xl::vecT
   αl::T
   βl::T
   ζl::T
-  weights::Vector{T}
+  weights::vecT
   enforceReal::Bool
   enforcePositive::Bool
   sparseTrafo::Tsparse
@@ -23,29 +23,30 @@ mutable struct CGNR{T,Tsparse} <: AbstractLinearSolver
 end
 
 """
-    CGNR(A; λ = 0.0, reg = Regularization("L2", λ), kargs...)
+    CGNR(A, x::vecT; λ = 0.0, reg = Regularization("L2", λ), kargs...) where vecT
 
 creates an `CGNR` object for the system matrix `A`.
 
 # Arguments
 * `A`                               - system matrix
+* `x::vecT`                         - Array with the same type and size as the solution
 * (`λ=0.0`)                         - Regularization paramter
 * (`reg=Regularization("L2", λ)`)   - Regularization object
-* (weights::Vector{WT}=eltype(S)[]) - weights for the data term
+* (weights::vecT=eltype(S)[]) - weights for the data term
 * (sparseTrafo=nothing)             - sparsifying transform
 * (enforceReal::Bool=false)         - constrain the solution to be real
 * (enforcePositive::Bool=false)     - constrain the solution to have positive real part
 * (iterations::Int64=10)            - number of iterations
 * (`relTol::Float64=eps()`)         - rel tolerance for stopping criterion
 """
-function CGNR(S; λ::Real=0.0, reg::R = Regularization("L2", λ)
-              , weights::Vector{WT}=eltype(S)[]
+function CGNR(S, x::vecT=zeros(eltype(S),size(S,2)); λ::Real=0.0, reg::R = Regularization("L2", λ)
+              , weights::vecT=similar(x,0)
               , sparseTrafo=nothing
               , enforceReal::Bool=false
               , enforcePositive::Bool=false
               , iterations::Int64=10
               , relTol::Float64=eps()
-              , kargs...) where {R<:Union{Regularization, Vector{Regularization}},WT}
+              , kargs...) where {vecT<:AbstractVector,R<:Union{Regularization, Vector{Regularization}}}
 
   if typeof(reg)==Vector{Regularization}
     reg = reg[1]
@@ -57,12 +58,12 @@ function CGNR(S; λ::Real=0.0, reg::R = Regularization("L2", λ)
 
   M,N = size(S)
   T = eltype(S)
-  cl = zeros(T,N)
-  rl = zeros(T,M)     #residual vector
-  zl = zeros(T,N)     #temporary vector
-  pl = zeros(T,N)     #temporary vector
-  vl = zeros(T,N)     #temporary vector
-  xl = zeros(T,M)     #temporary vector
+  cl = similar(x,N)
+  rl = similar(x,M)     #residual vector
+  zl = similar(x,N)     #temporary vector
+  pl = similar(x,N)     #temporary vector
+  vl = similar(x,N)     #temporary vector
+  xl = similar(x,M)     #temporary vector
   αl = zero(T)        #temporary scalar
   βl = zero(T)        #temporary scalar
   ζl = zero(T)        #temporary scalar
@@ -73,25 +74,23 @@ function CGNR(S; λ::Real=0.0, reg::R = Regularization("L2", λ)
 end
 
 """
-init!(solver::CGNR{T,Tsparse}
+init!(solver::CGNR{vecT,T,Tsparse}, u::vecT
               ; S::matT=solver.S
-              , u::Vector{T}=T[]
-              , cl::Vector{T}=T[]
-              , weights::Vector{T}=solver.weights) where {T,Tsparse,matT}
+              , cl::vecT=similar(u,0)
+              , weights::vecT=solver.weights) where {vecT,T,Tsparse,matT}
 
 (re-) initializes the CGNR iterator
 """
-function init!(solver::CGNR{T,Tsparse}
+function init!(solver::CGNR{vecT,T,Tsparse}, u::vecT
               ; S::matT=solver.S
-              , u::Vector{T}=T[]
-              , cl::Vector{T}=T[]
-              , weights::Vector{T}=solver.weights) where {T,Tsparse,matT}
+              , cl::vecT=similar(u,0)
+              , weights::vecT=solver.weights) where {vecT,T,Tsparse,matT}
 
   solver.S = S
   # TODO, the following line is called a second time...
   #solver.SHWS = normalOperator(S, isempty(weights) ? I : WeightingOp(weights))
   if isempty(cl)
-    solver.cl[:] .= zeros(T,size(S,2))
+    solver.cl[:] .= zero(T)
   else
     solver.cl[:] .= cl
   end
@@ -118,23 +117,23 @@ function init!(solver::CGNR{T,Tsparse}
 end
 
 """
-    solve(solver::CGNR, u::Vector)
+    solve(solver::CGNR, u::vecT) where vecT
 
 solves Thikhonov-regularized inverse problem using CGNR.
 
 # Arguments
 * `solver::CGNR                         - the solver containing both system matrix and regularizer
-* `u::Vector`                           - data vector
+* `u::vecT`                             - data vector
 * (`S::matT=solver.S`)                  - operator for the data-term of the problem
-* (`startVector::Vector{T}=T[]`)        - initial guess for the solution
+* (`startVector::vecT=similar(u,0)`)    - initial guess for the solution
 * (`weights::Vector{T}=solver.weights`) - weights for the data term
 * (`solverInfo=nothing`)                - solverInfo for logging
 
 when a `SolverInfo` objects is passed, the residuals `solver.zl` are stored in `solverInfo.convMeas`.
 """
-function solve(solver::CGNR{T,Tsparse}, u::Vector; S::matT=solver.S, startVector::Vector{T}=eltype(S)[], weights::Vector{T}=solver.weights, solverInfo=nothing, kargs...) where {T,Tsparse,matT}
+function solve(solver::CGNR{vecT,T,Tsparse}, u::vecT; S::matT=solver.S, startVector::vecT=similar(u,0), weights::vecT=solver.weights, solverInfo=nothing, kargs...) where {vecT,T,Tsparse,matT}
   # initialize solver parameters
-  init!(solver; S=S, u=u, cl=startVector, weights=weights)
+  init!(solver, u; S=S, cl=startVector, weights=weights)
 
   # log solver information
   solverInfo != nothing && storeInfo(solverInfo,solver.cl,norm(solver.zl))
@@ -149,11 +148,11 @@ end
 
 
 """
-  iterate(solver::CGNR{T,Tsparse}, iteration::Int=0) where {T,Tsparse}
+  iterate(solver::CGNR{vecT,T,Tsparse}, iteration::Int=0) where {vecT,T,Tsparse}
 
 performs one CGNR iteration.
 """
-function iterate(solver::CGNR{T,Tsparse}, iteration::Int=0) where {T,Tsparse}
+function iterate(solver::CGNR{vecT,T,Tsparse}, iteration::Int=0) where {vecT,T,Tsparse}
     if done(solver,iteration)
       applyConstraints(solver.cl, solver.sparseTrafo, solver.enforceReal, solver.enforcePositive)
       return nothing

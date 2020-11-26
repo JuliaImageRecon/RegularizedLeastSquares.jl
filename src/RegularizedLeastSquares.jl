@@ -80,7 +80,7 @@ Function returns choosen solver.
 * `"splitBregman"`    - Split Bregman method for constrained & regularized inverse problems
 * `"primaldualsolver"`- First order primal dual method 
 """
-function createLinearSolver(solver::AbstractString, A, b=nothing;
+function createLinearSolver(solver::AbstractString, A::Trafo, x=zeros(eltype(A),size(A,2)), b=nothing;
                             log::Bool=false, kargs...)
 
   log ? solverInfo = SolverInfo(;kargs...) : solverInfo=nothing
@@ -88,7 +88,7 @@ function createLinearSolver(solver::AbstractString, A, b=nothing;
   if solver == "kaczmarz"
     return Kaczmarz(A; kargs...)
   elseif solver == "cgnr"
-    return CGNR(A; kargs...)
+    return CGNR(A, x; kargs...)
   elseif solver == "direct"
     return DirectSolver(A; kargs...)
   elseif solver == "daxkaczmarz"
@@ -100,12 +100,11 @@ function createLinearSolver(solver::AbstractString, A, b=nothing;
   elseif solver == "fusedlasso"
     return FusedLasso(A; kargs...)
   elseif solver == "fista"
-    return FISTA(A; kargs...)
+    return FISTA(A, x; kargs...)
   elseif solver == "admm"
-    return ADMM(A; kargs...)
+    return ADMM(A, x; kargs...)
   elseif solver == "splitBregman"
-    # return SplitBregman(A,b; kargs...)
-    return SplitBregman(A; kargs...)
+    return SplitBregman(A, x; kargs...)
   elseif solver == "primaldualsolver"
     return PrimalDualSolver(A; kargs...)
   else

@@ -1,30 +1,30 @@
 export admm
 
-mutable struct ADMM{matT,opT,T,preconT} <: AbstractLinearSolver
+mutable struct ADMM{matT,opT,vecT,rvecT,preconT} <: AbstractLinearSolver
   # oerators and regularization
   A::matT
   reg::Vector{Regularization}
   # fields and operators for x update
   op::opT
-  β::Vector{T}
-  β_y::Vector{T}
+  β::vecT
+  β_y::vecT
   # fields for primal & dual variables
-  x::Vector{T}
-  z::Vector{Vector{T}}
-  zᵒˡᵈ::Vector{Vector{T}}
-  u::Vector{Vector{T}}
+  x::vecT
+  z::Vector{vecT}
+  zᵒˡᵈ::Vector{vecT}
+  u::Vector{vecT}
   # other parameters
   precon::preconT
-  ρ::Vector{Float64}
+  ρ::rvecT
   iterations::Int64
   iterationsInner::Int64
   # state variables for CG
   cgStateVars::CGStateVariables
   # convergence parameters
-  rᵏ::Vector{Float64}
-  sᵏ::Vector{T}
-  ɛᵖʳⁱ::Vector{Float64}
-  ɛ_dt::Vector{T}
+  rᵏ::rvecT
+  sᵏ::vecT
+  ɛᵖʳⁱ::rvecT
+  ɛ_dt::vecT
   σᵃᵇˢ::Float64
   absTol::Float64
   relTol::Float64
@@ -32,12 +32,14 @@ mutable struct ADMM{matT,opT,T,preconT} <: AbstractLinearSolver
 end
 
 """
-    ADMM(A; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
+    ADMM(A, x::vecT=zeros(eltype(A),size(A,2))
+          ; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
 
 creates an `ADMM` object for the system matrix `A`.
 
 # Arguments
-* `A` - system matrix
+* `A`                           - system matrix
+* `x::vecT`                     - Array with the same type and size as the solution
 * (`reg=nothing`)               - Regularization object
 * (`regName=["L1"]`)            - name of the Regularization to use (if reg==nothing)
 * (`λ=[0.0]`)                   - Regularization paramter
@@ -50,7 +52,7 @@ creates an `ADMM` object for the system matrix `A`.
 * (`relTol::Float64=eps()`)     - rel tolerance for stopping criterion
 * (`tolInner::Float64=1.e-5`)   - tolerance for CG stopping criterion
 """
-function ADMM(A::matT; reg=nothing, regName=["L1"]
+function ADMM(A::matT, x::vecT=zeros(eltype(A),size(A,2)); reg=nothing, regName=["L1"]
             , λ=[0.0]
             , AHA::opT=nothing
             , precon=Identity()
@@ -60,11 +62,16 @@ function ADMM(A::matT; reg=nothing, regName=["L1"]
             , absTol::Float64=eps()
             , relTol::Float64=eps()
             , tolInner::Float64=1.e-5
-            , kargs...) where {matT,opT}
+            , kargs...) where {matT,vecT,opT}
 
   if reg == nothing
     reg = Regularization(regName, λ, kargs...)
   end
+
+  # fields for primal & dual variables
+  z = [similar(x) for i=1:length(vec(reg))]
+  zᵒˡᵈ = [similar(x) for i=1:length(vec(reg))]
+  u = [similar(x) for i=1:length(vec(reg))]
 
   # operator and fields for the update of x
   if AHA != nothing
@@ -72,30 +79,25 @@ function ADMM(A::matT; reg=nothing, regName=["L1"]
   else
     op = A'*A + sum(ρ)*opEye(size(A,2))
   end
-  β = zeros(eltype(A),size(A,2))
-  β_y = zeros(eltype(A),size(A,2))
-
-  # fields for primal & dual variables
-  x = zeros(eltype(A),size(A,2))
-  z = [zeros(eltype(A),size(A,2)) for i=1:length(vec(reg))]
-  zᵒˡᵈ = [zeros(eltype(A),size(A,2)) for i=1:length(vec(reg))]
-  u = [zeros(eltype(A),size(A,2)) for i=1:length(vec(reg))]
+  β = similar(x)
+  β_y = similar(x)
 
   # statevariables for CG
   # we store them here to prevent CG from allocating new fields at each call
   statevars = CGStateVariables(zero(x),similar(x),similar(x))
 
   # convergence parameters
-  rk = [0.0 for i=1:length(vec(reg))]
-  sk = zeros(eltype(A),size(A,2))
-  eps_pri = [0.0 for i=1:length(vec(reg))]
-  eps_dt = zeros(eltype(A),size(A,2))
+  rk = similar( real.(x), length(vec(reg)) ) #[0.0 for i=1:length(vec(reg))]
+  sk = similar(x)
+  eps_pri = similar( real.(x), length(vec(reg)) ) # [0.0 for i=1:length(vec(reg))]
+  eps_dt = similar(x)
 
-  # make sure that ρ is a vector
+  # make sure that ρ is a vector and of proper type
   if typeof(ρ) <: Real
-    ρ_vec = [ρ]
+    ρ_vec = similar(x, real(eltype(x)), 1)
+    ρ_vec .= ρ
   else
-    ρ_vec = ρ
+    ρ_vec = typeof(real.(x))(ρ)
   end
 
   return ADMM(A,vec(reg),op,β,β_y,x,z,zᵒˡᵈ,u,precon,ρ_vec,iterations
@@ -103,21 +105,19 @@ function ADMM(A::matT; reg=nothing, regName=["L1"]
 end
 
 """
-  init!(solver::ADMM{matT,opT,T,preconT}
+  init!(solver::ADMM{matT,opT,vecT,rvecT,preconT}, b::vecT
               ; A::matT=solver.A
               , AHA::opT=solver.op
-              , b::Vector{T}=T[]
-              , x::Vector{T}=T[]
-              , kargs...) where {matT,opT,T,preconT}
+              , x::vecT=similar(b,0)
+              , kargs...) where {matT,opT,vecT,rvecT,preconT}
 
 (re-) initializes the ADMM iterator
 """
-function init!(solver::ADMM{matT,opT,T,preconT}
+function init!(solver::ADMM{matT,opT,vecT,rvecT,preconT}, b::vecT
               ; A::matT=solver.A
               , AHA::opT=solver.op
-              , b::Vector{T}=T[]
-              , x::Vector{T}=T[]
-              , kargs...) where {matT,opT,T,preconT}
+              , x::vecT=similar(b,0)
+              , kargs...) where {matT,opT,vecT,rvecT,preconT}
 
   # operators
   if A != solver.A
@@ -132,9 +132,9 @@ function init!(solver::ADMM{matT,opT,T,preconT}
   # start vector
   if isempty(x)
     if !isempty(b)
-      solver.x[:] .= adjoint(A) * b
+      solver.x .= adjoint(A) * b
     else
-      solver.x[:] .= 0.0
+      solver.x .= 0.0
     end
   else
     solver.x[:] .= x
@@ -142,7 +142,7 @@ function init!(solver::ADMM{matT,opT,T,preconT}
 
   # primal and dual variables
   for i=1:length(solver.reg)
-    solver.z[i][:] .= copy(solver.x)
+    solver.z[i][:] .= solver.x
     solver.zᵒˡᵈ[i][:] .= 0.0
     solver.u[i] .= 0.0
   end
@@ -151,14 +151,19 @@ function init!(solver::ADMM{matT,opT,T,preconT}
   solver.β_y[:] .= adjoint(A) * b
 
   # convergence parameter
+  solver.rᵏ .= 0
+  solver.sᵏ .= 0 
+  solver.ɛᵖʳⁱ .= 0
+  solver.ɛ_dt .= 0
   solver.σᵃᵇˢ = sqrt(length(b))*solver.absTol
 end
 
 """
-    solve(solver::ADMM, b::Vector{T}
-          ; A::matT=solver.A, startVector::Vector{T}=T[]
-          , startVector::Vector{T}=T[], solverInfo=nothing
-          , kargs...) where {matT,T}
+    solve(solver::ADMM, b::vecT
+          ; A::matT=solver.A
+          , startVector::vecT=similar(b,0)
+          , solverInfo=nothing
+          , kargs...) where {matT,vecT}
 
 solves an inverse problem using ADMM.
 
@@ -172,9 +177,9 @@ solves an inverse problem using ADMM.
 when a `SolverInfo` objects is passed, the primal residuals `solver.rk`
 and the dual residual `norm(solver.sk)` are stored in `solverInfo.convMeas`.
 """
-function solve(solver::ADMM, b::Vector{T}; A::matT=solver.A, startVector::Vector{T}=T[], solverInfo=nothing, kargs...) where {matT,T}
+function solve(solver::ADMM, b::vecT; A::matT=solver.A, startVector::vecT=similar(b,0), solverInfo=nothing, kargs...) where {matT,vecT}
   # initialize solver parameters
-  init!(solver; A=A, b=b, x=startVector)
+  init!(solver, b; A=A, x=startVector)
 
   # log solver information
   solverInfo != nothing && storeInfo(solverInfo,solver.z,solver.rk...,norm(solver.sk))

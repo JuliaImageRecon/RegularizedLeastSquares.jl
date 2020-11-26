@@ -1,11 +1,11 @@
 export fista
 
-mutable struct FISTA{matT,T} <: AbstractLinearSolver
+mutable struct FISTA{matT,vecT} <: AbstractLinearSolver
   A::matT
   reg::Regularization
-  x::Vector{T}
-  xᵒˡᵈ::Vector{T}
-  res::Vector{T}
+  x::vecT
+  xᵒˡᵈ::vecT
+  res::vecT
   res_norm::Float64
   res_norm_old::Float64
   ρ::Float64
@@ -16,12 +16,14 @@ mutable struct FISTA{matT,T} <: AbstractLinearSolver
 end
 
 """
-    FISTA(A; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
+    FISTA(A::matT, x::vecT=zeros(eltype(A),size(A,2))
+          ; reg=nothing, regName=["L1"], λ=[0.0], kargs...) where {matT,vecT}
 
 creates a `FISTA` object for the system matrix `A`.
 
 # Arguments
-* `A` - system matrix
+* `A`                       - system matrix
+* `x::vecT`                 - Array with the same type and size as the solution
 * (`reg=nothing`)           - Regularization object
 * (`regName=["L1"]`)        - name of the Regularization to use (if reg==nothing)
 * (`λ=[0.0]`)               - Regularization paramter
@@ -30,40 +32,37 @@ creates a `FISTA` object for the system matrix `A`.
 * (`relTol::Float64=1.e-5`) - tolerance for stopping criterion
 * (`iterations::Int64=50`)  - maximum number of iterations
 """
-function FISTA(A::matT; reg=nothing, regName=["L1"]
+function FISTA(A::matT, x::vecT=zeros(eltype(A),size(A,2)); reg=nothing, regName=["L1"]
               , λ=[0.0]
               , ρ::Float64=1.0
               , t::Float64=1.0
               , relTol::Float64=eps()
               , iterations::Int64=50
-              , kargs...) where matT
+              , kargs...) where {matT,vecT}
 
   if reg == nothing
     reg = Regularization(regName, λ, kargs...)
   end
 
-  x = zeros(eltype(A),size(A,2))
-  xᵒˡᵈ = zeros(eltype(A),size(A,2))
-  res = zeros(eltype(A),size(A,1))
+  xᵒˡᵈ = similar(x)
+  res = similar(x,size(A,1))
 
   return FISTA(A,vec(reg)[1],x,xᵒˡᵈ,res,0.0,0.0,ρ,t,t,iterations,relTol)
 end
 
 """
-    init!(it::FISTA{matT,T}
+    init!(it::FISTA{matT,T}, b::vecT
               ; A::matT=solver.A
-              , b::Vector{T}=zeros(T,size(A,1))
-              , x::Vector{T}=zeros(T,size(A,1))
+              , x::vecT=similar(b,0)
               , t::Float64=1.0) where T
 
 (re-) initializes the FISTA iterator
 """
-function init!(solver::FISTA{matT,T}
+function init!(solver::FISTA{matT,vecT}, b::vecT
               ; A::matT=solver.A
-              , b::Vector{T}=T[]
-              , x::Vector{T}=T[]
+              , x::vecT=similar(b,0)
               , t::Float64=1.0
-              ) where {matT,T}
+              ) where {matT,vecT}
 
   solver.A = A
   if isempty(x)
@@ -72,6 +71,8 @@ function init!(solver::FISTA{matT,T}
     else
       solver.x[:] .= zeros(T,size(A,2))
     end
+  else
+    solver.x[:] .= x
   end
   solver.xᵒˡᵈ[:] .= solver.x  # this could also be zero
   solver.res[:] .= A*solver.x-b
@@ -88,16 +89,16 @@ solves an inverse problem using FISTA.
 
 # Arguments
 * `solver::FISTA`                 - the solver containing both system matrix and regularizer
-* `b::Vector`                     - data vector
+* `b::vecT`                     - data vector
 * `A::matT=solver.A`            - operator for the data-term of the problem
-* (`startVector::Vector{T}=T[]`)  - initial guess for the solution
+* (`startVector::vecT=similar(b,0)`)  - initial guess for the solution
 * (`solverInfo=nothing`)          - solverInfo object
 
 when a `SolverInfo` objects is passed, the residuals are stored in `solverInfo.convMeas`.
 """
-function solve(solver::FISTA, b::Vector{T}; A::matT=solver.A, startVector::Vector{T}=T[], solverInfo=nothing, kargs...) where {matT,T}
+function solve(solver::FISTA, b::vecT; A::matT=solver.A, startVector::vecT=similar(b,0), solverInfo=nothing, kargs...) where {matT,vecT}
   # initialize solver parameters
-  init!(solver; A=A, b=b, x=startVector)
+  init!(solver, b; A=A, x=startVector)
 
   # log solver information
   solverInfo != nothing && storeInfo(solverInfo,solver.x,solver.res_norm)
@@ -111,11 +112,11 @@ function solve(solver::FISTA, b::Vector{T}; A::matT=solver.A, startVector::Vecto
 end
 
 """
-  iterate(it::FISTA, iteration::Int=0)
+  iterate(it::FISTA{matT,vecT}, iteration::Int=0) where {matT,vecT}
 
 performs one fista iteration.
 """
-function iterate(solver::FISTA{matT,T}, iteration::Int=0) where {matT,T}
+function iterate(solver::FISTA{matT,vecT}, iteration::Int=0) where {matT,vecT}
   if done(solver, iteration) return nothing end
 
   # gradient step
