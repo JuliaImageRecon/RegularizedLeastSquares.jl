@@ -29,6 +29,8 @@ mutable struct ADMM{matT,opT,vecT,rvecT,preconT} <: AbstractLinearSolver
   absTol::Float64
   relTol::Float64
   tolInner::Float64
+  normalizeReg::Bool
+  regFac::Float64
 end
 
 """
@@ -62,6 +64,7 @@ function ADMM(A::matT, x::vecT=zeros(eltype(A),size(A,2)); reg=nothing, regName=
             , absTol::Float64=eps()
             , relTol::Float64=eps()
             , tolInner::Float64=1.e-5
+            , normalizeReg::Bool=false
             , kargs...) where {matT,vecT,opT}
 
   if reg == nothing
@@ -101,7 +104,8 @@ function ADMM(A::matT, x::vecT=zeros(eltype(A),size(A,2)); reg=nothing, regName=
   end
 
   return ADMM(A,vec(reg),op,β,β_y,x,z,zᵒˡᵈ,u,precon,ρ_vec,iterations
-              ,iterationsInner,statevars, rk,sk,eps_pri,eps_dt,0.0,absTol,relTol,tolInner)
+              ,iterationsInner,statevars, rk,sk,eps_pri,eps_dt,0.0,absTol,relTol,tolInner
+              ,normalizeReg,1.0)
 end
 
 """
@@ -156,6 +160,13 @@ function init!(solver::ADMM{matT,opT,vecT,rvecT,preconT}, b::vecT
   solver.ɛᵖʳⁱ .= 0
   solver.ɛ_dt .= 0
   solver.σᵃᵇˢ = sqrt(length(b))*solver.absTol
+
+  # normalization of regularization parameters
+  if solver.normalizeReg
+    solver.regFac = norm(b,1)/length(b)
+  else
+    solver.regFac = 1.0
+  end
 end
 
 """
@@ -214,7 +225,7 @@ function iterate(solver::ADMM{matT,opT,T,preconT}, iteration::Int=0) where {matT
     copyto!(solver.zᵒˡᵈ[i], solver.z[i])
     solver.z[i][:] .= solver.x .+ solver.u[i]
     if solver.ρ[i] != 0
-      solver.reg[i].prox!(solver.z[i], solver.reg[i].λ/solver.ρ[i]; solver.reg[i].params...)
+      solver.reg[i].prox!(solver.z[i], solver.regFac*solver.reg[i].λ/solver.ρ[i]; solver.reg[i].params...)
     end
   end
 

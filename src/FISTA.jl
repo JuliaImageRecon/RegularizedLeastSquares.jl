@@ -13,6 +13,8 @@ mutable struct FISTA{matT,vecT} <: AbstractLinearSolver
   tᵒˡᵈ::Float64
   iterations::Int64
   relTol::Float64
+  normalizeReg::Bool
+  regFac::Float64
 end
 
 """
@@ -38,6 +40,7 @@ function FISTA(A::matT, x::vecT=zeros(eltype(A),size(A,2)); reg=nothing, regName
               , t::Float64=1.0
               , relTol::Float64=eps()
               , iterations::Int64=50
+              , normalizeReg::Bool=false
               , kargs...) where {matT,vecT}
 
   if reg == nothing
@@ -47,7 +50,7 @@ function FISTA(A::matT, x::vecT=zeros(eltype(A),size(A,2)); reg=nothing, regName
   xᵒˡᵈ = similar(x)
   res = similar(x,size(A,1))
 
-  return FISTA(A,vec(reg)[1],x,xᵒˡᵈ,res,0.0,0.0,ρ,t,t,iterations,relTol)
+  return FISTA(A,vec(reg)[1],x,xᵒˡᵈ,res,0.0,0.0,ρ,t,t,iterations,relTol,normalizeReg,1.0)
 end
 
 """
@@ -80,6 +83,12 @@ function init!(solver::FISTA{matT,vecT}, b::vecT
   solver.res_norm = norm(solver.res)
   solver.t = t
   solver.tᵒˡᵈ = t
+  # normalization of regularization parameters
+  if solver.normalizeReg
+    solver.regFac = norm(b,1)/length(b)
+  else
+    solver.regFac = 1.0
+  end
 end
 
 """
@@ -124,7 +133,7 @@ function iterate(solver::FISTA{matT,vecT}, iteration::Int=0) where {matT,vecT}
   solver.x[:] .= solver.x - solver.ρ* (solver.A' * solver.res)
 
   # proximal map
-  solver.reg.prox!(solver.x, solver.ρ*solver.reg.λ; solver.reg.params...)
+  solver.reg.prox!(solver.x, solver.regFac*solver.ρ*solver.reg.λ; solver.reg.params...)
 
   # predictor-corrector update
   solver.tᵒˡᵈ = solver.t

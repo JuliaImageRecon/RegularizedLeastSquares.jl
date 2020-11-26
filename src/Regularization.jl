@@ -99,14 +99,4 @@ function prox!(x::Array, reg::Vector{Regularization})
   end
 end
 
-"""
-    normalize!(reg::Regularization, data)
-
-scales the regularization parameter depending of the energy of the data (in-place).
-"""
-function normalize!(reg::Regularization, data)
-  meanEnergy = norm(data,1)/length(data)
-  reg.λ = meanEnergy*reg.λ
-end
-
 norm0(x::Array{T}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T = 0.0

@@ -20,6 +20,8 @@ mutable struct CGNR{vecT,T,Tsparse} <: AbstractLinearSolver
   iterations::Int64
   relTol::Float64
   z0::Float64
+  normalizeReg::Bool
+  regFac::Float64
 end
 
 """
@@ -46,6 +48,7 @@ function CGNR(S, x::vecT=zeros(eltype(S),size(S,2)); λ::Real=0.0, reg::R = Regu
               , enforcePositive::Bool=false
               , iterations::Int64=10
               , relTol::Float64=eps()
+              , normalizeReg::Bool=false
               , kargs...) where {vecT<:AbstractVector,R<:Union{Regularization, Vector{Regularization}}}
 
   if typeof(reg)==Vector{Regularization}
@@ -70,7 +73,8 @@ function CGNR(S, x::vecT=zeros(eltype(S),size(S,2)); λ::Real=0.0, reg::R = Regu
   SHWS = normalOperator(S, isempty(weights) ? I : WeightingOp(weights))
 
   return CGNR(S,SHWS,
-             reg,cl,rl,zl,pl,vl,xl,αl,βl,ζl,weights,enforceReal,enforcePositive,sparseTrafo,iterations,relTol,0.0)
+             reg,cl,rl,zl,pl,vl,xl,αl,βl,ζl,
+             weights,enforceReal,enforcePositive,sparseTrafo,iterations,relTol,0.0,normalizeReg,1.0)
 end
 
 """
@@ -114,6 +118,13 @@ function init!(solver::CGNR{vecT,T,Tsparse}, u::vecT
   end
   solver.z0 = norm(solver.zl)
   copyto!(solver.pl,solver.zl)
+
+  # normalization of regularization parameters
+  if solver.normalizeReg
+    solver.regFac = norm(u,1)/length(u)
+  else
+    solver.regFac = 1.0
+  end
 end
 
 """
@@ -165,7 +176,7 @@ function iterate(solver::CGNR{vecT,T,Tsparse}, iteration::Int=0) where {vecT,T,T
     normvl = dot(solver.pl,solver.vl) 
 
     if solver.reg.λ > 0
-      solver.αl = solver.ζl/(normvl+solver.reg.λ*norm(solver.pl)^2)
+      solver.αl = solver.ζl/(normvl+solver.regFac*solver.reg.λ*norm(solver.pl)^2)
     else
       solver.αl = solver.ζl/normvl
     end

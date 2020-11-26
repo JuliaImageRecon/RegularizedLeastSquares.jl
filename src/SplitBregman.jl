@@ -35,6 +35,8 @@ mutable struct SplitBregman{matT,vecT,opT,rvecT,preconT} <: AbstractLinearSolver
   tolInner::Float64
   #counter for internal iterations
   iter_cnt::Int64
+  normalizeReg::Bool
+  regFac::Float64
 end
 
 """
@@ -68,6 +70,7 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing; re
                     , absTol::Float64=eps()
                     , relTol::Float64=eps()
                     , tolInner::Float64=1.e-6
+                    , normalizeReg::Bool=false
                     , kargs...) where {matT<:Trafo, vecT<:AbstractVector}
 
   if reg == nothing
@@ -112,7 +115,8 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing; re
   end
 
   return SplitBregman(A,vec(reg),y,op,β,β_yj,y_j,u,v,vᵒˡᵈ,b,precon,ρ_vec
-              ,iterations,iterationsInner,iterationsCG,statevars, rk,sk,eps_pri,eps_dt,0.0,absTol,relTol,tolInner,iter_cnt)
+              ,iterations,iterationsInner,iterationsCG,statevars, rk,sk
+              ,eps_pri,eps_dt,0.0,absTol,relTol,tolInner,iter_cnt,normalizeReg,1.0)
 end
 
 """
@@ -162,6 +166,13 @@ function init!(solver::SplitBregman{matT,vecT,opT,rvecT,preconT}, b::vecT
 
   # convergence parameter
   solver.σᵃᵇˢ = sqrt(length(b))*solver.absTol
+
+  # normalization of regularization parameters
+  if solver.normalizeReg
+    solver.regFac = norm(b,1)/length(b)
+  else
+    solver.regFac = 1.0
+  end
 
   # reset interation counter
   solver.iter_cnt = 1
@@ -244,7 +255,7 @@ function iterate(solver::SplitBregman{matT,vecT,opT,rvecT,preconT}, iteration::I
     copyto!(solver.vᵒˡᵈ[i], solver.v[i])
     solver.v[i][:] .= solver.u .+ solver.b[i]
     if solver.ρ[i] != 0
-      solver.reg[i].prox!(solver.v[i],solver.reg[i].λ/solver.ρ[i]; solver.reg[i].params...)
+      solver.reg[i].prox!(solver.v[i],solver.regFac*solver.reg[i].λ/solver.ρ[i]; solver.reg[i].params...)
     end
   end
 
@@ -263,7 +274,6 @@ function iterate(solver::SplitBregman{matT,vecT,opT,rvecT,preconT}, iteration::I
   for i=1:length(solver.reg)
     solver.sk[:] .+= solver.ρ[i]*(solver.v[i].-solver.vᵒˡᵈ[i])
     solver.eps_dt[:] .+= solver.ρ[i]*solver.b[i]
-    # solver.eps_dual = solver.σᵃᵇˢ + solver.relTol*norm(solver.ρ1*solver.v1.+solver.ρ2*solver.v2)
   end
 
   if update_y(solver,iteration)
