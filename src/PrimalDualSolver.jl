@@ -1,18 +1,18 @@
 export primaldualsolver
 
-mutable struct PrimalDualSolver{matT,matU,T} <: AbstractLinearSolver
-    S::matT
+mutable struct PrimalDualSolver{T,S} <: AbstractLinearSolver
+    S::Matrix{T}
     reg::Vector{Regularization}
     regName::Vector{String}
-    gradientOp::matU
+    gradientOp::S
     u::Vector{T}
     c::Vector{T}
     cO::Vector{T}
     y1::Vector{T}
     y2::Vector{T}
-    σ::Float64
-    τ::Float64
-    ϵ::Float64
+    σ::T
+    τ::T
+    ϵ::T
     PrimalDualGap::T
     enforceReal::Bool
     enforcePositive::Bool
@@ -20,25 +20,27 @@ mutable struct PrimalDualSolver{matT,matU,T} <: AbstractLinearSolver
     shape::NTuple{2,Int64}
 end
 
-function PrimalDualSolver(S; b=nothing, λ=[1e-4], reg = nothing
-                         , regName = ["L1"]
+function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = nothing
+			 , regName = "L1"
                          , gradientOp = nothing
                          , enforceReal::Bool=false
                          , enforcePositive::Bool=false
                          , iterations::Int64=10
-                         , σ::Float64=1.0
-                         , τ::Float64=1.0
-                         , ϵ::Float64=1e-10
-                         , PrimalDualGap::T=1.0
+                         , σ=1.0
+                         , τ=1.0
+                         , ϵ=1e-10
+                         , PrimalDualGap=1.0
                          , shape::NTuple{2,Int64}=(0,0)
                          , kargs...) where T
 
-  if typeof(λ) <: Number
-    λ = [λ]
-  end
-
   if reg == nothing
-    reg = Regularization(regName, λ; kargs...)
+    if typeof(λ)<:AbstractFloat && typeof(regName)==String
+        reg = [Regularization(regName, T(λ); kargs...)]
+    elseif typeof(λ)<:AbstractVector && typeof(regName)<:AbstractVector{String}
+        reg = Regularization(regName, T(λ); kargs...)
+    else
+        error("could not initialite regularization")
+    end
   end
 
   M,N = size(S)
@@ -49,28 +51,32 @@ function PrimalDualSolver(S; b=nothing, λ=[1e-4], reg = nothing
     shape = shape
   end
 
-  if regName == ["L1"]
-    gradientOp = Matrix(I, N, N)
-  elseif regName == ["TV"]
-    gradientOp = gradientOperator(shape)
+  if typeof(regName)==String
+      regName = [regName]
+  end
+  
+  if regName[1] == "L1"
+    gradientOp = opEye(T,N) #UniformScaling(one(T))
+  elseif regName[1] == "TV"
+    gradientOp = gradientOperator(T,shape)
   end
 
   if b != nothing
     u = b
   else
-    u = zeros(eltype(S),M)
+    u = zeros(T,M)
   end
 
-  c = zeros(eltype(S),N)
-  cO = zeros(eltype(S),N)
-  y1 = zeros(eltype(S),M)
-  y2 = zeros(eltype(S),size(gradientOp*c,1))
+  c = zeros(T,N)
+  cO = zeros(T,N)
+  y1 = zeros(T,M)
+  y2 = zeros(T,size(gradientOp*c,1))
 
-  return PrimalDualSolver(S,reg,regName,gradientOp,u,c,cO,y1,y2,σ,τ,ϵ,PrimalDualGap,enforceReal,enforcePositive,iterations,shape)
+  return PrimalDualSolver(S,reg,regName,gradientOp,u,c,cO,y1,y2,T(σ),T(τ),T(ϵ),T(PrimalDualGap),enforceReal,enforcePositive,iterations,shape)
 end
 
-function init!(solver::PrimalDualSolver; S::matT=solver.S, u::Vector{T}=T[], c::Vector{T}=T[],
-    PrimalDualGap::T=solver.PrimalDualGap) where {T,matT,R}
+function init!(solver::PrimalDualSolver; S::Matrix{T}=solver.S, u::Vector{T}=T[], c::Vector{T}=T[],
+    PrimalDualGap::T=solver.PrimalDualGap) where {T,R}
 
   solver.u[:] .= u
   solver.PrimalDualGap = (1/2)*(norm(solver.u,2))^2
@@ -87,8 +93,8 @@ function init!(solver::PrimalDualSolver; S::matT=solver.S, u::Vector{T}=T[], c::
 
 end
 
-function solve(solver::PrimalDualSolver, u::Vector{T}; S::matT=solver.S, startVector::Vector{T}=eltype(S)[]
-              , solverInfo=nothing, PrimalDualGap::T=solver.PrimalDualGap, kargs...) where {T,matT}
+function solve(solver::PrimalDualSolver, u::Vector{T}; S::Matrix{T}=solver.S, startVector::Vector{T}=eltype(S)[]
+              , solverInfo=nothing, PrimalDualGap::T=solver.PrimalDualGap, kargs...) where {T}
 
   # initialize solver parameters
   init!(solver; S=S, u=u, c=startVector, PrimalDualGap=solver.PrimalDualGap)
@@ -109,17 +115,17 @@ function iterate(solver::PrimalDualSolver, iteration::Int=0)
 
   # updating dual variables
   for i=1:length(solver.reg)
-      solver.y1 .= (solver.y1 + solver.σ*(solver.S*solver.c - solver.u))/(1+solver.σ)
-      if solver.regName == ["L1"]
+      solver.y1 .= (solver.y1 + solver.σ*(solver.S*solver.c - solver.u))./(1+solver.σ)
+      if solver.regName[1] == "L1"
           solver.y2 .= ProxL1Conj(solver.y2 + solver.σ*solver.gradientOp*solver.c, solver.reg[1].λ, solver.shape)
-      elseif solver.regName == ["TV"]
+      elseif solver.regName[1] == "TV"
           solver.y2 .= ProxTVConj(solver.y2 + solver.σ*solver.gradientOp*solver.c, solver.reg[1].λ, solver.shape)
       end
   end
 
   # updating primal variable
   for i=1:length(solver.reg)
-      solver.c .= solver.c - solver.τ*(adjoint(solver.S)*solver.y1 + adjoint(solver.gradientOp)*solver.y2)
+      solver.c += - solver.τ*(adjoint(solver.S)*solver.y1 + adjoint(solver.gradientOp)*solver.y2)
   end
 
   applyConstraints(solver.c, nothing, solver.enforceReal, solver.enforcePositive)
@@ -144,13 +150,13 @@ end
 @inline done(solver::PrimalDualSolver,iteration::Int) = converged(solver) || iteration>=solver.iterations
 
 # Proximal map of the convex conjugate of the l1 norm
-function ProxL1Conj(x::Vector{T},α::Float64,shape::NTuple{2,Int64}) where T
+function ProxL1Conj(x::Vector{T},α::T,shape::NTuple{2,Int64}) where T
    m,n = shape
    p1 = reshape(x,m,n)
 
    # threshold p1
    for j=1:n, i=1:m
-       p1[i,j] = sign(p1[i,j])*min(norm([p1[i,j]]),α)
+       p1[i,j] = sign(p1[i,j])*min(norm(p1[i,j]),α)
    end
    for i=1:m
        p1[i,n] = sign(p1[i,n])*min(abs(p1[i,n]),α)
@@ -218,15 +224,15 @@ function BBS(u::Array{T},shape::NTuple{2,Int64}) where T
    return vec(x)
 end
 
-function gradientOperator(shape::NTuple{2,Int64})
+function gradientOperator(::Type{T},shape::NTuple{2,Int64}) where T
    M,N = shape
    ncol = M*N
    nrow = 8*M*N
-   return LinearOperator{Float64}(nrow,ncol,false,false,x->BB(x,shape),nothing,x->BBS(x,shape))
+   return LinearOperator{T}(nrow,ncol,false,false,x->BB(x,shape),nothing,x->BBS(x,shape))
 end
 
 # Proximal map of the convex conjugate of the debiasing function
-function ProxTVConj(x::Vector{T},α::Float64,shape::NTuple{2,Int64}) where T
+function ProxTVConj(x::Vector{T},α::T,shape::NTuple{2,Int64}) where T
    m,n = shape
    p1 = reshape(x[1:m*n],m,n)
    p2 = reshape(x[m*n+1:2*m*n],m,n)

@@ -8,14 +8,14 @@ Type describing Regularizers
 # Fields
 * `prox!::Function`           - proximal map for the regularizer
 * `norm::Function`            - (semi-)norm for the regularizer
-* `λ::Float64`                - regularization paramter
+* `λ::AbstractFloat`                - regularization paramter
 * `params::Dict{Symbol,Any}`  - additional parameters
 """
 mutable struct Regularization <: AbstractRegularization
   prox!::Function
   norm::Function
-  λ::Float64
-  params::Dict{Symbol,Any}  # @TODO in die funcs
+  λ
+  params  # @TODO in die funcs
 end
 
 Base.vec(reg::Regularization) = [reg]
@@ -81,7 +81,7 @@ create a Regularization object containing all the infos necessary to calculate a
 Valid names are the same as in `Regularization(name::String, λ::AbstractFloat; kargs...)`.
 """
 function Regularization(names::Vector{String},
-                        λ::Vector{Float64}; kargs...)
+                        λ::Vector{T}; kargs...) where T<:AbstractFloat
   #@Mirco I do not know what to do with kargs here
   if length(names) != length(λ)
     @error names " and " λ " need to have the same length "
@@ -99,4 +99,4 @@ function prox!(x::Array, reg::Vector{Regularization})
   end
 end
 
-norm0(x::Array{T}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T = 0.0
+norm0(x::Array{T}, λ::T; sparseTrafo::Trafo=nothing, kargs...) where T = 0.0

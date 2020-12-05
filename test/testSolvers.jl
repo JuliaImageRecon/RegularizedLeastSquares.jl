@@ -84,7 +84,7 @@ end
     solverInfo = SolverInfo(Float64)
     FR = [real.(F./norm(F)); imag.(F./norm(F))]
     bR = [real.(b./norm(F)); imag.(b./norm(F))]
-    S = createLinearSolver(solver,FR; reg=reg, iterations=1000, solverInfo=solverInfo)
+    S = createLinearSolver(solver,FR; reg=reg, regName=["L1","TV"], iterations=1000, solverInfo=solverInfo)
     x_approx = solve(S, bR)
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
     @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
