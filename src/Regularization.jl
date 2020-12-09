@@ -15,7 +15,7 @@ mutable struct Regularization <: AbstractRegularization
   prox!::Function
   norm::Function
   λ
-  params  # @TODO in die funcs
+  params::Dict{Symbol,Any}  # @TODO in die funcs
 end
 
 Base.vec(reg::Regularization) = [reg]

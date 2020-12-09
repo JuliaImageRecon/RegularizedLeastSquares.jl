@@ -80,7 +80,7 @@ Function returns choosen solver.
 * `"splitBregman"`    - Split Bregman method for constrained & regularized inverse problems
 * `"primaldualsolver"`- First order primal dual method 
 """
-function createLinearSolver(solver::AbstractString, A::Trafo, x=zeros(eltype(A),size(A,2)), b=nothing;
+function createLinearSolver(solver::AbstractString, A, x=zeros(eltype(A),size(A,2));
                             log::Bool=false, kargs...)
 
   log ? solverInfo = SolverInfo(;kargs...) : solverInfo=nothing
