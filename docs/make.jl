@@ -1,7 +1,6 @@
 using Documenter, RegularizedLeastSquares
 
 makedocs(
-    format = :html,
     modules = [RegularizedLeastSquares],
     sitename = "RegularizedLeastSquares.jl",
     authors = "Tobias Knopp, Mirco Grosser, Martin Möddel",
@@ -11,10 +10,9 @@ makedocs(
         "Matrices & Operators" => "operators.md",
         "Regularization" => "regularization.md",
         "Solvers" => "solvers.md",
-        "API" => "API.md",
-    ],
-    html_prettyurls = false, #!("local" in ARGS),
+        "API" => "API.md"
+    ]
 )
 
-deploydocs(repo   = "github.com/tknopp/RegularizedLeastSquares.jl.git",
-           target = "build")
+deploydocs(repo   = "github.com/tknopp/RegularizedLeastSquares.jl.git")
+           
