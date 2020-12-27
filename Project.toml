@@ -14,7 +14,7 @@ SparsityOperators = "a5ff1dd3-4e0a-50db-9022-6d011c1d5846"
 VectorizationBase = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 
 [compat]
-IterativeSolvers = "0.8"
+IterativeSolvers = "0.8, 0.9"
 ProgressMeter = "1.2"
 SIMDPirates = "0.6.5, 0.7, 0.8"
 SparsityOperators = "0.1.7, 0.2"
