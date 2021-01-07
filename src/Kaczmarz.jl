@@ -262,15 +262,15 @@ for (T,W,shufflevectorMask,vσ) in [(Float32,:WF32,:shufflevectorMaskF32,:vσF32
         const $W = VectorizationBase.pick_vector_width($T)
         const $shufflevectorMask = Val(ntuple(k -> iseven(k-1) ? k : k-2, $W))
         const $vσ = Vec{$W,$T}(ntuple(k -> (-1f0)^(k+1),$W))
-        function kaczmarz_update!_tmp(A::Transpose{Complex{$T},S}, b::Vector{Complex{$T}}, k::Integer, beta::Complex{$T}) where {S<:DenseMatrix}
+        function kaczmarz_update!(A::Transpose{Complex{$T},S}, b::Vector{Complex{$T}}, k::Integer, beta::Complex{$T}) where {S<:DenseMatrix}
             b = reinterpret($T,b)
             A = reinterpret($T,A.parent)
 
             N = length(b)
             Nrep, Nrem = divrem(N,4*$W) # main loop
             Mrep, Mrem = divrem(Nrem,$W) # last iterations
-	    ib = _MM{$W}(0)
-	    ia = _MM{$W}((k-1)*stride(A,2))
+            ib = _MM{$W}(0)
+            ia = _MM{$W}((k-1)*stride(A,2))
             iOffset = 4*$W
 
             vβr = vmul(vbroadcast(Vec{$W,$T}, beta.re),$vσ) # vector containing (βᵣ,-βᵣ,βᵣ,-βᵣ,...)
