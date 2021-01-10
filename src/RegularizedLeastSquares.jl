@@ -9,7 +9,7 @@ using IterativeSolvers
 using Random
 using SparsityOperators
 using VectorizationBase
-using SIMDPirates
+using VectorizationBase: shufflevector, zstridedpointer
 @reexport using SparsityOperators
 @reexport using ProgressMeter
 
