@@ -257,9 +257,10 @@ function kaczmarz_update!(B::Transpose{T,S}, x::Vector,
 end
 
 # kaczmarz_update! with manual simd optimization
-for (T,W,shufflevectorMask,vσ) in [(Float32,:WF32,:shufflevectorMaskF32,:vσF32),(Float64,:WF64,:shufflevectorMaskF64,:vσF64)]
+for (T,W, WS,shufflevectorMask,vσ) in [(Float32,:WF32,:WF32S,:shufflevectorMaskF32,:vσF32),(Float64,:WF64,:WF64S,:shufflevectorMaskF64,:vσF64)]
     eval(quote
-        const $W = VectorizationBase.pick_vector_width($T)
+        const $WS = VectorizationBase.pick_vector_width($T)
+        const $W = Int(VectorizationBase.pick_vector_width($T))
         const $shufflevectorMask = Val(ntuple(k -> iseven(k-1) ? k : k-2, $W))
         const $vσ = Vec(ntuple(k -> (-1f0)^(k+1),$W)...)
         function kaczmarz_update!(A::Transpose{Complex{$T},S}, b::Vector{Complex{$T}}, k::Integer, beta::Complex{$T}) where {S<:DenseMatrix}
@@ -269,48 +270,45 @@ for (T,W,shufflevectorMask,vσ) in [(Float32,:WF32,:shufflevectorMaskF32,:vσF32
             N = length(b)
             Nrep, Nrem = divrem(N,4*$W) # main loop
             Mrep, Mrem = divrem(Nrem,$W) # last iterations
-            ib = MM{$W}(0)
-            ia = MM{$W}((k-1)*stride(A,2))
+            idx = MM{$W}(1)
             iOffset = 4*$W
 
-            vβr = vbroadcast(Val{$W}(), beta.re) * $vσ # vector containing (βᵣ,-βᵣ,βᵣ,-βᵣ,...)
-            vβi = vbroadcast(Val{$W}(), beta.im) # vector containing (βᵢ,βᵢ,βᵢ,βᵢ,...)
+            vβr = vbroadcast($WS, beta.re) * $vσ # vector containing (βᵣ,-βᵣ,βᵣ,-βᵣ,...)
+            vβi = vbroadcast($WS, beta.im) # vector containing (βᵢ,βᵢ,βᵢ,βᵢ,...)
 
             GC.@preserve b A begin # protect A and y from GC
-                vptrA = zstridedpointer(A)
-                vptrb = zstridedpointer(b)
+                vptrA = stridedpointer(A)
+                vptrb = stridedpointer(b)
                 for _ = 1:Nrep
-	            Base.Cartesian.@nexprs 4 i -> vb_i = vload(vptrb, ($W*(i-1) + ib,))
-	            Base.Cartesian.@nexprs 4 i -> va_i = vload(vptrA, ($W*(i-1) + ia,))
+	                Base.Cartesian.@nexprs 4 i -> vb_i = vload(vptrb, ($W*(i-1) + idx,))
+	                Base.Cartesian.@nexprs 4 i -> va_i = vload(vptrA, ($W*(i-1) + idx,k))
                     Base.Cartesian.@nexprs 4 i -> begin
                         vb_i = muladd(va_i, vβr, vb_i)
                         va_i = shufflevector(va_i, $shufflevectorMask)
                         vb_i = muladd(va_i, vβi, vb_i)
-			vstore!(vptrb, vb_i, ($W*(i-1) + ib,))
+			            vstore!(vptrb, vb_i, ($W*(i-1) + idx,))
                     end
-                    ib += iOffset
-                    ia += iOffset
+                    idx += iOffset
                 end
 
                 for _ = 1:Mrep
-	            vb = vload(vptrb, (ib,))
-	            va = vload(vptrA, (ia,))
+	            vb = vload(vptrb, (idx,))
+	            va = vload(vptrA, (idx,k))
                     vb = muladd(va, vβr, vb)
                     va = shufflevector(va, $shufflevectorMask)
                     vb = muladd(va, vβi, vb)
-		    vstore!(vptrb, vb, (ib,))
-                    ib += $W
-                    ia += $W
+		            vstore!(vptrb, vb, (idx,))
+                    idx += $W
                 end
 
                 if Mrem!=0
                     vloadMask = VectorizationBase.mask($T, Mrem)
-		    vb = vload(vptrb, (ib,), vloadMask)
-		    va = vload(vptrA, (ia,), vloadMask)
+                    vb = vload(vptrb, (idx,), vloadMask)
+                    va = vload(vptrA, (idx,k), vloadMask)
                     vb = muladd(va, vβr, vb)
                     va = shufflevector(va, $shufflevectorMask)
                     vb = muladd(va, vβi, vb)
-		    vstore!(vptrb, vb, (ib,), vloadMask)
+		            vstore!(vptrb, vb, (idx,), vloadMask)
                 end
             end # GC.@preserve
         end
