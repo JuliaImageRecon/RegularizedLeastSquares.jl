@@ -237,7 +237,7 @@ The Split Bregman Method for l1 Regularized Problems
   * (`iterationsCG::Int64=10`)    - maximum number of CG iterations
   * (`absTol::Float64=eps()`)     - absolute tolerance for stopping criterion
   * (`relTol::Float64=eps()`)     - relative tolerance for stopping criterion
-  * (`tolInner::Float64=1.e-3`)   - tolerance for CG
+  * (`tolInner::Float64=1.e-3`)   - relative tolerance for CG
   * (`solverInfo = nothing`)      - `solverInfo` object used to store convergence metrics
 """
 function iterate(solver::SplitBregman{matT,vecT,opT,rvecT,preconT}, iteration::Int=1) where {matT,vecT,opT,rvecT,preconT}
@@ -248,7 +248,7 @@ function iterate(solver::SplitBregman{matT,vecT,opT,rvecT,preconT}, iteration::I
   for i=1:length(solver.reg)
     solver.β[:] .+= solver.ρ[i]*(solver.v[i].-solver.b[i])
   end
-  cg!(solver.u,solver.op,solver.β,Pl=solver.precon,maxiter=solver.iterationsCG,tol=solver.tolInner)
+  cg!(solver.u,solver.op,solver.β,Pl=solver.precon,maxiter=solver.iterationsCG,reltol=solver.tolInner)
 
   #  proximal map for regularization terms
   for i=1:length(solver.reg)

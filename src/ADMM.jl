@@ -52,7 +52,7 @@ creates an `ADMM` object for the system matrix `A`.
 * (`iterationsInner::Int64=10`) - max number of internal CG iterations
 * (`absTol::Float64=eps()`)     - abs tolerance for stopping criterion
 * (`relTol::Float64=eps()`)     - rel tolerance for stopping criterion
-* (`tolInner::Float64=1.e-5`)   - tolerance for CG stopping criterion
+* (`tolInner::Float64=1.e-5`)   - rel tolerance for CG stopping criterion
 """
 function ADMM(A::matT, x::vecT=zeros(eltype(A),size(A,2)); reg=nothing, regName=["L1"]
             , λ=[0.0]
@@ -218,7 +218,7 @@ function iterate(solver::ADMM{matT,opT,T,preconT}, iteration::Int=0) where {matT
     solver.β[:] .+= solver.ρ[i]*(solver.z[i].-solver.u[i])
   end
   cg!(solver.x, solver.op, solver.β, Pl=solver.precon
-      , maxiter=solver.iterationsInner, tol=solver.tolInner, statevars=solver.cgStateVars)
+      , maxiter=solver.iterationsInner, reltol=solver.tolInner, statevars=solver.cgStateVars)
 
   # 2. update z using the proximal map of 1/ρ*g(x)
   for i=1:length(solver.reg)
