@@ -280,13 +280,13 @@ for (T,W, WS,shufflevectorMask,vσ) in [(Float32,:WF32,:WF32S,:shufflevectorMask
                 vptrA = stridedpointer(A)
                 vptrb = stridedpointer(b)
                 for _ = 1:Nrep
-	                Base.Cartesian.@nexprs 4 i -> vb_i = vload(vptrb, ($W*(i-1) + idx,))
-	                Base.Cartesian.@nexprs 4 i -> va_i = vload(vptrA, ($W*(i-1) + idx,k))
+                    Base.Cartesian.@nexprs 4 i -> vb_i = vload(vptrb, ($W*(i-1) + idx,))
+                    Base.Cartesian.@nexprs 4 i -> va_i = vload(vptrA, ($W*(i-1) + idx,k))
                     Base.Cartesian.@nexprs 4 i -> begin
                         vb_i = muladd(va_i, vβr, vb_i)
                         va_i = shufflevector(va_i, $shufflevectorMask)
                         vb_i = muladd(va_i, vβi, vb_i)
-			            vstore!(vptrb, vb_i, ($W*(i-1) + idx,))
+                    	vstore!(vptrb, vb_i, ($W*(i-1) + idx,))
                     end
                     idx += iOffset
                 end
@@ -308,7 +308,7 @@ for (T,W, WS,shufflevectorMask,vσ) in [(Float32,:WF32,:WF32S,:shufflevectorMask
                     vb = muladd(va, vβr, vb)
                     va = shufflevector(va, $shufflevectorMask)
                     vb = muladd(va, vβi, vb)
-		            vstore!(vptrb, vb, (idx,), vloadMask)
+                    vstore!(vptrb, vb, (idx,), vloadMask)
                 end
             end # GC.@preserve
         end
