@@ -4,6 +4,7 @@ mutable struct ADMM{matT,opT,vecT,rvecT,preconT} <: AbstractLinearSolver
   # oerators and regularization
   A::matT
   reg::Vector{Regularization}
+  regTrafo::Vector{opT}
   # fields and operators for x update
   op::opT
   β::vecT
@@ -45,6 +46,7 @@ creates an `ADMM` object for the system matrix `A`.
 * (`reg=nothing`)               - Regularization object
 * (`regName=["L1"]`)            - name of the Regularization to use (if reg==nothing)
 * (`λ=[0.0]`)                   - Regularization paramter
+* (`regTrafo=nothing`)          - transformations applied inside each regularizer
 * (`precon=Identity()`)         - preconditionner for the internal CG algorithm
 * (`ρ::Float64=1.e-2`)          - penalty of the augmented lagrangian
 * (`adaptRho::Bool=false`)      - adapt rho to balance primal and dual feasibility
@@ -56,6 +58,7 @@ creates an `ADMM` object for the system matrix `A`.
 """
 function ADMM(A::matT, x::vecT=zeros(eltype(A),size(A,2)); reg=nothing, regName=["L1"]
             , λ=[0.0]
+            , regTrafo=nothing 
             , AHA::opT=nothing
             , precon=Identity()
             , ρ=[1.e-1]
@@ -71,16 +74,19 @@ function ADMM(A::matT, x::vecT=zeros(eltype(A),size(A,2)); reg=nothing, regName=
     reg = Regularization(regName, λ, kargs...)
   end
 
+  if regTrafo == nothing
+    regTrafo = [opEye(eltype(x),size(A,2)) for i=1:length(vec(reg))]
+  end
+
   # fields for primal & dual variables
-  z = [similar(x) for i=1:length(vec(reg))]
-  zᵒˡᵈ = [similar(x) for i=1:length(vec(reg))]
-  u = [similar(x) for i=1:length(vec(reg))]
+  z = [similar(x, size(regTrafo[i],1)) for i=1:length(vec(reg))]
+  zᵒˡᵈ = [similar(z[i]) for i=1:length(vec(reg))]
+  u = [similar(z[i]) for i=1:length(vec(reg))]
 
   # operator and fields for the update of x
-  if AHA != nothing
-    op = AHA + sum(ρ)*opEye(size(A,2))
-  else
-    op = A'*A + sum(ρ)*opEye(size(A,2))
+  op = ( AHA!=nothing ? AHA : A'*A )
+  for i=1:length(vec(reg))
+    op += ρ[i]*adjoint(regTrafo[i])*regTrafo[i]
   end
   β = similar(x)
   β_y = similar(x)
@@ -103,7 +109,7 @@ function ADMM(A::matT, x::vecT=zeros(eltype(A),size(A,2)); reg=nothing, regName=
     ρ_vec = typeof(real.(x))(ρ)
   end
 
-  return ADMM(A,vec(reg),op,β,β_y,x,z,zᵒˡᵈ,u,precon,ρ_vec,iterations
+  return ADMM(A,vec(reg),regTrafo,op,β,β_y,x,z,zᵒˡᵈ,u,precon,ρ_vec,iterations
               ,iterationsInner,statevars, rk,sk,eps_pri,eps_dt,0.0,absTol,relTol,tolInner
               ,normalizeReg,1.0)
 end
@@ -126,10 +132,9 @@ function init!(solver::ADMM{matT,opT,vecT,rvecT,preconT}, b::vecT
   # operators
   if A != solver.A
     solver.A = A
-    if AHA != nothing
-      solver.op = AHA + sum(solver.ρ)*opEye(length(solver.x))
-    else
-      solver.op = A'*A + sum(solver.ρ)*opEye(length(solver.x))
+    solver.op = ( AHA!=nothing ? AHA : A'*A )
+    for i=1:length(vec(reg))
+      solver.op += ρ[i]*adjoint(regTrafo[i])*regTrafo[i]
     end
   end
 
@@ -146,7 +151,7 @@ function init!(solver::ADMM{matT,opT,vecT,rvecT,preconT}, b::vecT
 
   # primal and dual variables
   for i=1:length(solver.reg)
-    solver.z[i][:] .= solver.x
+    solver.z[i][:] .= solver.regTrafo[i]*solver.x
     solver.zᵒˡᵈ[i][:] .= 0.0
     solver.u[i] .= 0.0
   end
@@ -211,11 +216,11 @@ performs one ADMM iteration.
 function iterate(solver::ADMM{matT,opT,T,preconT}, iteration::Int=0) where {matT,opT,T,preconT}
   if done(solver, iteration) return nothing end
 
-  # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 ||x+u-z||²
-  # <=> (A'A+ρ)*x = A'b+ρ(z-u)
+  # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 Σ_i||Φi*x+ui-zi||²
+  # <=> (A'A+ρ Σ_i Φi'Φi)*x = A'b+ρΣ_i Φi'(zi-ui)
   copyto!(solver.β, solver.β_y)
   for i=1:length(solver.reg)
-    solver.β[:] .+= solver.ρ[i]*(solver.z[i].-solver.u[i])
+    solver.β[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*(solver.z[i].-solver.u[i])
   end
   cg!(solver.x, solver.op, solver.β, Pl=solver.precon
       , maxiter=solver.iterationsInner, reltol=solver.tolInner, statevars=solver.cgStateVars)
@@ -223,7 +228,7 @@ function iterate(solver::ADMM{matT,opT,T,preconT}, iteration::Int=0) where {matT
   # 2. update z using the proximal map of 1/ρ*g(x)
   for i=1:length(solver.reg)
     copyto!(solver.zᵒˡᵈ[i], solver.z[i])
-    solver.z[i][:] .= solver.x .+ solver.u[i]
+    solver.z[i][:] .= solver.regTrafo[i]*solver.x .+ solver.u[i]
     if solver.ρ[i] != 0
       solver.reg[i].prox!(solver.z[i], solver.regFac*solver.reg[i].λ/solver.ρ[i]; solver.reg[i].params...)
     end
@@ -231,19 +236,22 @@ function iterate(solver::ADMM{matT,opT,T,preconT}, iteration::Int=0) where {matT
 
   # 3. update u
   for i=1:length(solver.reg)
-    solver.u[i][:] .+= solver.x .- solver.z[i]
+    solver.u[i][:] .+= solver.regTrafo[i]*solver.x .- solver.z[i]
   end
 
   # update convergence measures
+  # primal residuals norms (one for each constraint)
   for i=1:length(solver.reg)
-    solver.rᵏ[i] = norm(solver.x-solver.z[i])  # primal residual (x-z)
-    solver.ɛᵖʳⁱ[i] = solver.σᵃᵇˢ + solver.relTol*max( norm(solver.x), norm(solver.z[i]) )
+    solver.rᵏ[i] = norm(solver.regTrafo[i]*solver.x-solver.z[i])  # primal residual (x-z)
+    solver.ɛᵖʳⁱ[i] = solver.σᵃᵇˢ + solver.relTol*max( norm(solver.regTrafo[i]*solver.x), norm(solver.z[i]) )
   end
+  # accumulated dual residual
+  # effectively this corresponds to combining all constraints into one larger constraint.
   solver.sᵏ[:] .= 0.0
   solver.ɛ_dt[:] .= 0.0
   for i=1:length(solver.reg)
-    solver.sᵏ[:] .+= norm(solver.ρ[i] * (solver.z[i] .- solver.zᵒˡᵈ[i])) # dual residual (concerning f(x))
-    solver.ɛ_dt[:] .+= solver.ρ[i]*solver.u[i]
+    solver.sᵏ[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*(solver.z[i] .- solver.zᵒˡᵈ[i]) # dual residual (concerning f(x))
+    solver.ɛ_dt[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*solver.u[i]
   end
 
   # return the primal feasibilty measure as item and iteration number as state
