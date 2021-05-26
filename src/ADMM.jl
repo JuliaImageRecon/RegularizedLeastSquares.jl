@@ -1,10 +1,10 @@
 export admm
 
-mutable struct ADMM{matT,opT,vecT,rvecT,preconT} <: AbstractLinearSolver
+mutable struct ADMM{matT,opT,ropT,vecT,rvecT,preconT} <: AbstractLinearSolver
   # oerators and regularization
   A::matT
   reg::Vector{Regularization}
-  regTrafo::Vector{opT}
+  regTrafo::Vector{ropT}
   # fields and operators for x update
   op::opT
   β::vecT
@@ -123,11 +123,11 @@ end
 
 (re-) initializes the ADMM iterator
 """
-function init!(solver::ADMM{matT,opT,vecT,rvecT,preconT}, b::vecT
+function init!(solver::ADMM{matT,opT,ropT,vecT,rvecT,preconT}, b::vecT
               ; A::matT=solver.A
               , AHA::opT=solver.op
               , x::vecT=similar(b,0)
-              , kargs...) where {matT,opT,vecT,rvecT,preconT}
+              , kargs...) where {matT,opT,ropT,vecT,rvecT,preconT}
 
   # operators
   if A != solver.A

@@ -1,10 +1,10 @@
 export SplitBregman
 
-mutable struct SplitBregman{matT,vecT,opT,rvecT,preconT} <: AbstractLinearSolver
+mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT} <: AbstractLinearSolver
   # oerators and regularization
   A::matT
   reg::Vector{Regularization}
-  regTrafo::Vector{opT}
+  regTrafo::Vector{ropT}
   y::vecT
   # fields and operators for x update
   op::opT
@@ -138,10 +138,10 @@ end
 
 (re-) initializes the SplitBregman iterator
 """
-function init!(solver::SplitBregman{matT,vecT,opT,rvecT,preconT}, b::vecT
+function init!(solver::SplitBregman{matT,vecT,opT,ropT,rvecT,preconT}, b::vecT
               ; A::matT=solver.A
               , u::vecT=similar(b,0)
-              , kargs...) where {matT,vecT,opT,rvecT,preconT}
+              , kargs...) where {matT,vecT,opT,ropT,rvecT,preconT}
 
   # operators
   if A != solver.A
