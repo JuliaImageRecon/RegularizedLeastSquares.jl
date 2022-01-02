@@ -12,8 +12,8 @@ proximal map for LLR regularization using singular-value-thresholding
 * `blockSize::Tuple{Int}=[2;2]` - size of patches to perform singluar value thresholding on
 * `randshift::Bool=true`        - randomly shifts the patches to ensure translation invariance
 """
-function proxLLR!(x::Vector{T}, λ::Float64=1e-6; shape::NTuple=[],
-   blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...) where T
+function proxLLR!(x::Vector{Complex{T}}, λ::T=1e-6; shape::NTuple=[],
+   blockSize::Vector{TI}=[2; 2], randshift::Bool=true, kargs...) where {T, TI <: Integer}
   # xᵖʳᵒˣ = zeros(T,size(x))
   N = prod(shape)
   # K = floor(Int,length(x)/N)
@@ -22,8 +22,8 @@ function proxLLR!(x::Vector{T}, λ::Float64=1e-6; shape::NTuple=[],
   return x
 end
 
-function svt(x::Vector{T}, shape::Tuple, λ::Float64=1e-6;
-   blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...) where T
+function svt(x::Vector{Complex{T}}, shape::Tuple, λ::T=1e-6;
+   blockSize::Vector{TI}=[2; 2], randshift::Bool=true, kargs...) where {T, TI <: Integer}
 
   x = reshape( x, tuple( shape...,floor(Int64, length(x)/prod(shape)) ) )
 
@@ -41,7 +41,7 @@ function svt(x::Vector{T}, shape::Tuple, λ::Float64=1e-6;
   # reshape into patches
   L = floor(Int,ny*nz/Wy/Wz) # number of patches, assumes that image dimensions are divisble by the blocksizes
 
-  xᴸᴸᴿ = zeros(T,Wy*Wz,L,K)
+  xᴸᴸᴿ = zeros(Complex{T},Wy*Wz,L,K)
   for i=1:K
     xᴸᴸᴿ[:,:,i] = im2colDistinct(x[:,:,i], (Wy,Wz))
   end
@@ -49,7 +49,7 @@ function svt(x::Vector{T}, shape::Tuple, λ::Float64=1e-6;
 
   # threshold singular values
   for i = 1:L
-    if xᴸᴸᴿ[:,:,i] == zeros(T, Wy*Wz,K)
+    if xᴸᴸᴿ[:,:,i] == zeros(Complex{T}, Wy*Wz,K)
       continue
     end
     SVDec = svd(xᴸᴸᴿ[:,:,i])
@@ -58,7 +58,7 @@ function svt(x::Vector{T}, shape::Tuple, λ::Float64=1e-6;
   end
 
   # reshape into image
-  xᵗʰʳᵉˢʰ = zeros(T,size(x))
+  xᵗʰʳᵉˢʰ = zeros(Complex{T},size(x))
   for i = 1:K
     xᵗʰʳᵉˢʰ[:,:,i] = col2imDistinct( xᴸᴸᴿ[:,i,:], (Wy,Wz), (ny,nz) )
   end
@@ -80,7 +80,7 @@ end
 returns the value of the LLR-regularization term.
 Arguments are the same is in `proxLLR!`
 """
-function normLLR(x::Vector{T}, λ::Float64; shape::NTuple=[], L=1, blockSize::Array{Int64,1}=[2; 2], randshift::Bool=true, kargs...) where T
+function normLLR(x::Vector{T}, λ::Float64; shape::NTuple=[], L=1, blockSize::Vector{TI}=[2; 2], randshift::Bool=true, kargs...) where {T, TI <: Integer}
 
   N = prod(shape)
   K = floor(Int,length(x)/(N*L))
@@ -92,8 +92,8 @@ function normLLR(x::Vector{T}, λ::Float64; shape::NTuple=[], L=1, blockSize::Ar
   return λ*normᴸᴸᴿ
 end
 
-function blockNuclearNorm(x::Vector{T}, shape::Tuple; blockSize::Array{Int64,1}=[2; 2],
-      randshift::Bool=true, kargs...) where T
+function blockNuclearNorm(x::Vector{T}, shape::Tuple; blockSize::Vector{TI}=[2; 2],
+      randshift::Bool=true, kargs...) where {T, TI <: Integer}
     x = reshape( x, tuple( shape...,floor(Int64, length(x)/prod(shape)) ) )
 
     Wy = blockSize[1]
