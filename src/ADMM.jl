@@ -56,26 +56,26 @@ creates an `ADMM` object for the system matrix `A`.
 * (`relTol::Real=eps()`)     - rel tolerance for stopping criterion
 * (`tolInner::Real=1.e-5`)   - rel tolerance for CG stopping criterion
 """
-function ADMM(A::matT, x::vecT=zeros(eltype(A),size(A,2)); reg=nothing, regName=["L1"]
+function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, regName=["L1"]
             , λ=[0.0]
             , regTrafo=nothing
             , AHA::opT=nothing
             , precon=Identity()
             , ρ=[1.e-1]
-            , iterations::Int64=50
-            , iterationsInner::Int64=10
+            , iterations::Integer=50
+            , iterationsInner::Integer=10
             , absTol::Real=eps()
             , relTol::Real=eps()
             , tolInner::Real=1e-5
             , normalizeReg::Bool=false
-            , kargs...) where {matT,vecT,opT}
+            , kargs...) where {T,matT,opT}
 
   if reg == nothing
     reg = Regularization(regName, λ, kargs...)
   end
 
   if regTrafo == nothing
-    regTrafo = [opEye(eltype(x),size(A,2)) for i=1:length(vec(reg))]
+    regTrafo = [LinearOperator{T}(length(x), length(x), true, true, x -> identity(x), x -> identity(x), x -> identity(x)) for i=1:length(vec(reg))]
   end
 
   # fields for primal & dual variables
