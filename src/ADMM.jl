@@ -16,7 +16,7 @@ mutable struct ADMM{matT,opT,ropT,vecT,rvecT,preconT} <: AbstractLinearSolver
   u::Vector{vecT}
   # other parameters
   precon::preconT
-  ρ::rvecT
+  ρ::rvecT # TODO: Switch all these vectors to Tuple
   iterations::Integer
   iterationsInner::Integer
   # state variables for CG
@@ -61,14 +61,26 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, reg
             , regTrafo=nothing
             , AHA::opT=nothing
             , precon=Identity()
-            , ρ=[1.e-1]
+            , ρ=1e-1
             , iterations::Integer=50
             , iterationsInner::Integer=10
-            , absTol::Real=eps()
-            , relTol::Real=eps()
+            , absTol::Real=eps(real(T))
+            , relTol::Real=eps(real(T))
             , tolInner::Real=1e-5
             , normalizeReg::Bool=false
             , kargs...) where {T,matT,opT}
+
+
+  # unify Floating types
+  if typeof(ρ) <: Number
+    ρ_vec = [real(T).(ρ)]
+  else
+    ρ_vec = real(T).(ρ)
+  end
+  λ = real(T).(λ)
+  absTol = real(T)(absTol)
+  relTol = real(T)(relTol)
+  tolInner = real(T)(tolInner)
 
   if reg == nothing
     reg = Regularization(regName, λ, kargs...)
@@ -101,13 +113,6 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, reg
   eps_pri = similar( real.(x), length(vec(reg)) ) # [0.0 for i=1:length(vec(reg))]
   eps_dt = similar(x)
 
-  # make sure that ρ is a vector and of proper type
-  if typeof(ρ) <: Real
-    ρ_vec = similar(x, real(eltype(x)), 1)
-    ρ_vec .= ρ
-  else
-    ρ_vec = typeof(real.(x))(ρ)
-  end
 
   return ADMM(A,vec(reg),regTrafo,op,β,β_y,x,z,zᵒˡᵈ,u,precon,ρ_vec,iterations
               ,iterationsInner,statevars, rk,sk,eps_pri,eps_dt,0.0,absTol,relTol,tolInner
