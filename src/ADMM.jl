@@ -69,7 +69,7 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, reg
             , tolInner::Real=1e-5
             , normalizeReg::Bool=false
             , kargs...) where {T,matT,opT}
-
+# TODO: The constructor is not type stable
 
   # unify Floating types
   if typeof(ρ) <: Number
