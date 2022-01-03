@@ -1,37 +1,37 @@
 export admm
 
-mutable struct ADMM{TC,T,matT,opT,ropT,preconT} <: AbstractLinearSolver where {TC <: Union{T, Complex{T}}}
+mutable struct ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT} <: AbstractLinearSolver where {vecT <: AbstractVector{Union{rT, Complex{rT}}}, rvecT <: AbstractVector{rT}}
   # oerators and regularization
   A::matT
   reg::Vector{Regularization}
   regTrafo::Vector{ropT}
   # fields and operators for x update
   op::opT
-  β::Vector{TC}
-  β_y::Vector{TC}
+  β::vecT
+  β_y::vecT
   # fields for primal & dual variables
-  x::Vector{TC}
-  z::Vector{Vector{TC}}
-  zᵒˡᵈ::Vector{Vector{TC}}
-  u::Vector{Vector{TC}}
+  x::vecT
+  z::Vector{vecT}
+  zᵒˡᵈ::Vector{vecT}
+  u::Vector{vecT}
   # other parameters
   precon::preconT
-  ρ::Vector{T} # TODO: Switch all these vectors to Tuple
+  ρ::rvecT # TODO: Switch all these vectors to Tuple
   iterations::Int64
   iterationsInner::Int64
   # state variables for CG
   cgStateVars::CGStateVariables
   # convergence parameters
-  rᵏ::Vector{T}
-  sᵏ::Vector{TC}
-  ɛᵖʳⁱ::Vector{T}
-  ɛ_dt::Vector{TC}
-  σᵃᵇˢ::T
-  absTol::T
-  relTol::T
-  tolInner::T
+  rᵏ::rvecT
+  sᵏ::vecT
+  ɛᵖʳⁱ::rvecT
+  ɛ_dt::vecT
+  σᵃᵇˢ::rT
+  absTol::rT
+  relTol::rT
+  tolInner::rT
   normalizeReg::Bool
-  regFac::T
+  regFac::rT
 end
 
 """
@@ -128,11 +128,11 @@ end
 
 (re-) initializes the ADMM iterator
 """
-function init!(solver::ADMM{TC,T,matT,opT,ropT,preconT}, b::Vector{TC}
+function init!(solver::ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT}, b::vecT
               ; A::matT=solver.A
               , AHA::opT=solver.op
-              , x::Vector{TC}=similar(b,0)
-              , kargs...) where {TC,T,matT,opT,ropT,preconT}
+              , x::vecT=similar(b,0)
+              , kargs...) where {rT,matT,opT,ropT,vecT,rvecT,preconT}
 
   # operators
   if A != solver.A
@@ -198,7 +198,7 @@ solves an inverse problem using ADMM.
 when a `SolverInfo` objects is passed, the primal residuals `solver.rk`
 and the dual residual `norm(solver.sk)` are stored in `solverInfo.convMeas`.
 """
-function solve(solver::ADMM, b::Vector{TC}; A=solver.A, startVector::Vector{TC}=similar(b,0), solverInfo=nothing, kargs...) where {TC}
+function solve(solver::ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT}, b::vecT; A=solver.A, startVector::vecT=similar(b,0), solverInfo=nothing, kargs...) where {rT,matT,opT,ropT,vecT,rvecT,preconT}
   # initialize solver parameters
   init!(solver, b; A=A, x=startVector)
 
