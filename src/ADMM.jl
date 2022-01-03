@@ -115,8 +115,8 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, reg
 
 
   return ADMM(A,vec(reg),regTrafo,op,β,β_y,x,z,zᵒˡᵈ,u,precon,ρ_vec,iterations
-              ,iterationsInner,statevars, rk,sk,eps_pri,eps_dt,0.0,absTol,relTol,tolInner
-              ,normalizeReg,1.0)
+              ,iterationsInner,statevars, rk,sk,eps_pri,eps_dt,zero(real(T)),absTol,relTol,tolInner
+              ,normalizeReg,one(real(T)))
 end
 
 """
@@ -235,7 +235,7 @@ function iterate(solver::ADMM, iteration::Integer=0)
     copyto!(solver.zᵒˡᵈ[i], solver.z[i])
     solver.z[i][:] .= solver.regTrafo[i]*solver.x .+ solver.u[i]
     if solver.ρ[i] != 0
-      solver.z[i] = solver.reg[i].prox!(solver.z[i], solver.regFac*solver.reg[i].λ/solver.ρ[i]; solver.reg[i].params...)
+      solver.reg[i].prox!(solver.z[i], solver.regFac*solver.reg[i].λ/solver.ρ[i]; solver.reg[i].params...)
     end
   end
 

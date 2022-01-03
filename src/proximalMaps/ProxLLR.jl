@@ -23,33 +23,35 @@ function proxLLR!(x::Vector{T}, λ; shape::NTuple{N,TI}=error(),
   if randshift
     # Random.seed!(1234)
     shift_idx = (Tuple(rand(block_idx))..., 0)
-    x = circshift(x, shift_idx)
+    xs = circshift(x, shift_idx)
+  else
+    xs = x
   end
 
   ext = mod.(shape,blockSize)
   pad = mod.(blockSize .- ext, blockSize)
   if any(pad .!= 0)
-    x1 = zeros(T, (shape .+ pad)..., K)
-    x1[CartesianIndices(x)] .= x
+    xp = zeros(T, (shape .+ pad)..., K)
+    xp[CartesianIndices(x)] .= xs
   else
-    x1 = x
+    xp = xs
   end
 
   xᴸᴸᴿ = Array{T}(undef, prod(blockSize), K)
   for i ∈ CartesianIndices(StepRange.(0, blockSize, shape .- 1))
-    @views xᴸᴸᴿ .= reshape(x1[i .+ block_idx,:], :, K)
+    @views xᴸᴸᴿ .= reshape(xp[i .+ block_idx,:], :, K)
     # threshold singular values
     SVDec = svd!(xᴸᴸᴿ)
     proxL1!(SVDec.S,λ)
-    x1[i .+ block_idx,:] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
+    xp[i .+ block_idx,:] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
   end
 
   if any(pad .!= 0)
-    x = x1[CartesianIndices(x)]
+    xs .= xp[CartesianIndices(xs)]
   end
 
   if randshift
-    x = circshift(x, -1 .* shift_idx)
+    x .= circshift(xs, -1 .* shift_idx)
   end
 
   x = vec(x)
