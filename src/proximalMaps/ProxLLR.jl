@@ -12,66 +12,48 @@ proximal map for LLR regularization using singular-value-thresholding
 * `blockSize::Tuple{Int}=[2;2]` - size of patches to perform singluar value thresholding on
 * `randshift::Bool=true`        - randomly shifts the patches to ensure translation invariance
 """
-function proxLLR!(x::Vector{Complex{T}}, λ::T=1e-6; shape::NTuple=[],
-   blockSize::Vector{TI}=[2; 2], randshift::Bool=true, kargs...) where {T, TI <: Integer}
-  # xᵖʳᵒˣ = zeros(T,size(x))
-  N = prod(shape)
-  # K = floor(Int,length(x)/N)
-  x[:] = vec( svt(x[:], shape, λ; blockSize=blockSize, randshift=randshift, kargs...) )
+function proxLLR!(x::Vector{T}, λ; shape::NTuple{N,TI}=error(),
+   blockSize::NTuple{N,TI}=ntuple(_-> 2, N), randshift::Bool=true) where {T, N,TI <: Integer}
 
-  return x
-end
+  x = reshape(x, tuple(shape..., length(x) ÷ prod(shape)))
 
-function svt(x::Vector{Complex{T}}, shape::Tuple, λ::T=1e-6;
-   blockSize::Vector{TI}=[2; 2], randshift::Bool=true, kargs...) where {T, TI <: Integer}
-
-  x = reshape( x, tuple( shape...,floor(Int64, length(x)/prod(shape)) ) )
-
-  Wy = blockSize[1]
-  Wz = blockSize[2]
+  block_idx = CartesianIndices(blockSize)
+  K = size(x)[end]
 
   if randshift
     # Random.seed!(1234)
-    shift_idx = [rand(1:Wy) rand(1:Wz) 0]
+    shift_idx = (Tuple(rand(block_idx))..., 0)
     x = circshift(x, shift_idx)
   end
 
-  ny, nz, K = size(x)
-
-  # reshape into patches
-  L = floor(Int,ny*nz/Wy/Wz) # number of patches, assumes that image dimensions are divisble by the blocksizes
-
-  xᴸᴸᴿ = zeros(Complex{T},Wy*Wz,L,K)
-  for i=1:K
-    xᴸᴸᴿ[:,:,i] = im2colDistinct(x[:,:,i], (Wy,Wz))
+  ext = mod.(shape,blockSize)
+  pad = mod.(blockSize .- ext, blockSize)
+  if any(pad .!= 0)
+    x1 = zeros(T, (shape .+ pad)..., K)
+    x1[CartesianIndices(x)] .= x
+  else
+    x1 = x
   end
-  xᴸᴸᴿ = permutedims(xᴸᴸᴿ,[1 3 2])
 
-  # threshold singular values
-  for i = 1:L
-    if xᴸᴸᴿ[:,:,i] == zeros(Complex{T}, Wy*Wz,K)
-      continue
-    end
-    SVDec = svd(xᴸᴸᴿ[:,:,i])
+  xᴸᴸᴿ = Array{T}(undef, prod(blockSize), K)
+  for i ∈ CartesianIndices(StepRange.(0, blockSize, shape .- 1))
+    @views xᴸᴸᴿ .= reshape(x1[i .+ block_idx,:], :, K)
+    # threshold singular values
+    SVDec = svd!(xᴸᴸᴿ)
     proxL1!(SVDec.S,λ)
-    xᴸᴸᴿ[:,:,i] = SVDec.U*Matrix(Diagonal(SVDec.S))*SVDec.Vt
+    x1[i .+ block_idx,:] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
   end
 
-  # reshape into image
-  xᵗʰʳᵉˢʰ = zeros(Complex{T},size(x))
-  for i = 1:K
-    xᵗʰʳᵉˢʰ[:,:,i] = col2imDistinct( xᴸᴸᴿ[:,i,:], (Wy,Wz), (ny,nz) )
+  if any(pad .!= 0)
+    x = x1[CartesianIndices(x)]
   end
 
   if randshift
-    xᵗʰʳᵉˢʰ = circshift(xᵗʰʳᵉˢʰ, -1*shift_idx)
+    x = circshift(x, -1 .* shift_idx)
   end
 
-  if !isempty(shape)
-    xᵗʰʳᵉˢʰ = reshape( xᵗʰʳᵉˢʰ, prod(shape),floor( Int, length(xᵗʰʳᵉˢʰ)/prod(shape) ) )
-  end
-
-  return xᵗʰʳᵉˢʰ
+  x = vec(x)
+  return x
 end
 
 """
@@ -80,7 +62,7 @@ end
 returns the value of the LLR-regularization term.
 Arguments are the same is in `proxLLR!`
 """
-function normLLR(x::Vector{T}, λ::Float64; shape::NTuple=[], L=1, blockSize::Vector{TI}=[2; 2], randshift::Bool=true, kargs...) where {T, TI <: Integer}
+function normLLR(x::Vector{T}, λ::Float64; shape::NTuple, L=1, blockSize::Vector{TI}=[2; 2], randshift::Bool=true, kargs...) where {T, TI <: Integer}
 
   N = prod(shape)
   K = floor(Int,length(x)/(N*L))
