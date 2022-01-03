@@ -62,20 +62,20 @@ end
 returns the value of the LLR-regularization term.
 Arguments are the same is in `proxLLR!`
 """
-function normLLR(x::Vector{T}, λ::Float64; shape::NTuple, L=1, blockSize::Vector{TI}=[2; 2], randshift::Bool=true, kargs...) where {T, TI <: Integer}
+function normLLR(x::Vector{T}, λ::Float64; shape::NTuple{N,TI}, L=1, blockSize::NTuple{N,TI}=ntuple(_-> 2, N), randshift::Bool=true, kargs...) where {N, T, TI <: Integer}
 
-  N = prod(shape)
-  K = floor(Int,length(x)/(N*L))
+  Nvoxel = prod(shape)
+  K = floor(Int,length(x)/(Nvoxel*L))
   normᴸᴸᴿ = 0.
   for i = 1:L
-    normᴸᴸᴿ +=  blockNuclearNorm(x[(i-1)*N*K+1:i*N*K], shape; blockSize=blockSize, randshift=randshift, kargs...)
+    normᴸᴸᴿ +=  blockNuclearNorm(x[(i-1)*Nvoxel*K+1:i*Nvoxel*K], shape; blockSize=blockSize, randshift=randshift, kargs...)
   end
 
   return λ*normᴸᴸᴿ
 end
 
-function blockNuclearNorm(x::Vector{T}, shape::Tuple; blockSize::Vector{TI}=[2; 2],
-      randshift::Bool=true, kargs...) where {T, TI <: Integer}
+function blockNuclearNorm(x::Vector{T}, shape::NTuple{N,TI}; blockSize::NTuple{N,TI}=ntuple(_-> 2, N),
+      randshift::Bool=true, kargs...) where {N, T, TI <: Integer}
     x = reshape( x, tuple( shape...,floor(Int64, length(x)/prod(shape)) ) )
 
     Wy = blockSize[1]

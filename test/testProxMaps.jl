@@ -158,7 +158,7 @@ function testNuclear(N=32,rank=2;σ=0.05)
   @test 0.5*norm(xNoisy-x_lr)^2+normNuclear(x_lr,5*σ,svtShape=(N,N)) <= normNuclear(xNoisy,5*σ,svtShape=(N,N))
 end
 
-function testLLR(shape=(32,32,80),blockSize=[4,4];σ=0.05)
+function testLLR(shape=(32,32,80),blockSize=(4,4);σ=0.05)
   @info "test LLR regularization"
   Random.seed!(1234)
   x = zeros(ComplexF64,shape);
