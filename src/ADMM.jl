@@ -1,37 +1,37 @@
 export admm
 
-mutable struct ADMM{matT,opT,ropT,vecT,rvecT,preconT} <: AbstractLinearSolver
+mutable struct ADMM{TC,T,matT,opT,ropT,preconT} <: AbstractLinearSolver where {TC <: Union{T, Complex{T}}}
   # oerators and regularization
   A::matT
   reg::Vector{Regularization}
   regTrafo::Vector{ropT}
   # fields and operators for x update
   op::opT
-  β::vecT
-  β_y::vecT
+  β::Vector{TC}
+  β_y::Vector{TC}
   # fields for primal & dual variables
-  x::vecT
-  z::Vector{vecT}
-  zᵒˡᵈ::Vector{vecT}
-  u::Vector{vecT}
+  x::Vector{TC}
+  z::Vector{Vector{TC}}
+  zᵒˡᵈ::Vector{Vector{TC}}
+  u::Vector{Vector{TC}}
   # other parameters
   precon::preconT
-  ρ::rvecT # TODO: Switch all these vectors to Tuple
-  iterations::Integer
-  iterationsInner::Integer
+  ρ::Vector{T} # TODO: Switch all these vectors to Tuple
+  iterations::Int64
+  iterationsInner::Int64
   # state variables for CG
   cgStateVars::CGStateVariables
   # convergence parameters
-  rᵏ::rvecT
-  sᵏ::vecT
-  ɛᵖʳⁱ::rvecT
-  ɛ_dt::vecT
-  σᵃᵇˢ::Real
-  absTol::Real
-  relTol::Real
-  tolInner::Real
+  rᵏ::Vector{T}
+  sᵏ::Vector{TC}
+  ɛᵖʳⁱ::Vector{T}
+  ɛ_dt::Vector{TC}
+  σᵃᵇˢ::T
+  absTol::T
+  relTol::T
+  tolInner::T
   normalizeReg::Bool
-  regFac::Real
+  regFac::T
 end
 
 """
@@ -128,11 +128,11 @@ end
 
 (re-) initializes the ADMM iterator
 """
-function init!(solver::ADMM{matT,opT,ropT,vecT,rvecT,preconT}, b::vecT
+function init!(solver::ADMM{TC,T,matT,opT,ropT,preconT}, b::Vector{TC}
               ; A::matT=solver.A
               , AHA::opT=solver.op
-              , x::vecT=similar(b,0)
-              , kargs...) where {matT,opT,ropT,vecT,rvecT,preconT}
+              , x::Vector{TC}=similar(b,0)
+              , kargs...) where {TC,T,matT,opT,ropT,preconT}
 
   # operators
   if A != solver.A
@@ -198,7 +198,7 @@ solves an inverse problem using ADMM.
 when a `SolverInfo` objects is passed, the primal residuals `solver.rk`
 and the dual residual `norm(solver.sk)` are stored in `solverInfo.convMeas`.
 """
-function solve(solver::ADMM, b::vecT; A::matT=solver.A, startVector::vecT=similar(b,0), solverInfo=nothing, kargs...) where {matT,vecT}
+function solve(solver::ADMM, b::Vector{TC}; A=solver.A, startVector::Vector{TC}=similar(b,0), solverInfo=nothing, kargs...) where {TC}
   # initialize solver parameters
   init!(solver, b; A=A, x=startVector)
 
@@ -218,7 +218,7 @@ end
 
 performs one ADMM iteration.
 """
-function iterate(solver::ADMM{matT,opT,T,preconT}, iteration::Integer=0) where {matT,opT,T,preconT}
+function iterate(solver::ADMM, iteration::Integer=0)
   if done(solver, iteration) return nothing end
 
   # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 Σ_i||Φi*x+ui-zi||²
