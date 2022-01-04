@@ -1,6 +1,6 @@
 export admm
 
-mutable struct ADMM{matT,opT,ropT,vecT,rvecT,preconT} <: AbstractLinearSolver
+mutable struct ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT} <: AbstractLinearSolver where {vecT <: AbstractVector{Union{rT, Complex{rT}}}, rvecT <: AbstractVector{rT}}
   # oerators and regularization
   A::matT
   reg::Vector{Regularization}
@@ -16,7 +16,7 @@ mutable struct ADMM{matT,opT,ropT,vecT,rvecT,preconT} <: AbstractLinearSolver
   u::Vector{vecT}
   # other parameters
   precon::preconT
-  ρ::rvecT
+  ρ::rvecT # TODO: Switch all these vectors to Tuple
   iterations::Int64
   iterationsInner::Int64
   # state variables for CG
@@ -26,12 +26,12 @@ mutable struct ADMM{matT,opT,ropT,vecT,rvecT,preconT} <: AbstractLinearSolver
   sᵏ::vecT
   ɛᵖʳⁱ::rvecT
   ɛ_dt::vecT
-  σᵃᵇˢ::Float64
-  absTol::Float64
-  relTol::Float64
-  tolInner::Float64
+  σᵃᵇˢ::rT
+  absTol::rT
+  relTol::rT
+  tolInner::rT
   normalizeReg::Bool
-  regFac::Float64
+  regFac::rT
 end
 
 """
@@ -48,34 +48,46 @@ creates an `ADMM` object for the system matrix `A`.
 * (`λ=[0.0]`)                   - Regularization paramter
 * (`regTrafo=nothing`)          - transformations applied inside each regularizer
 * (`precon=Identity()`)         - preconditionner for the internal CG algorithm
-* (`ρ::Float64=1.e-2`)          - penalty of the augmented lagrangian
+* (`ρ::Real=1.e-2`)          - penalty of the augmented lagrangian
 * (`adaptRho::Bool=false`)      - adapt rho to balance primal and dual feasibility
 * (`iterations::Int64=50`)      - max number of ADMM iterations
 * (`iterationsInner::Int64=10`) - max number of internal CG iterations
-* (`absTol::Float64=eps()`)     - abs tolerance for stopping criterion
-* (`relTol::Float64=eps()`)     - rel tolerance for stopping criterion
-* (`tolInner::Float64=1.e-5`)   - rel tolerance for CG stopping criterion
+* (`absTol::Real=eps()`)     - abs tolerance for stopping criterion
+* (`relTol::Real=eps()`)     - rel tolerance for stopping criterion
+* (`tolInner::Real=1.e-5`)   - rel tolerance for CG stopping criterion
 """
-function ADMM(A::matT, x::vecT=zeros(eltype(A),size(A,2)); reg=nothing, regName=["L1"]
+function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, regName=["L1"]
             , λ=[0.0]
-            , regTrafo=nothing 
+            , regTrafo=nothing
             , AHA::opT=nothing
             , precon=Identity()
-            , ρ=[1.e-1]
-            , iterations::Int64=50
-            , iterationsInner::Int64=10
-            , absTol::Float64=eps()
-            , relTol::Float64=eps()
-            , tolInner::Float64=1.e-5
+            , ρ=1e-1
+            , iterations::Integer=50
+            , iterationsInner::Integer=10
+            , absTol::Real=eps(real(T))
+            , relTol::Real=eps(real(T))
+            , tolInner::Real=1e-5
             , normalizeReg::Bool=false
-            , kargs...) where {matT,vecT,opT}
+            , kargs...) where {T,matT,opT}
+# TODO: The constructor is not type stable
+
+  # unify Floating types
+  if typeof(ρ) <: Number
+    ρ_vec = [real(T).(ρ)]
+  else
+    ρ_vec = real(T).(ρ)
+  end
+  λ = real(T).(λ)
+  absTol = real(T)(absTol)
+  relTol = real(T)(relTol)
+  tolInner = real(T)(tolInner)
 
   if reg == nothing
     reg = Regularization(regName, λ, kargs...)
   end
 
   if regTrafo == nothing
-    regTrafo = [opEye(eltype(x),size(A,2)) for i=1:length(vec(reg))]
+    regTrafo = [LinearOperator{T}(length(x), length(x), true, true, x -> identity(x), x -> identity(x), x -> identity(x)) for i=1:length(vec(reg))]
   end
 
   # fields for primal & dual variables
@@ -101,17 +113,10 @@ function ADMM(A::matT, x::vecT=zeros(eltype(A),size(A,2)); reg=nothing, regName=
   eps_pri = similar( real.(x), length(vec(reg)) ) # [0.0 for i=1:length(vec(reg))]
   eps_dt = similar(x)
 
-  # make sure that ρ is a vector and of proper type
-  if typeof(ρ) <: Real
-    ρ_vec = similar(x, real(eltype(x)), 1)
-    ρ_vec .= ρ
-  else
-    ρ_vec = typeof(real.(x))(ρ)
-  end
 
   return ADMM(A,vec(reg),regTrafo,op,β,β_y,x,z,zᵒˡᵈ,u,precon,ρ_vec,iterations
-              ,iterationsInner,statevars, rk,sk,eps_pri,eps_dt,0.0,absTol,relTol,tolInner
-              ,normalizeReg,1.0)
+              ,iterationsInner,statevars, rk,sk,eps_pri,eps_dt,zero(real(T)),absTol,relTol,tolInner
+              ,normalizeReg,one(real(T)))
 end
 
 """
@@ -123,11 +128,11 @@ end
 
 (re-) initializes the ADMM iterator
 """
-function init!(solver::ADMM{matT,opT,ropT,vecT,rvecT,preconT}, b::vecT
+function init!(solver::ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT}, b::vecT
               ; A::matT=solver.A
               , AHA::opT=solver.op
               , x::vecT=similar(b,0)
-              , kargs...) where {matT,opT,ropT,vecT,rvecT,preconT}
+              , kargs...) where {rT,matT,opT,ropT,vecT,rvecT,preconT}
 
   # operators
   if A != solver.A
@@ -143,17 +148,17 @@ function init!(solver::ADMM{matT,opT,ropT,vecT,rvecT,preconT}, b::vecT
     if !isempty(b)
       solver.x .= adjoint(A) * b
     else
-      solver.x .= 0.0
-    end
-  else
-    solver.x[:] .= x
-  end
+      solver.x .= 0
+   end
+ else
+   solver.x[:] .= x
+ end
 
   # primal and dual variables
   for i=1:length(solver.reg)
     solver.z[i][:] .= solver.regTrafo[i]*solver.x
-    solver.zᵒˡᵈ[i][:] .= 0.0
-    solver.u[i] .= 0.0
+    solver.zᵒˡᵈ[i][:] .= 0
+    solver.u[i] .= 0
   end
 
   # right hand side for the x-update
@@ -161,7 +166,7 @@ function init!(solver::ADMM{matT,opT,ropT,vecT,rvecT,preconT}, b::vecT
 
   # convergence parameter
   solver.rᵏ .= 0
-  solver.sᵏ .= 0 
+  solver.sᵏ .= 0
   solver.ɛᵖʳⁱ .= 0
   solver.ɛ_dt .= 0
   solver.σᵃᵇˢ = sqrt(length(b))*solver.absTol
@@ -170,7 +175,7 @@ function init!(solver::ADMM{matT,opT,ropT,vecT,rvecT,preconT}, b::vecT
   if solver.normalizeReg
     solver.regFac = norm(b,1)/length(b)
   else
-    solver.regFac = 1.0
+    solver.regFac = 1
   end
 end
 
@@ -193,7 +198,7 @@ solves an inverse problem using ADMM.
 when a `SolverInfo` objects is passed, the primal residuals `solver.rk`
 and the dual residual `norm(solver.sk)` are stored in `solverInfo.convMeas`.
 """
-function solve(solver::ADMM, b::vecT; A::matT=solver.A, startVector::vecT=similar(b,0), solverInfo=nothing, kargs...) where {matT,vecT}
+function solve(solver::ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT}, b::vecT; A=solver.A, startVector::vecT=similar(b,0), solverInfo=nothing, kargs...) where {rT,matT,opT,ropT,vecT,rvecT,preconT}
   # initialize solver parameters
   init!(solver, b; A=A, x=startVector)
 
@@ -213,7 +218,7 @@ end
 
 performs one ADMM iteration.
 """
-function iterate(solver::ADMM{matT,opT,T,preconT}, iteration::Int=0) where {matT,opT,T,preconT}
+function iterate(solver::ADMM, iteration::Integer=0)
   if done(solver, iteration) return nothing end
 
   # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 Σ_i||Φi*x+ui-zi||²
