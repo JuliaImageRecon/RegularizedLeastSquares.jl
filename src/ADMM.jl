@@ -93,7 +93,7 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, reg
   end
 
   if regTrafo == nothing
-    regTrafo = [opEye(eltype(x),size(A,2)) for i=1:length(reg)]
+    regTrafo = [opEye(eltype(x),size(A,2)) for _=1:length(reg)]
   end
 
   # fields for primal & dual variables
@@ -103,9 +103,6 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, reg
 
   # operator and fields for the update of x
   op = ( AHA!=nothing ? AHA : A'*A )
-  for i=1:length(reg)
-    op += ρ[i]*adjoint(regTrafo[i])*regTrafo[i]
-  end
   β = similar(x)
   β_y = similar(x)
 
@@ -144,9 +141,6 @@ function init!(solver::ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT}, b::vecT
   if A != solver.A
     solver.A = A
     solver.op = ( AHA!=nothing ? AHA : A'*A )
-    for i=1:length(reg)
-      solver.op += ρ[i]*adjoint(regTrafo[i])*regTrafo[i]
-    end
   end
 
   # start vector
@@ -230,11 +224,13 @@ function iterate(solver::ADMM, iteration::Integer=0)
   # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 Σ_i||Φi*x+ui-zi||²
   # <=> (A'A+ρ Σ_i Φi'Φi)*x = A'b+ρΣ_i Φi'(zi-ui)
   copyto!(solver.β, solver.β_y)
+  op = solver.op
   for i=1:length(solver.reg)
     solver.β[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*(solver.z[i].-solver.u[i])
+    op += solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
   end
   solver.verbose && println("conjugated gardients: ")
-  cg!(solver.x, solver.op, solver.β, Pl=solver.precon
+  cg!(solver.x, op, solver.β, Pl=solver.precon
       , maxiter=solver.iterationsInner, reltol=solver.tolInner, statevars=solver.cgStateVars, verbose = solver.verbose)
 
   # 2. update z using the proximal map of 1/ρ*g(x)
@@ -259,16 +255,20 @@ function iterate(solver::ADMM, iteration::Integer=0)
     solver.ɛᵖʳⁱ[i] = max(norm(solver.regTrafo[i]*solver.x), norm(solver.z[i]))
     solver.ɛᵈᵘᵃ[i] = norm(solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.u[i])
 
-    # adapt ρ according to Boyd et al.
-    if solver.vary_ρ && solver.rᵏ[i] > 10solver.sᵏ[i]
-      solver.ρ[i] .*= 2
-    elseif solver.vary_ρ && solver.sᵏ[i] > 10solver.rᵏ[1]
-      solver.ρ[i] ./= 2
-    end
     if solver.verbose
       println("rᵏ[$i] = $(solver.rᵏ[i])")
       println("sᵏ[$i] = $(solver.sᵏ[i])")
-      solver.vary_ρ && println("updated ρ[$i] = $(solver.ρ[i])")
+    end
+
+    # adapt ρ according to Boyd et al.
+    if solver.vary_ρ && solver.rᵏ[i] > 10solver.sᵏ[i]
+      solver.ρ[i] *= 2
+      solver.u[i] ./= 2
+      solver.verbose && println("updated ρ[$i] = $(solver.ρ[i])")
+    elseif solver.vary_ρ && solver.sᵏ[i] > 10solver.rᵏ[i]
+      solver.ρ[i] /= 2
+      solver.u[i] .*= 2
+      solver.verbose && println("updated ρ[$i] = $(solver.ρ[i])")
     end
   end
 
