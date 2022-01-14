@@ -6,7 +6,7 @@ mutable struct ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT} <: AbstractLinearSolver
   reg::Vector{Regularization}
   regTrafo::Vector{ropT}
   # fields and operators for x update
-  op::opT
+  AᴴA::opT
   β::vecT
   β_y::vecT
   # fields for primal & dual variables
@@ -61,7 +61,7 @@ creates an `ADMM` object for the system matrix `A`.
 function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, regName=["L1"]
             , λ=[0.0]
             , regTrafo=nothing
-            , AHA::opT=nothing
+            , AᴴA::opT=nothing
             , precon=Identity()
             , ρ=1e-1
             , iterations::Integer=50
@@ -102,7 +102,9 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, reg
   u = [similar(z[i]) for i=1:length(reg)]
 
   # operator and fields for the update of x
-  op = ( AHA!=nothing ? AHA : A'*A )
+  if AᴴA == nothing
+    AᴴA = A'*A
+  end
   β = similar(x)
   β_y = similar(x)
 
@@ -117,7 +119,7 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, reg
   ɛᵈᵘᵃ = similar(rᵏ)
 
 
-  return ADMM(A,reg,regTrafo,op,β,β_y,x,z,zᵒˡᵈ,u,precon,ρ_vec,iterations
+  return ADMM(A,reg,regTrafo,AᴴA,β,β_y,x,z,zᵒˡᵈ,u,precon,ρ_vec,iterations
               ,iterationsInner,statevars, rᵏ,sᵏ,ɛᵖʳⁱ,ɛᵈᵘᵃ,zero(real(T)),absTol,relTol,tolInner
               ,normalizeReg,one(real(T)), vary_ρ, verbose)
 end
@@ -125,7 +127,7 @@ end
 """
   init!(solver::ADMM{matT,opT,vecT,rvecT,preconT}, b::vecT
               ; A::matT=solver.A
-              , AHA::opT=solver.op
+              , AᴴA::opT=solver.AᴴA
               , x::vecT=similar(b,0)
               , kargs...) where {matT,opT,vecT,rvecT,preconT}
 
@@ -133,14 +135,14 @@ end
 """
 function init!(solver::ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT}, b::vecT
               ; A::matT=solver.A
-              , AHA::opT=solver.op
+              , AᴴA::opT=solver.AᴴA
               , x::vecT=similar(b,0)
               , kargs...) where {rT,matT,opT,ropT,vecT,rvecT,preconT}
 
   # operators
   if A != solver.A
     solver.A = A
-    solver.op = ( AHA!=nothing ? AHA : A'*A )
+    solver.AᴴA = ( AᴴA!=nothing ? AᴴA : A'*A )
   end
 
   # start vector
@@ -198,9 +200,9 @@ solves an inverse problem using ADMM.
 when a `SolverInfo` objects is passed, the primal residuals `solver.rᵏ`
 and the dual residual `norm(solver.sᵏ)` are stored in `solverInfo.convMeas`.
 """
-function solve(solver::ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT}, b::vecT; A=solver.A, startVector::vecT=similar(b,0), solverInfo=nothing, kargs...) where {rT,matT,opT,ropT,vecT,rvecT,preconT}
+function solve(solver::ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT}, b::vecT; A=solver.A, AᴴA=solver.AᴴA, startVector::vecT=similar(b,0), solverInfo=nothing, kargs...) where {rT,matT,opT,ropT,vecT,rvecT,preconT}
   # initialize solver parameters
-  init!(solver, b; A=A, x=startVector)
+  init!(solver, b; A=A, AᴴA=AᴴA, x=startVector)
 
   # log solver information
   solverInfo != nothing && storeInfo(solverInfo,solver.z,solver.rᵏ...,solver.sᵏ...)
@@ -224,31 +226,27 @@ function iterate(solver::ADMM, iteration::Integer=0)
   # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 Σ_i||Φi*x+ui-zi||²
   # <=> (A'A+ρ Σ_i Φi'Φi)*x = A'b+ρΣ_i Φi'(zi-ui)
   copyto!(solver.β, solver.β_y)
-  op = solver.op
+  AᴴA = solver.AᴴA
   for i=1:length(solver.reg)
     solver.β[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*(solver.z[i].-solver.u[i])
-    op += solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
+    AᴴA += solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
   end
   solver.verbose && println("conjugated gardients: ")
-  cg!(solver.x, op, solver.β, Pl=solver.precon
+  cg!(solver.x, AᴴA, solver.β, Pl=solver.precon
       , maxiter=solver.iterationsInner, reltol=solver.tolInner, statevars=solver.cgStateVars, verbose = solver.verbose)
 
-  # 2. update z using the proximal map of 1/ρ*g(x)
   for i=1:length(solver.reg)
+    # 2. update z using the proximal map of 1/ρ*g(x)
     copyto!(solver.zᵒˡᵈ[i], solver.z[i])
-    solver.z[i][:] .= solver.regTrafo[i]*solver.x .+ solver.u[i]
+    solver.z[i] .= solver.regTrafo[i]*solver.x .+ solver.u[i]
     if solver.ρ[i] != 0
       solver.reg[i].prox!(solver.z[i], solver.regFac*solver.reg[i].λ/solver.ρ[i]; solver.reg[i].params...)
     end
-  end
 
-  # 3. update u
-  for i=1:length(solver.reg)
-    solver.u[i][:] .+= solver.regTrafo[i]*solver.x .- solver.z[i]
-  end
+    # 3. update u
+    solver.u[i] .+= solver.regTrafo[i]*solver.x .- solver.z[i]
 
-  # update convergence measures (one for each constraint)
-  for i=1:length(solver.reg)
+    # update convergence measures (one for each constraint)
     solver.rᵏ[i] = norm(solver.regTrafo[i]*solver.x-solver.z[i])  # primal residual (x-z)
     solver.sᵏ[i] = norm(solver.ρ[i] * adjoint(solver.regTrafo[i]) * (solver.z[i] .- solver.zᵒˡᵈ[i])) # dual residual (concerning f(x))
 
