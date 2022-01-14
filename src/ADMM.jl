@@ -147,13 +147,9 @@ function init!(solver::ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT}, b::vecT
 
   # start vector
   if isempty(x)
-    if !isempty(b)
-      solver.x .= adjoint(A) * b
-    else
-      solver.x .= 0
-   end
+    solver.x .= 0
  else
-   solver.x[:] .= x
+    solver.x[:] .= x
  end
 
   # primal and dual variables
