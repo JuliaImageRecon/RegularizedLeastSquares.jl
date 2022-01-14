@@ -6,7 +6,7 @@ mutable struct ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT} <: AbstractLinearSolver
   reg::Vector{Regularization}
   regTrafo::Vector{ropT}
   # fields and operators for x update
-  op::opT
+  AᴴA::opT
   β::vecT
   β_y::vecT
   # fields for primal & dual variables
@@ -23,15 +23,17 @@ mutable struct ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT} <: AbstractLinearSolver
   cgStateVars::CGStateVariables
   # convergence parameters
   rᵏ::rvecT
-  sᵏ::vecT
+  sᵏ::rvecT
   ɛᵖʳⁱ::rvecT
-  ɛ_dt::vecT
+  ɛᵈᵘᵃ::rvecT
   σᵃᵇˢ::rT
   absTol::rT
   relTol::rT
   tolInner::rT
   normalizeReg::Bool
   regFac::rT
+  vary_ρ::Bool
+  verbose::Bool
 end
 
 """
@@ -59,7 +61,7 @@ creates an `ADMM` object for the system matrix `A`.
 function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, regName=["L1"]
             , λ=[0.0]
             , regTrafo=nothing
-            , AHA::opT=nothing
+            , AᴴA::opT=nothing
             , precon=Identity()
             , ρ=1e-1
             , iterations::Integer=50
@@ -68,6 +70,8 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, reg
             , relTol::Real=eps(real(T))
             , tolInner::Real=1e-5
             , normalizeReg::Bool=false
+            , vary_ρ::Bool=false
+            , verbose::Bool=false
             , kargs...) where {T,matT,opT}
 # TODO: The constructor is not type stable
 
@@ -83,22 +87,23 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, reg
   tolInner = real(T)(tolInner)
 
   if reg == nothing
-    reg = Regularization(regName, λ, kargs...)
+    reg = [Regularization(regName, λ, kargs...)]
+  else
+    reg = vec(reg) # using a custom method of vec(.)
   end
 
   if regTrafo == nothing
-    regTrafo = [LinearOperator{T}(length(x), length(x), true, true, x -> identity(x), x -> identity(x), x -> identity(x)) for i=1:length(vec(reg))]
+    regTrafo = [opEye(eltype(x),size(A,2)) for _=1:length(reg)]
   end
 
   # fields for primal & dual variables
-  z = [similar(x, size(regTrafo[i],1)) for i=1:length(vec(reg))]
-  zᵒˡᵈ = [similar(z[i]) for i=1:length(vec(reg))]
-  u = [similar(z[i]) for i=1:length(vec(reg))]
+  z = [similar(x, size(regTrafo[i],1)) for i=1:length(reg)]
+  zᵒˡᵈ = [similar(z[i]) for i=1:length(reg)]
+  u = [similar(z[i]) for i=1:length(reg)]
 
   # operator and fields for the update of x
-  op = ( AHA!=nothing ? AHA : A'*A )
-  for i=1:length(vec(reg))
-    op += ρ[i]*adjoint(regTrafo[i])*regTrafo[i]
+  if AᴴA == nothing
+    AᴴA = A'*A
   end
   β = similar(x)
   β_y = similar(x)
@@ -108,21 +113,21 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, reg
   statevars = CGStateVariables(zero(x),similar(x),similar(x))
 
   # convergence parameters
-  rk = similar( real.(x), length(vec(reg)) ) #[0.0 for i=1:length(vec(reg))]
-  sk = similar(x)
-  eps_pri = similar( real.(x), length(vec(reg)) ) # [0.0 for i=1:length(vec(reg))]
-  eps_dt = similar(x)
+  rᵏ   = Array{real(T)}(undef, length(reg))
+  sᵏ   = similar(rᵏ)
+  ɛᵖʳⁱ = similar(rᵏ)
+  ɛᵈᵘᵃ = similar(rᵏ)
 
 
-  return ADMM(A,vec(reg),regTrafo,op,β,β_y,x,z,zᵒˡᵈ,u,precon,ρ_vec,iterations
-              ,iterationsInner,statevars, rk,sk,eps_pri,eps_dt,zero(real(T)),absTol,relTol,tolInner
-              ,normalizeReg,one(real(T)))
+  return ADMM(A,reg,regTrafo,AᴴA,β,β_y,x,z,zᵒˡᵈ,u,precon,ρ_vec,iterations
+              ,iterationsInner,statevars, rᵏ,sᵏ,ɛᵖʳⁱ,ɛᵈᵘᵃ,zero(real(T)),absTol,relTol,tolInner
+              ,normalizeReg,one(real(T)), vary_ρ, verbose)
 end
 
 """
   init!(solver::ADMM{matT,opT,vecT,rvecT,preconT}, b::vecT
               ; A::matT=solver.A
-              , AHA::opT=solver.op
+              , AᴴA::opT=solver.AᴴA
               , x::vecT=similar(b,0)
               , kargs...) where {matT,opT,vecT,rvecT,preconT}
 
@@ -130,28 +135,21 @@ end
 """
 function init!(solver::ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT}, b::vecT
               ; A::matT=solver.A
-              , AHA::opT=solver.op
+              , AᴴA::opT=solver.AᴴA
               , x::vecT=similar(b,0)
               , kargs...) where {rT,matT,opT,ropT,vecT,rvecT,preconT}
 
   # operators
   if A != solver.A
     solver.A = A
-    solver.op = ( AHA!=nothing ? AHA : A'*A )
-    for i=1:length(vec(reg))
-      solver.op += ρ[i]*adjoint(regTrafo[i])*regTrafo[i]
-    end
+    solver.AᴴA = ( AᴴA!=nothing ? AᴴA : A'*A )
   end
 
   # start vector
   if isempty(x)
-    if !isempty(b)
-      solver.x .= adjoint(A) * b
-    else
-      solver.x .= 0
-   end
+    solver.x .= 0
  else
-   solver.x[:] .= x
+    solver.x[:] .= x
  end
 
   # primal and dual variables
@@ -165,10 +163,10 @@ function init!(solver::ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT}, b::vecT
   solver.β_y[:] .= adjoint(A) * b
 
   # convergence parameter
-  solver.rᵏ .= 0
-  solver.sᵏ .= 0
+  solver.rᵏ .= Inf
+  solver.sᵏ .= Inf
   solver.ɛᵖʳⁱ .= 0
-  solver.ɛ_dt .= 0
+  solver.ɛᵈᵘᵃ .= 0
   solver.σᵃᵇˢ = sqrt(length(b))*solver.absTol
 
   # normalization of regularization parameters
@@ -195,19 +193,19 @@ solves an inverse problem using ADMM.
 * (`startVector::Vector{T}=T[]`)  - initial guess for the solution
 * (`solverInfo=nothing`)          - solverInfo for logging
 
-when a `SolverInfo` objects is passed, the primal residuals `solver.rk`
-and the dual residual `norm(solver.sk)` are stored in `solverInfo.convMeas`.
+when a `SolverInfo` objects is passed, the primal residuals `solver.rᵏ`
+and the dual residual `norm(solver.sᵏ)` are stored in `solverInfo.convMeas`.
 """
-function solve(solver::ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT}, b::vecT; A=solver.A, startVector::vecT=similar(b,0), solverInfo=nothing, kargs...) where {rT,matT,opT,ropT,vecT,rvecT,preconT}
+function solve(solver::ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT}, b::vecT; A=solver.A, AᴴA=solver.AᴴA, startVector::vecT=similar(b,0), solverInfo=nothing, kargs...) where {rT,matT,opT,ropT,vecT,rvecT,preconT}
   # initialize solver parameters
-  init!(solver, b; A=A, x=startVector)
+  init!(solver, b; A=A, AᴴA=AᴴA, x=startVector)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.z,solver.rk...,norm(solver.sk))
+  solverInfo != nothing && storeInfo(solverInfo,solver.z,solver.rᵏ...,solver.sᵏ...)
 
   # perform ADMM iterations
   for (iteration, item) = enumerate(solver)
-    solverInfo != nothing && storeInfo(solverInfo,solver.z,solver.rk...,norm(solver.sk))
+    solverInfo != nothing && storeInfo(solverInfo,solver.z,solver.rᵏ...,solver.sᵏ...)
   end
 
   return solver.x
@@ -224,39 +222,48 @@ function iterate(solver::ADMM, iteration::Integer=0)
   # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 Σ_i||Φi*x+ui-zi||²
   # <=> (A'A+ρ Σ_i Φi'Φi)*x = A'b+ρΣ_i Φi'(zi-ui)
   copyto!(solver.β, solver.β_y)
+  AᴴA = solver.AᴴA
   for i=1:length(solver.reg)
     solver.β[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*(solver.z[i].-solver.u[i])
+    AᴴA += solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
   end
-  cg!(solver.x, solver.op, solver.β, Pl=solver.precon
-      , maxiter=solver.iterationsInner, reltol=solver.tolInner, statevars=solver.cgStateVars)
+  solver.verbose && println("conjugated gardients: ")
+  cg!(solver.x, AᴴA, solver.β, Pl=solver.precon
+      , maxiter=solver.iterationsInner, reltol=solver.tolInner, statevars=solver.cgStateVars, verbose = solver.verbose)
 
-  # 2. update z using the proximal map of 1/ρ*g(x)
   for i=1:length(solver.reg)
+    # 2. update z using the proximal map of 1/ρ*g(x)
     copyto!(solver.zᵒˡᵈ[i], solver.z[i])
-    solver.z[i][:] .= solver.regTrafo[i]*solver.x .+ solver.u[i]
+    solver.z[i] .= solver.regTrafo[i]*solver.x .+ solver.u[i]
     if solver.ρ[i] != 0
       solver.reg[i].prox!(solver.z[i], solver.regFac*solver.reg[i].λ/solver.ρ[i]; solver.reg[i].params...)
     end
-  end
 
-  # 3. update u
-  for i=1:length(solver.reg)
-    solver.u[i][:] .+= solver.regTrafo[i]*solver.x .- solver.z[i]
-  end
+    # 3. update u
+    solver.u[i] .+= solver.regTrafo[i]*solver.x .- solver.z[i]
 
-  # update convergence measures
-  # primal residuals norms (one for each constraint)
-  for i=1:length(solver.reg)
+    # update convergence measures (one for each constraint)
     solver.rᵏ[i] = norm(solver.regTrafo[i]*solver.x-solver.z[i])  # primal residual (x-z)
-    solver.ɛᵖʳⁱ[i] = solver.σᵃᵇˢ + solver.relTol*max( norm(solver.regTrafo[i]*solver.x), norm(solver.z[i]) )
-  end
-  # accumulated dual residual
-  # effectively this corresponds to combining all constraints into one larger constraint.
-  solver.sᵏ[:] .= 0.0
-  solver.ɛ_dt[:] .= 0.0
-  for i=1:length(solver.reg)
-    solver.sᵏ[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*(solver.z[i] .- solver.zᵒˡᵈ[i]) # dual residual (concerning f(x))
-    solver.ɛ_dt[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*solver.u[i]
+    solver.sᵏ[i] = norm(solver.ρ[i] * adjoint(solver.regTrafo[i]) * (solver.z[i] .- solver.zᵒˡᵈ[i])) # dual residual (concerning f(x))
+
+    solver.ɛᵖʳⁱ[i] = max(norm(solver.regTrafo[i]*solver.x), norm(solver.z[i]))
+    solver.ɛᵈᵘᵃ[i] = norm(solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.u[i])
+
+    if solver.verbose
+      println("rᵏ[$i] = $(solver.rᵏ[i])")
+      println("sᵏ[$i] = $(solver.sᵏ[i])")
+    end
+
+    # adapt ρ according to Boyd et al.
+    if solver.vary_ρ && solver.rᵏ[i] > 10solver.sᵏ[i]
+      solver.ρ[i] *= 2
+      solver.u[i] ./= 2
+      solver.verbose && println("updated ρ[$i] = $(solver.ρ[i])")
+    elseif solver.vary_ρ && solver.sᵏ[i] > 10solver.rᵏ[i]
+      solver.ρ[i] /= 2
+      solver.u[i] .*= 2
+      solver.verbose && println("updated ρ[$i] = $(solver.ρ[i])")
+    end
   end
 
   # return the primal feasibilty measure as item and iteration number as state
@@ -264,14 +271,10 @@ function iterate(solver::ADMM, iteration::Integer=0)
 end
 
 function converged(solver::ADMM)
-  if norm(solver.sᵏ) >= solver.σᵃᵇˢ+solver.relTol*norm(solver.ɛ_dt)
-    return false
-  else
-    for i=1:length(solver.reg)
-      (solver.rᵏ[i] >= solver.ɛᵖʳⁱ[i]) && return false
-    end
+  for i=1:length(solver.reg)
+    (solver.rᵏ[i] >= solver.σᵃᵇˢ + solver.relTol * solver.ɛᵖʳⁱ[i]) && return false
+    (solver.sᵏ[i] >= solver.σᵃᵇˢ + solver.relTol * solver.ɛᵈᵘᵃ[i]) && return false
   end
-
   return true
 end
 

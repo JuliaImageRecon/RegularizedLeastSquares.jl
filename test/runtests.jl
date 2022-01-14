@@ -1,5 +1,5 @@
 using RegularizedLeastSquares, LinearAlgebra
-# Packages for tetsing only
+# Packages for testing only
 using Random, Test
 
 include("Kaczmarz.jl")

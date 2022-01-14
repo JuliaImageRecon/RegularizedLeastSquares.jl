@@ -54,14 +54,31 @@ end
     S = createLinearSolver(solver,F; reg=reg, iterations=200, solverInfo=solverInfo, normalizeReg=false)
     x_approx = solve(S, b)
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
-    @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
+    @test x ≈ x_approx rtol=0.1
 
     reg.λ *= length(b)/norm(b,1)
     S = createLinearSolver(solver,F; reg=reg, iterations=200, solverInfo=solverInfo, normalizeReg=true)
     x_approx = solve(S, b)
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
-    @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
+    @test x ≈ x_approx rtol=0.1
   end
+
+  # test ADMM with option vary_ρ
+  solver = "admm"
+  reg = Regularization("L1",1.e-3)
+  solverInfo = SolverInfo(ComplexF64)
+  S = createLinearSolver(solver,F; reg=reg, iterations=200, solverInfo=solverInfo, normalizeReg=false, ρ=1e6, vary_ρ=true, verbose=false)
+  x_approx = solve(S, b)
+  @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
+  @test x ≈ x_approx rtol=0.1
+
+  S = createLinearSolver(solver,F; reg=reg, iterations=200, solverInfo=solverInfo, normalizeReg=false, ρ=1e-6, vary_ρ=true, verbose=false)
+  x_approx = solve(S, b)
+  @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
+  @test x ≈ x_approx rtol=0.1
+
+
+
   for solver in ["splitBregman"]
     reg = Regularization("L1",1.e-3)
     solverInfo = SolverInfo(ComplexF64)
@@ -69,14 +86,14 @@ end
                                     ρ=1.0,solverInfo=solverInfo, normalizeReg=false)
     x_approx = solve(S, b)
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
-    @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
+    @test x ≈ x_approx rtol=0.1
 
     reg.λ *= length(b)/norm(b,1)
     S = createLinearSolver(solver,F; reg=reg,iterations=5,iterationsInner=40,
                             ρ=1.0,solverInfo=solverInfo, normalizeReg=true)
     x_approx = solve(S, b)
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
-    @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
+    @test x ≈ x_approx rtol=0.1
   end
 
   for solver in ["primaldualsolver"]
@@ -87,7 +104,7 @@ end
     S = createLinearSolver(solver,FR; reg=reg, regName=["L1","TV"], iterations=1000, solverInfo=solverInfo)
     x_approx = solve(S, bR)
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
-    @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
+    @test x ≈ x_approx rtol=0.1
   end
 
 end
