@@ -1,20 +1,20 @@
 export fista
 
-mutable struct FISTA{matT,vecT} <: AbstractLinearSolver
+mutable struct FISTA{matT,vecT,rT} <: AbstractLinearSolver where {vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}}
   A::matT
   reg::Regularization
   x::vecT
   xᵒˡᵈ::vecT
   res::vecT
-  res_norm::Float64
-  res_norm_old::Float64
-  ρ::Float64
-  t::Float64
-  tᵒˡᵈ::Float64
+  res_norm::rT
+  res_norm_old::rT
+  ρ::rT
+  t::rT
+  tᵒˡᵈ::rT
   iterations::Int64
-  relTol::Float64
+  relTol::rT
   normalizeReg::Bool
-  regFac::Float64
+  regFac::rT
 end
 
 """
@@ -36,11 +36,11 @@ creates a `FISTA` object for the system matrix `A`.
 """
 function FISTA(A::matT, x::vecT=zeros(eltype(A),size(A,2)); reg=nothing, regName=["L1"]
               , λ=[0.0]
-              , ρ::Float64=1.0
-              , t::Float64=1.0
-              , relTol::Float64=eps()
-              , iterations::Int64=50
-              , normalizeReg::Bool=false
+              , ρ=1
+              , t=1
+              , relTol=eps()
+              , iterations=50
+              , normalizeReg=false
               , kargs...) where {matT,vecT}
 
   if reg == nothing
@@ -50,7 +50,7 @@ function FISTA(A::matT, x::vecT=zeros(eltype(A),size(A,2)); reg=nothing, regName
   xᵒˡᵈ = similar(x)
   res = similar(x,size(A,1))
 
-  return FISTA(A,vec(reg)[1],x,xᵒˡᵈ,res,0.0,0.0,ρ,t,t,iterations,relTol,normalizeReg,1.0)
+  return FISTA(A,vec(reg)[1],x,xᵒˡᵈ,res,0,0,ρ,t,t,iterations,relTol,normalizeReg,1)
 end
 
 """
@@ -70,16 +70,16 @@ function init!(solver::FISTA{matT,vecT}, b::vecT
   solver.A = A
   if isempty(x)
     if !isempty(b) #!iszero(b)
-      solver.x[:] .= adjoint(A) * b
+      solver.x .= adjoint(A) * b
     else
-      solver.x[:] .= zeros(T,size(A,2))
+      solver.x .= zero(T)
     end
   else
     solver.x[:] .= x
   end
   solver.xᵒˡᵈ[:] .= solver.x  # this could also be zero
   solver.res[:] .= A*solver.x-b
-  solver.res_norm_old = 0.0
+  solver.res_norm_old = 0
   solver.res_norm = norm(solver.res)
   solver.t = t
   solver.tᵒˡᵈ = t
@@ -87,7 +87,7 @@ function init!(solver::FISTA{matT,vecT}, b::vecT
   if solver.normalizeReg
     solver.regFac = norm(b,1)/length(b)
   else
-    solver.regFac = 1.0
+    solver.regFac = 1
   end
 end
 
@@ -130,15 +130,15 @@ function iterate(solver::FISTA{matT,vecT}, iteration::Int=0) where {matT,vecT}
 
   # gradient step
   solver.xᵒˡᵈ[:] .= solver.x
-  solver.x[:] .= solver.x - solver.ρ* (solver.A' * solver.res)
+  solver.x[:] .= solver.x - solver.ρ * (solver.A' * solver.res)
 
   # proximal map
   solver.reg.prox!(solver.x, solver.regFac*solver.ρ*solver.reg.λ; solver.reg.params...)
 
   # predictor-corrector update
   solver.tᵒˡᵈ = solver.t
-  solver.t = (1. + sqrt(1. + 4. * solver.tᵒˡᵈ^2)) / 2.
-  solver.x[:] .= solver.x + (solver.tᵒˡᵈ-1)/solver.t*(solver.x-solver.xᵒˡᵈ)
+  solver.t = (1 + sqrt(1 + 4 * solver.tᵒˡᵈ^2)) / 2
+  solver.x .= solver.x .+ (solver.tᵒˡᵈ-1)/solver.t*(solver.x-solver.xᵒˡᵈ)
 
   # update residual
   # solver.res .= solver.A*solver.x-solver.b
@@ -152,4 +152,4 @@ end
 
 @inline converged(solver::FISTA) = ( abs(solver.res_norm-solver.res_norm_old)/solver.res_norm_old < solver.relTol )
 
-@inline done(solver::FISTA,iteration::Int) = converged(solver) || iteration>=solver.iterations
+@inline done(solver::FISTA,iteration) = converged(solver) || iteration>=solver.iterations
