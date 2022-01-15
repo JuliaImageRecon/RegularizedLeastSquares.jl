@@ -1,13 +1,12 @@
 export fista
 
-mutable struct FISTA{matT,vecT,rT} <: AbstractLinearSolver where {vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}}
+mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matT} <: AbstractLinearSolver where {rT}
   A::matT
+  AᴴA::matT
   reg::Regularization
   x::vecT
+  x₀::vecT
   xᵒˡᵈ::vecT
-  res::vecT
-  res_norm::rT
-  res_norm_old::rT
   ρ::rT
   t::rT
   tᵒˡᵈ::rT
@@ -34,23 +33,28 @@ creates a `FISTA` object for the system matrix `A`.
 * (`relTol::Float64=1.e-5`) - tolerance for stopping criterion
 * (`iterations::Int64=50`)  - maximum number of iterations
 """
-function FISTA(A::matT, x::vecT=zeros(eltype(A),size(A,2)); reg=nothing, regName=["L1"]
-              , λ=[0.0]
+function FISTA(A, x::AbstractVector{T}=zeros(eltype(A),size(A,2)); reg=nothing, regName=["L1"]
+              , AᴴA=nothing
+              , λ=0
               , ρ=1
               , t=1
-              , relTol=eps()
+              , relTol=eps(real(T))
               , iterations=50
               , normalizeReg=false
-              , kargs...) where {matT,vecT}
+              , kargs...) where {rT <: Real, T <: Union{rT, Complex{rT}}}
 
   if reg == nothing
     reg = Regularization(regName, λ, kargs...)
   end
 
+  x₀   = similar(x)
   xᵒˡᵈ = similar(x)
-  res = similar(x,size(A,1))
 
-  return FISTA(A,vec(reg)[1],x,xᵒˡᵈ,res,0,0,ρ,t,t,iterations,relTol,normalizeReg,1)
+  if AᴴA == nothing
+    AᴴA = A' * A
+  end
+
+  return FISTA(A, AᴴA, vec(reg)[1], x, x₀, xᵒˡᵈ,rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,one(rT))
 end
 
 """
@@ -61,26 +65,18 @@ end
 
 (re-) initializes the FISTA iterator
 """
-function init!(solver::FISTA{matT,vecT}, b::vecT
-              ; A::matT=solver.A
-              , x::vecT=similar(b,0)
-              , t::Float64=1.0
-              ) where {matT,vecT}
+function init!(solver::FISTA{rT,vecT,matT}, b::vecT
+              ; x::vecT=similar(b,0)
+              , t=1
+              ) where {rT,vecT,matT}
 
-  solver.A = A
+  solver.x₀ .= adjoint(solver.A) * b
   if isempty(x)
-    if !isempty(b) #!iszero(b)
-      solver.x .= adjoint(A) * b
-    else
-      solver.x .= zero(T)
-    end
+    solver.x .= solver.x₀
   else
-    solver.x[:] .= x
+    solver.x .= x
   end
-  solver.xᵒˡᵈ[:] .= solver.x  # this could also be zero
-  solver.res[:] .= A*solver.x-b
-  solver.res_norm_old = 0
-  solver.res_norm = norm(solver.res)
+
   solver.t = t
   solver.tᵒˡᵈ = t
   # normalization of regularization parameters
@@ -107,7 +103,7 @@ when a `SolverInfo` objects is passed, the residuals are stored in `solverInfo.c
 """
 function solve(solver::FISTA, b::vecT; A::matT=solver.A, startVector::vecT=similar(b,0), solverInfo=nothing, kargs...) where {matT,vecT}
   # initialize solver parameters
-  init!(solver, b; A=A, x=startVector)
+  init!(solver, b; x=startVector)
 
   # log solver information
   solverInfo != nothing && storeInfo(solverInfo,solver.x,solver.res_norm)
@@ -128,9 +124,13 @@ performs one fista iteration.
 function iterate(solver::FISTA{matT,vecT}, iteration::Int=0) where {matT,vecT}
   if done(solver, iteration) return nothing end
 
+  solver.xᵒˡᵈ .= solver.x
+
   # gradient step
-  solver.xᵒˡᵈ[:] .= solver.x
-  solver.x[:] .= solver.x - solver.ρ * (solver.A' * solver.res)
+  solver.x .-= solver.ρ .* (solver.AᴴA * solver.xᵒˡᵈ .- solver.x₀)
+  # the two lines below are equivalent to the one above and faster, but require a 5-argument mul! to implemented for AᴴA
+  # mul!(solver.x, solver.AᴴA, solver.xᵒˡᵈ, -solver.ρ, 1)
+  # solver.x .+= solver.ρ .* solver.x₀
 
   # proximal map
   solver.reg.prox!(solver.x, solver.regFac*solver.ρ*solver.reg.λ; solver.reg.params...)
@@ -138,18 +138,12 @@ function iterate(solver::FISTA{matT,vecT}, iteration::Int=0) where {matT,vecT}
   # predictor-corrector update
   solver.tᵒˡᵈ = solver.t
   solver.t = (1 + sqrt(1 + 4 * solver.tᵒˡᵈ^2)) / 2
-  solver.x .= solver.x .+ (solver.tᵒˡᵈ-1)/solver.t*(solver.x-solver.xᵒˡᵈ)
-
-  # update residual
-  # solver.res .= solver.A*solver.x-solver.b
-  solver.res .+= solver.A*(solver.x-solver.xᵒˡᵈ)  # this relies on a proper initialization in init()
-  solver.res_norm_old = solver.res_norm
-  solver.res_norm = norm(solver.res)
+  solver.x .+= ((solver.tᵒˡᵈ-1)/solver.t) .* (solver.x .- solver.xᵒˡᵈ)
 
   # return the residual-norm as item and iteration number as state
-  return solver.res_norm, iteration+1
+  return solver, iteration+1
 end
 
-@inline converged(solver::FISTA) = ( abs(solver.res_norm-solver.res_norm_old)/solver.res_norm_old < solver.relTol )
+@inline converged(solver::FISTA) = (abs(1 - norm(solver.x)/norm(solver.xᵒˡᵈ)) < solver.relTol)
 
 @inline done(solver::FISTA,iteration) = converged(solver) || iteration>=solver.iterations
