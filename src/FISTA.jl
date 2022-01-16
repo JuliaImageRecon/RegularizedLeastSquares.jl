@@ -24,19 +24,22 @@ creates a `FISTA` object for the system matrix `A`.
 
 # Arguments
 * `A`                       - system matrix
-* `x::vecT`                 - Array with the same type and size as the solution
-* (`reg=nothing`)           - Regularization object
+* `x::vecT`                 - array with the same type and size as the solution
+* (`reg=nothing`)           - regularization object
 * (`regName=["L1"]`)        - name of the Regularization to use (if reg==nothing)
-* (`λ=[0.0]`)               - Regularization paramter
-* (`ρ::Float64=1`)          - step size for gradient step
-* (`t::Float64=1.0`)        - parameter for predictor-corrector step
+* (`AᴴA=A'*A`)              - specialized normal operator, default is `A'*A`
+* (`λ=0`)                   - regularization paramter
+* (`ρ=1`)                   - step size for gradient step
+* (`normalize_ρ=false`)     - normalize step size by the maximum eigenvalue of `AᴴA`
+* (`t=1.0`)                 - parameter for predictor-corrector step
 * (`relTol::Float64=1.e-5`) - tolerance for stopping criterion
 * (`iterations::Int64=50`)  - maximum number of iterations
 """
-function FISTA(A, x::AbstractVector{T}=zeros(eltype(A),size(A,2)); reg=nothing, regName=["L1"]
-              , AᴴA=nothing
+function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=nothing, regName=["L1"]
+              , AᴴA=A'*A
               , λ=0
-              , ρ=1
+              , ρ=0.95
+              , normalize_ρ=true
               , t=1
               , relTol=eps(real(T))
               , iterations=50
@@ -50,8 +53,8 @@ function FISTA(A, x::AbstractVector{T}=zeros(eltype(A),size(A,2)); reg=nothing, 
   x₀   = similar(x)
   xᵒˡᵈ = similar(x)
 
-  if AᴴA == nothing
-    AᴴA = A' * A
+  if normalize_ρ
+    ρ /= abs(power_iterations(AᴴA))
   end
 
   return FISTA(A, AᴴA, vec(reg)[1], x, x₀, xᵒˡᵈ,rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,one(rT))
@@ -72,7 +75,7 @@ function init!(solver::FISTA{rT,vecT,matT}, b::vecT
 
   solver.x₀ .= adjoint(solver.A) * b
   if isempty(x)
-    solver.x .= solver.x₀
+    solver.x .= solver.ρ .* solver.x₀
   else
     solver.x .= x
   end
@@ -127,8 +130,8 @@ function iterate(solver::FISTA{matT,vecT}, iteration::Int=0) where {matT,vecT}
   solver.xᵒˡᵈ .= solver.x
 
   # gradient step
-  solver.x .-= solver.ρ .* (solver.AᴴA * solver.xᵒˡᵈ .- solver.x₀)
-  # the two lines below are equivalent to the one above and faster, but require a 5-argument mul! to implemented for AᴴA
+  solver.x .-= solver.ρ .* (solver.AᴴA * solver.x .- solver.x₀)
+  # the two lines below are equivalent to the one above and non-allocating, but require the 5-argument mul! function to implemented for AᴴA
   # mul!(solver.x, solver.AᴴA, solver.xᵒˡᵈ, -solver.ρ, 1)
   # solver.x .+= solver.ρ .* solver.x₀
 
