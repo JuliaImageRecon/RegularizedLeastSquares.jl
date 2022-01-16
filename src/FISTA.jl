@@ -7,6 +7,7 @@ mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVecto
   x::vecT
   x₀::vecT
   xᵒˡᵈ::vecT
+  res::vecT
   ρ::rT
   t::rT
   tᵒˡᵈ::rT
@@ -14,6 +15,7 @@ mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVecto
   relTol::rT
   normalizeReg::Bool
   regFac::rT
+  norm_x₀::rT
 end
 
 """
@@ -52,12 +54,14 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=n
 
   x₀   = similar(x)
   xᵒˡᵈ = similar(x)
+  res  = similar(x)
+  res[1] = Inf # avoid spurious convergence in first iterations
 
   if normalize_ρ
     ρ /= abs(power_iterations(AᴴA))
   end
 
-  return FISTA(A, AᴴA, vec(reg)[1], x, x₀, xᵒˡᵈ,rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,one(rT))
+  return FISTA(A, AᴴA, vec(reg)[1], x, x₀, xᵒˡᵈ, res, rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,one(rT),one(rT))
 end
 
 """
@@ -74,6 +78,8 @@ function init!(solver::FISTA{rT,vecT,matT}, b::vecT
               ) where {rT,vecT,matT}
 
   solver.x₀ .= adjoint(solver.A) * b
+  solver.norm_x₀ = norm(solver.x₀)
+
   if isempty(x)
     solver.x .= solver.ρ .* solver.x₀
   else
@@ -129,9 +135,13 @@ function iterate(solver::FISTA{matT,vecT}, iteration::Int=0) where {matT,vecT}
 
   solver.xᵒˡᵈ .= solver.x
 
-  # gradient step
-  solver.x .-= solver.ρ .* (solver.AᴴA * solver.x .- solver.x₀)
-  # the two lines below are equivalent to the one above and non-allocating, but require the 5-argument mul! function to implemented for AᴴA
+  # calculate residuum and do gradient step
+  # solver.x .-= solver.ρ .* (solver.AᴴA * solver.x .- solver.x₀)
+  mul!(solver.res, solver.AᴴA, solver.xᵒˡᵈ)
+  solver.res .-= solver.x₀
+  solver.x .-= solver.ρ .* solver.res
+
+  # the two lines below are equivalent to the ones above and non-allocating, but require the 5-argument mul! function to implemented for AᴴA, i.e. if AᴴA is LinearOperator, it requires LinearOperators.jl v2
   # mul!(solver.x, solver.AᴴA, solver.xᵒˡᵈ, -solver.ρ, 1)
   # solver.x .+= solver.ρ .* solver.x₀
 
@@ -147,6 +157,6 @@ function iterate(solver::FISTA{matT,vecT}, iteration::Int=0) where {matT,vecT}
   return solver, iteration+1
 end
 
-@inline converged(solver::FISTA) = (abs(1 - norm(solver.x)/norm(solver.xᵒˡᵈ)) < solver.relTol)
+@inline converged(solver::FISTA) = (norm(solver.res) / solver.norm_x₀ < solver.relTol)
 
 @inline done(solver::FISTA,iteration) = converged(solver) || iteration>=solver.iterations
