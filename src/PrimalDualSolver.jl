@@ -39,7 +39,7 @@ function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = nothing
     elseif typeof(λ)<:AbstractVector && typeof(regName)<:AbstractVector{String}
         reg = Regularization(regName, T(λ); kargs...)
     else
-        error("could not initialite regularization")
+        error("could not initialize regularization")
     end
   end
 

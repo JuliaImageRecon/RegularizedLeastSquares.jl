@@ -15,7 +15,7 @@ VectorizationBase = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 [compat]
 IterativeSolvers = "0.9"
 ProgressMeter = "1.2"
-SparsityOperators = "0.1.7, 0.2, 0.3"
+SparsityOperators = "0.3, 0.4"
 VectorizationBase = "0.19, 0.21"
 julia = "1.6"
 

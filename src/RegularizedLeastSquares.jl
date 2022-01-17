@@ -7,17 +7,18 @@ import LinearAlgebra: BlasFloat, normalize!, norm, rmul!, lmul!
 using SparseArrays
 using IterativeSolvers
 using Random
-using SparsityOperators
 using VectorizationBase
 using VectorizationBase: shufflevector, zstridedpointer
-@reexport using SparsityOperators
-@reexport using ProgressMeter
+#@reexport using SparsityOperators
+using SparsityOperators: normalOperator, opEye
+using ProgressMeter
 
 export createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
 
 abstract type AbstractLinearSolver end
-const Trafo = Union{AbstractMatrix, AbstractLinearOperator, Nothing}
-const FuncOrNothing = Union{Function, Nothing}
+# The following is just for documentation purposes. To allow for different operator
+# libraries we allow the Trafo to be of type Any.
+const Trafo = Any # Union{AbstractMatrix, AbstractLinearOperator, Nothing}
 
 # Fallback function
 setlambda(S::AbstractMatrix, λ::Real) = nothing
