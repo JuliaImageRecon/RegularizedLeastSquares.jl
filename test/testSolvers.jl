@@ -36,12 +36,12 @@ end
   # fully sampled operator, image and data
   N = 256
   numPeaks = 5
-  F = [ 1. / sqrt(N)*exp(-2. *pi*im*j*k/N) for j=0:N-1, k=0:N-1 ]
+  F = [1 / sqrt(N)*exp(-2im * π *j*k/N) for j=0:N-1, k=0:N-1]
   x = zeros(N)
   for i = 1:3
     x[rand(1:N)] = rand()
   end
-  b = 1. / sqrt(N)*fft(x)
+  b = 1 / sqrt(N)*fft(x)
 
   # random undersampling
   idx = sort(unique(rand(1:N, div(N,2))))
@@ -49,7 +49,7 @@ end
   F = F[idx,:]
 
   for solver in ["fista","admm"]
-    reg = Regularization("L1",1.e-3)
+    reg = Regularization("L1",1e-3)
     solverInfo = SolverInfo(ComplexF64)
     S = createLinearSolver(solver,F; reg=reg, iterations=200, solverInfo=solverInfo, normalizeReg=false)
     x_approx = solve(S, b)
@@ -57,8 +57,10 @@ end
     @test x ≈ x_approx rtol=0.1
 
     reg.λ *= length(b)/norm(b,1)
-    S = createLinearSolver(solver,F; reg=reg, iterations=200, solverInfo=solverInfo, normalizeReg=true)
+    scale_F = 1e3 # test invariance to the maximum eigenvalue
+    S = createLinearSolver(solver, F .* scale_F; reg=reg, iterations=200, solverInfo=solverInfo, normalizeReg=true)
     x_approx = solve(S, b)
+    x_approx .*= scale_F
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol=0.1
   end
