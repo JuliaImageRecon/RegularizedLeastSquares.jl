@@ -16,6 +16,8 @@ mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVecto
   normalizeReg::Bool
   regFac::rT
   norm_x₀::rT
+  rel_res_norm::rT
+  verbose::Bool
 end
 
 """
@@ -46,6 +48,7 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=n
               , relTol=eps(real(T))
               , iterations=50
               , normalizeReg=false
+              , verbose = false
               , kargs...) where {rT <: Real, T <: Union{rT, Complex{rT}}}
 
   if reg == nothing
@@ -61,7 +64,7 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=n
     ρ /= abs(power_iterations(AᴴA))
   end
 
-  return FISTA(A, AᴴA, vec(reg)[1], x, x₀, xᵒˡᵈ, res, rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,one(rT),one(rT))
+  return FISTA(A, AᴴA, vec(reg)[1], x, x₀, xᵒˡᵈ, res, rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,one(rT),one(rT),rT(Inf),verbose)
 end
 
 """
@@ -90,7 +93,7 @@ function init!(solver::FISTA{rT,vecT,matT}, b::vecT
   solver.tᵒˡᵈ = t
   # normalization of regularization parameters
   if solver.normalizeReg
-    solver.regFac = norm(b,1)/length(b)
+    solver.regFac = norm(solver.x₀,1)/length(solver.x₀)
   else
     solver.regFac = 1
   end
@@ -141,6 +144,9 @@ function iterate(solver::FISTA{matT,vecT}, iteration::Int=0) where {matT,vecT}
   solver.res .-= solver.x₀
   solver.x .-= solver.ρ .* solver.res
 
+  solver.rel_res_norm = norm(solver.res) / solver.norm_x₀
+  solver.verbose && println("Iteration $iteration; rel. residual = $(solver.rel_res_norm)")
+
   # the two lines below are equivalent to the ones above and non-allocating, but require the 5-argument mul! function to implemented for AᴴA, i.e. if AᴴA is LinearOperator, it requires LinearOperators.jl v2
   # mul!(solver.x, solver.AᴴA, solver.xᵒˡᵈ, -solver.ρ, 1)
   # solver.x .+= solver.ρ .* solver.x₀
@@ -157,6 +163,6 @@ function iterate(solver::FISTA{matT,vecT}, iteration::Int=0) where {matT,vecT}
   return solver, iteration+1
 end
 
-@inline converged(solver::FISTA) = (norm(solver.res) / solver.norm_x₀ < solver.relTol)
+@inline converged(solver::FISTA) = (solver.rel_res_norm < solver.relTol)
 
 @inline done(solver::FISTA,iteration) = converged(solver) || iteration>=solver.iterations
