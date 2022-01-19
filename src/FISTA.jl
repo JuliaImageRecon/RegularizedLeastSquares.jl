@@ -90,7 +90,7 @@ function init!(solver::FISTA{rT,vecT,matT}, b::vecT
   solver.tᵒˡᵈ = t
   # normalization of regularization parameters
   if solver.normalizeReg
-    solver.regFac = norm(b,1)/length(b)
+    solver.regFac = norm(solver.x₀,1)/length(solver.x₀)
   else
     solver.regFac = 1
   end
@@ -140,6 +140,7 @@ function iterate(solver::FISTA{matT,vecT}, iteration::Int=0) where {matT,vecT}
   mul!(solver.res, solver.AᴴA, solver.xᵒˡᵈ)
   solver.res .-= solver.x₀
   solver.x .-= solver.ρ .* solver.res
+  println(norm(solver.res) / solver.norm_x₀)
 
   # the two lines below are equivalent to the ones above and non-allocating, but require the 5-argument mul! function to implemented for AᴴA, i.e. if AᴴA is LinearOperator, it requires LinearOperators.jl v2
   # mul!(solver.x, solver.AᴴA, solver.xᵒˡᵈ, -solver.ρ, 1)
