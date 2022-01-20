@@ -1,8 +1,8 @@
 export fista
 
-mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matT} <: AbstractLinearSolver where {rT}
-  A::matT
-  AᴴA::matT
+mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractLinearSolver where {rT}
+  A::matA
+  AᴴA::matAHA
   reg::Regularization
   x::vecT
   x₀::vecT
@@ -21,8 +21,8 @@ mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVecto
 end
 
 """
-    FISTA(A::matT, x::vecT=zeros(eltype(A),size(A,2))
-          ; reg=nothing, regName=["L1"], λ=[0.0], kargs...) where {matT,vecT}
+    FISTA(A, x::vecT=zeros(eltype(A),size(A,2))
+          ; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
 
 creates a `FISTA` object for the system matrix `A`.
 
@@ -68,17 +68,17 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=n
 end
 
 """
-    init!(it::FISTA{matT,T}, b::vecT
-              ; A::matT=solver.A
+    init!(it::FISTA, b::vecT
+              ; A=solver.A
               , x::vecT=similar(b,0)
               , t::Float64=1.0) where T
 
 (re-) initializes the FISTA iterator
 """
-function init!(solver::FISTA{rT,vecT,matT}, b::vecT
+function init!(solver::FISTA{rT,vecT,matA,matAHA}, b::vecT
               ; x::vecT=similar(b,0)
               , t=1
-              ) where {rT,vecT,matT}
+              ) where {rT,vecT,matA,matAHA}
 
   solver.x₀ .= adjoint(solver.A) * b
   solver.norm_x₀ = norm(solver.x₀)
@@ -105,15 +105,15 @@ end
 solves an inverse problem using FISTA.
 
 # Arguments
-* `solver::FISTA`                 - the solver containing both system matrix and regularizer
-* `b::vecT`                     - data vector
-* `A::matT=solver.A`            - operator for the data-term of the problem
+* `solver::FISTA`                     - the solver containing both system matrix and regularizer
+* `b::vecT`                           - data vector
+* `A=solver.A`                        - operator for the data-term of the problem
 * (`startVector::vecT=similar(b,0)`)  - initial guess for the solution
-* (`solverInfo=nothing`)          - solverInfo object
+* (`solverInfo=nothing`)              - solverInfo object
 
 when a `SolverInfo` objects is passed, the residuals are stored in `solverInfo.convMeas`.
 """
-function solve(solver::FISTA, b::vecT; A::matT=solver.A, startVector::vecT=similar(b,0), solverInfo=nothing, kargs...) where {matT,vecT}
+function solve(solver::FISTA, b; A=solver.A, startVector=similar(b,0), solverInfo=nothing, kargs...)
   # initialize solver parameters
   init!(solver, b; x=startVector)
 
@@ -129,11 +129,11 @@ function solve(solver::FISTA, b::vecT; A::matT=solver.A, startVector::vecT=simil
 end
 
 """
-  iterate(it::FISTA{matT,vecT}, iteration::Int=0) where {matT,vecT}
+  iterate(it::FISTA, iteration::Int=0)
 
 performs one fista iteration.
 """
-function iterate(solver::FISTA{matT,vecT}, iteration::Int=0) where {matT,vecT}
+function iterate(solver::FISTA, iteration::Int=0)
   if done(solver, iteration) return nothing end
 
   solver.xᵒˡᵈ .= solver.x
