@@ -70,7 +70,7 @@ function CGNR(S, x::vecT=zeros(eltype(S),size(S,2)); λ::Real=0.0, reg::R = Regu
   αl = zero(T)        #temporary scalar
   βl = zero(T)        #temporary scalar
   ζl = zero(T)        #temporary scalar
-  SHWS = normalOperator(S, isempty(weights) ? I : WeightingOp(weights))
+  SHWS = normalOperator(S, isempty(weights) ? opEye() : WeightingOp(weights))
 
   return CGNR(S,SHWS,
              reg,cl,rl,zl,pl,vl,xl,αl,βl,ζl,
@@ -92,7 +92,7 @@ function init!(solver::CGNR{vecT,T,Tsparse}, u::vecT
 
   solver.S = S
   # TODO, the following line is called a second time...
-  #solver.SHWS = normalOperator(S, isempty(weights) ? I : WeightingOp(weights))
+  #solver.SHWS = normalOperator(S, isempty(weights) ? opEye() : WeightingOp(weights))
   if isempty(cl)
     solver.cl[:] .= zero(T)
   else
