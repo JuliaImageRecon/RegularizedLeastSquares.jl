@@ -12,6 +12,7 @@ using VectorizationBase: shufflevector, zstridedpointer
 #@reexport using SparsityOperators
 using SparsityOperators: normalOperator, opEye
 using ProgressMeter
+using StatsBase
 
 export createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
 
@@ -37,6 +38,7 @@ include("proximalMaps/ProxNuclear.jl")
 include("Regularization.jl")
 include("Utils.jl")
 include("Kaczmarz.jl")
+include("KaczmarzUpdated.jl")
 include("DAXKaczmarz.jl")
 include("DAXConstrained.jl")
 include("CGNR.jl")
@@ -56,7 +58,7 @@ function linearSolverList()
 end
 
 function linearSolverListReal()
-  Any["kaczmarz","cgnr","daxkaczmarz","daxconstrained","primaldualsolver"] # These are those passing the tests
+  Any["kaczmarzUpdated","kaczmarz","cgnr","daxkaczmarz","daxconstrained","primaldualsolver"] # These are those passing the tests
     #, "fusedlasso"]
 end
 
@@ -88,6 +90,8 @@ function createLinearSolver(solver::AbstractString, A, x=zeros(eltype(A),size(A,
 
   if solver == "kaczmarz"
     return Kaczmarz(A; kargs...)
+  elseif solver == "kaczmarzUpdated"  
+    return KaczmarzUpdated(A; kargs...)
   elseif solver == "cgnr"
     return CGNR(A, x; kargs...)
   elseif solver == "direct"
