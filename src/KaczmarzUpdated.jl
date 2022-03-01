@@ -193,7 +193,7 @@ end
 function iterate(solver::KaczmarzUpdated, iteration::Int=0)
     if done(solver,iteration) return nothing end
     
-    if Randomized
+    if solver.Randomized
         UsedIndex=Int.(StatsBase.sample!(Random.GLOBAL_RNG, solver.rowIndexCycle, solver.Probabilities, zeros(solver.SubMatrixSize), replace=false))
     else   
         UsedIndex=solver.rowIndexCycle
