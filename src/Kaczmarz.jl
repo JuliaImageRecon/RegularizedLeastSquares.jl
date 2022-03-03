@@ -168,11 +168,11 @@ function solve(solver::Kaczmarz, u::Vector{T};
   init!(solver; S=S, u=u, cl=startVector, weights=weights, shuffleRows=shuffleRows)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.cl,solver.iterations)
+  solverInfo != nothing && storeInfo(solverInfo,solver.cl,norm(solver.vl))
 
   # perform Kaczmarz iterations
   for item in solver
-    solverInfo != nothing && storeInfo(solverInfo,solver.cl,solver.iterations)
+    solverInfo != nothing && storeInfo(solverInfo,solver.cl,norm(solver.vl))
   end
 
   return solver.cl
