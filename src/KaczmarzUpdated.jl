@@ -16,6 +16,7 @@ mutable struct KaczmarzUpdated{matT,T,U,Tsparse} <: AbstractLinearSolver
   enforceReal::Bool
   enforcePositive::Bool
   Randomized::Bool
+  SubMatrixPercentage::Float64 
   SubMatrixSize::Int64
   Probabilities::Weights
   shuffleRows::Bool
@@ -63,6 +64,7 @@ function KaczmarzUpdated(S; b=nothing, λ=[0.0], reg = nothing
     , enforceReal::Bool=false
     , enforcePositive::Bool=false
     , Randomized::Bool=false
+    , SubMatrixPercentage::Float64=0.15
     , SubMatrixSize::Int64=150
     , shuffleRows::Bool=false
     , seed::Int=1234
@@ -94,6 +96,9 @@ rowIndexCycle=collect(1:length(rowindex))
 Probabilities = Find_Rows_Probaboloties(S)
 
 M,N = size(S)
+
+SubMatrixSize = round(Int, SubMatrixPercentage*M)
+
 if b != nothing
 u = b
 else
@@ -106,7 +111,7 @@ vl = zeros(eltype(S),M)
 αl = zero(eltype(S))
 
 return KaczmarzUpdated(S,u,reg,denom,rowindex,rowIndexCycle,cl,vl,εw,τl,αl
-        ,T.(w),enforceReal,enforcePositive,Randomized,SubMatrixSize,Probabilities
+        ,T.(w),enforceReal,enforcePositive,Randomized,SubMatrixPercentage,SubMatrixSize,Probabilities
         ,shuffleRows,Int64(seed),sparseTrafo,iterations, constraintMask)
 end
 
