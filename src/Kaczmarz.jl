@@ -60,9 +60,13 @@ function Kaczmarz(S; b=nothing, λ=[0.0], reg = nothing
               , constraintMask=nothing
               , kargs...)
 
+  T = real(eltype(S))
+
   if typeof(λ) <: Number
     λ = [λ]
   end
+  # make sure λ has the same element type as S
+  λ = T.(λ)
 
   if reg == nothing
     reg = Regularization(regName, λ; kargs...)
@@ -71,8 +75,6 @@ function Kaczmarz(S; b=nothing, λ=[0.0], reg = nothing
   if regName[1] != "L2"
     error("Kaczmarz only supports L2 regularizer")
   end
-
-  T = real(eltype(S))
 
   # make sure weights are not empty
   w = (weights!=nothing ? weights : ones(T,size(S,1)))
