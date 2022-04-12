@@ -12,22 +12,22 @@ proximal map for ansitropic TV regularization using the Fast Gradient Projection
 * `iterationsTV::Int64=20`  - number of FGP iterations
 * `weights::Array=[]`       - weights to apply to the image gradients
 """
-function proxTV!(x::Vector{T}, λ::Float64; shape=[], iterationsTV::Int64=20, weights::Array=[], kargs...) where T
+function proxTV!(x::Vector{Tc}, λ::T; shape=[], iterationsTV::Int64=20, weights::Array=[], kargs...) where {T,Tc}
   m,n = shape
 
   # initialize dual variables
-  p = zeros(eltype(x), m-1,n)
-  q = zeros(eltype(x), m,n-1)
-  r = zeros(eltype(x), m-1,n)
-  s = zeros(eltype(x), m,n-1)
-  pOld = zeros(eltype(x), m-1,n)
-  qOld = zeros(eltype(x), m,n-1)
+  p = zeros(Tc, m-1,n)
+  q = zeros(Tc, m,n-1)
+  r = zeros(Tc, m-1,n)
+  s = zeros(Tc, m,n-1)
+  pOld = zeros(Tc, m-1,n)
+  qOld = zeros(Tc, m,n-1)
   weights!=[] ? weights=reshape(weights,shape) : weights=ones(shape)
 
   t = 1
   for i=1:iterationsTV
-    pOld[:] = p[:]
-    qOld[:] = q[:]
+    pOld[:] .= p[:]
+    qOld[:] .= q[:]
 
     # gradient projection step for dual variables
     p,q = [r,s] + collect( Φ_hermitian( x-λ*Φ(r,s), shape ) ) ./(8*λ)
@@ -36,7 +36,7 @@ function proxTV!(x::Vector{T}, λ::Float64; shape=[], iterationsTV::Int64=20, we
 
     # form linear combinaion of old and new estimates
     tOld = t
-    t = ( 1+sqrt(1+4*tOld^2) )/2.0
+    t = ( 1+sqrt(1+4*tOld^2) )/2
     r = p + (tOld-1)/t*(p-pOld)
     s = q + (tOld-1)/t*(q-qOld)
   end
@@ -58,7 +58,7 @@ function Φ(p::Matrix{T}, q::Matrix{T}) where T
   x[1,n] = p[1,n]-q[1,n-1]
   x[m,n] = -p[m-1,n]-q[m,n-1]
   # remaining points with i=1 (first row)
-  x[1,2:n-1] = p[1,2:n-1]+q[1,2:n-1]-q[1,1:n-2]
+  x[1,2:n-1] .= p[1,2:n-1]+q[1,2:n-1]-q[1,1:n-2]
   # remaingin points with j=1 (first column)
   x[2:m-1,1] = p[2:m-1,1]+q[2:m-1,1]-p[1:m-2,1]
   #remaining points with i=m (last row)
@@ -88,7 +88,7 @@ end
 # restrict x to a number smaller then one
 # restrictMagnitude(x::Vector) = x/max(1, abs(x))
 function restrictMagnitude(x::Array, w::Array=[])
-  w != [] ? maxval = w : maxval = ones(size(x))
+  w != [] ? maxval = w : maxval = ones(eltype(x),size(x))
   return x./max.(1.0, abs.(x)./maxval)
 end
 
@@ -98,7 +98,7 @@ end
 returns the value of the ansisotropic TV-regularization term.
 Arguments are the same as in `proxTV!`
 """
-function normTV(x::Vector{T},λ::Float64;shape::NTuple=[],kargs...) where T
+function normTV(x::Vector{Tc},λ::T;shape::NTuple=[],kargs...) where {T,Tc}
   x = reshape(x,shape)
   tv = norm(vec(x[1:end-1,1:end-1]-x[2:end,1:end-1]),1)
   tv += norm(vec(x[1:end-1,1:end-1]-x[1:end-1,2:end]),1)
