@@ -186,6 +186,34 @@ function testLLR(shape=(32,32,80),blockSize=(4,4);σ=0.05)
   @test 0.5*norm(xNoisy-x_llr)^2+normLLR(x_llr,10*σ,shape=shape[1:2],blockSize=blockSize,randshift=false) <= normLLR(xNoisy,10*σ,shape=shape[1:2],blockSize=blockSize,randshift=false)
 end
 
+function testLLROverlapping(shape=(32,32,80),blockSize=(4,4);σ=0.05)
+  @info "test Overlapping LLR regularization"
+  Random.seed!(1234)
+  x = zeros(ComplexF64,shape);
+  for j=1:div(shape[2],blockSize[2])
+    for i=1:div(shape[1],blockSize[1])
+      ampl = rand()
+      r = rand()
+      for t=1:shape[3]
+        x[(i-1)*blockSize[1]+1:i*blockSize[1],(j-1)*blockSize[2]+1:j*blockSize[2],t] .= ampl*exp.(-r*t)
+      end
+    end
+  end
+  x = vec(x)
+
+  xNoisy = copy(x)
+  σ = sum(abs.(x))/length(x)*σ
+  xNoisy[:] += σ/sqrt(2.0)*(randn(prod(shape))+1im*randn(prod(shape)))
+
+  x_llr = copy(xNoisy)
+  proxLLROverlapping!(x_llr,10*σ,shape=shape[1:2],blockSize=blockSize)
+  @test norm(x - x_llr) <= norm(x - xNoisy)
+  @test norm(x - x_llr) / norm(x) ≈ 0 atol=0.05
+  @info "rel. LLR error : $(norm(x - x_llr)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
+  # check decreas of objective function
+  @test 0.5*norm(xNoisy-x_llr)^2+normLLR(x_llr,10*σ,shape=shape[1:2],blockSize=blockSize,randshift=false) <= normLLR(xNoisy,10*σ,shape=shape[1:2],blockSize=blockSize,randshift=false)
+end
+
 function testLLR_3D(shape=(32,32,32,80),blockSize=(4,4,4);σ=0.05)
   @info "test LLR 3D regularization"
   Random.seed!(1234)
@@ -225,5 +253,6 @@ end
   testProj()
   testNuclear()
   testLLR()
+  testLLROverlapping()
   testLLR_3D()
 end
