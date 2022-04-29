@@ -15,7 +15,7 @@ proximal map for LLR regularization using singular-value-thresholding
 function proxLLR!(
     x::Vector{T},
     λ;
-    shape::NTuple{N,TI} = error(),
+    shape::NTuple{N,TI},
     blockSize::NTuple{N,TI} = ntuple(_ -> 2, N),
     randshift::Bool = true,
 ) where {T,N,TI<:Integer}
@@ -46,13 +46,12 @@ function proxLLR!(
     try
         BLAS.set_num_threads(1)
         xᴸᴸᴿ = [Array{T}(undef, prod(blockSize), K) for _ = 1:Threads.nthreads()]
-        Threads.@threads for i ∈ CartesianIndices(StepRange.(0, blockSize, shape .- 1))
+        @batch for i ∈ CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
             @views xᴸᴸᴿ[Threads.threadid()] .= reshape(xp[i.+block_idx, :], :, K)
             # threshold singular values
             SVDec = svd!(xᴸᴸᴿ[Threads.threadid()])
             proxL1!(SVDec.S, λ)
-            xp[i.+block_idx, :] .=
-                reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
+            xp[i.+block_idx, :] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
         end
     finally
         BLAS.set_num_threads(bthreads)
@@ -154,15 +153,13 @@ proximal map for LLR regularization with fully overlapping blocks
 * `blockSize::NTuple{Int}=ntuple(_ -> 2, N)` - size of patches to perform singluar value thresholding on
 """
 function proxLLROverlapping!(
-    x::Vector{T},
-    λ;
-    shape::NTuple{N,TI} = error(),
-    blockSize::NTuple{N,TI} = ntuple(_ -> 2, N),
-) where {T,N,TI<:Integer}
+        x::Vector{T},
+        λ;
+        shape::NTuple{N,TI},
+        blockSize::NTuple{N,TI} = ntuple(_ -> 2, N),
+    ) where {T,N,TI<:Integer}
 
     x = reshape(x, tuple(shape..., length(x) ÷ prod(shape)))
-    xout = similar(x)
-    xout .= 0
 
     block_idx = CartesianIndices(blockSize)
     K = size(x)[end]
@@ -173,8 +170,10 @@ function proxLLROverlapping!(
         xp = zeros(T, (shape .+ pad)..., K)
         xp[CartesianIndices(x)] .= x
     else
-        xp = x
+        xp = copy(x)
     end
+
+    x .= 0 # from here on x is the output
 
     bthreads = BLAS.get_num_threads()
     try
@@ -184,21 +183,20 @@ function proxLLROverlapping!(
             shift_idx = (Tuple(is)..., 0)
             xs = circshift(xp, shift_idx)
 
-            Threads.@threads for i ∈ CartesianIndices(StepRange.(0, blockSize, shape .- 1))
+            @batch for i ∈ CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
                 @views xᴸᴸᴿ[Threads.threadid()] .= reshape(xs[i.+block_idx, :], :, K)
-                # threshold singular values
 
+                # threshold singular values
                 SVDec = svd!(xᴸᴸᴿ[Threads.threadid()])
                 proxL1!(SVDec.S, λ)
-                xs[i.+block_idx, :] .=
-                    reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
+                xs[i.+block_idx, :] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
             end
-            xout .+= circshift(xs, -1 .* shift_idx)[CartesianIndices(x)]
+            x .+= circshift(xs, -1 .* shift_idx)[CartesianIndices(x)]
         end
     finally
         BLAS.set_num_threads(bthreads)
     end
 
-    x .= xout ./ length(block_idx)
+    x ./= length(block_idx)
     return vec(x)
 end

@@ -263,6 +263,15 @@ function iterate(solver::ADMM, iteration::Integer=0)
                   norm(solver.z[i] .- solver.zᵒˡᵈ[i]) +
                   norm(solver.u[i] .- solver.uᵒˡᵈ[i])
 
+    if (solver.vary_ρ == :balance && solver.rᵏ[i]/solver.ɛᵖʳⁱ[i] > 10solver.sᵏ[i]/solver.ɛᵈᵘᵃ[i]) || # adapt ρ according to Boyd et al.
+       (solver.vary_ρ == :PnP     && solver.Δ[i]/Δᵒˡᵈ > 0.9) # adapt ρ according to Chang et al.
+      solver.ρ[i] *= 2
+      solver.u[i] ./= 2
+    elseif solver.vary_ρ == :balance && solver.sᵏ[i]/solver.ɛᵈᵘᵃ[i] > 10solver.rᵏ[i]/solver.ɛᵖʳⁱ[i]
+      solver.ρ[i] /= 2
+      solver.u[i] .*= 2
+    end
+
     if solver.verbose
       println("rᵏ[$i] = $(solver.rᵏ[i])")
       println("sᵏ[$i] = $(solver.sᵏ[i])")
@@ -271,20 +280,8 @@ function iterate(solver::ADMM, iteration::Integer=0)
       println("Δᵒˡᵈ = $(Δᵒˡᵈ)")
       println("Δ[$i] = $(solver.Δ[i])")
       println("Δ/Δᵒˡᵈ = $(solver.Δ[i]/Δᵒˡᵈ)")
+      println("current ρ[$i] = $(solver.ρ[i])")
       flush(stdout)
-    end
-
-
-
-    if (solver.vary_ρ == :balance && solver.rᵏ[i]/solver.ɛᵖʳⁱ[i] > 10solver.sᵏ[i]/solver.ɛᵈᵘᵃ[i]) || # adapt ρ according to Boyd et al.
-       (solver.vary_ρ == :PnP     && solver.Δ[i]/Δᵒˡᵈ > 0.9) # adapt ρ according to Chang et al.
-      solver.ρ[i] *= 2
-      solver.u[i] ./= 2
-      solver.verbose && println("updated ρ[$i] = $(solver.ρ[i])")
-    elseif solver.vary_ρ == :balance && solver.sᵏ[i]/solver.ɛᵈᵘᵃ[i] > 10solver.rᵏ[i]/solver.ɛᵖʳⁱ[i]
-      solver.ρ[i] /= 2
-      solver.u[i] .*= 2
-      solver.verbose && println("updated ρ[$i] = $(solver.ρ[i])")
     end
   end
 

@@ -9,6 +9,7 @@ using IterativeSolvers
 using Random
 using VectorizationBase
 using VectorizationBase: shufflevector, zstridedpointer
+using Polyester
 #@reexport using SparsityOperators
 using SparsityOperators: normalOperator, opEye
 using ProgressMeter
@@ -81,7 +82,7 @@ Function returns choosen solver.
 * `"fista"`           - Fast Iterative Shrinkage Thresholding Algorithm
 * `"admm"`            - Alternating Direcion of Multipliers Method
 * `"splitBregman"`    - Split Bregman method for constrained & regularized inverse problems
-* `"primaldualsolver"`- First order primal dual method 
+* `"primaldualsolver"`- First order primal dual method
 """
 function createLinearSolver(solver::AbstractString, A, x=zeros(eltype(A),size(A,2));
                             log::Bool=false, kargs...)
@@ -90,7 +91,7 @@ function createLinearSolver(solver::AbstractString, A, x=zeros(eltype(A),size(A,
 
   if solver == "kaczmarz"
     return Kaczmarz(A; kargs...)
-  elseif solver == "kaczmarzUpdated"  
+  elseif solver == "kaczmarzUpdated"
     return KaczmarzUpdated(A; kargs...)
   elseif solver == "cgnr"
     return CGNR(A, x; kargs...)
