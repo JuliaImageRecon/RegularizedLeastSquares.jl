@@ -338,21 +338,3 @@ function kaczmarz_update!(B::Transpose{T,S}, x::Vector,
     @inbounds x[A.rowval[n]] += beta*conj(A.nzval[n])
   end
 end
-
-### kaczmarz ###
-
-"""
-    kaczmarz(S, u::Vector; kargs...)
-
-This funtion implements the kaczmarz algorithm.
-
-# Keyword/Optional Arguments
-* `λ::Float64`: The regularization parameter, relative to the matrix trace
-* `iterations::Int`: Number of iterations of the iterative solver
-* `solver::AbstractString`: Algorithm used to solve the imaging equation (currently "kaczmarz" or "cgnr")
-* `normWeights::Bool`: Enable row normalization (true/false)
-* `sparseTrafo::AbstractString`: Enable sparseTrafo if set to "DCT-IV" or "FFT".
-* `shuff::Bool`: Enable shuffeling of rows during iterations in the kaczmarz algorithm.
-* `enforceReal::Bool`: Enable projection of solution on real plane during iteration.
-* `enforcePositive::Bool`: Enable projection of solution onto positive halfplane during iteration.
-"""
