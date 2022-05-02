@@ -118,11 +118,11 @@ function solve(solver::FISTA, b; A=solver.A, startVector=similar(b,0), solverInf
   init!(solver, b; x=startVector)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.x,solver.res_norm)
+  solverInfo != nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
 
   # perform FISTA iterations
   for (iteration, item) = enumerate(solver)
-    solverInfo != nothing && storeInfo(solverInfo,solver.x,solver.res_norm)
+    solverInfo != nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
   end
 
   return solver.x
