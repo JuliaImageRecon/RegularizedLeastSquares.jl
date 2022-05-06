@@ -10,7 +10,7 @@ performs soft-thresholding - i.e. proximal map for the Lasso problem.
 * `λ::Float64`                  - regularization paramter
 * `sparseTrafo::Trafo=nothing`  - sparsifying transform to apply
 """
-function proxL1!(x::AbstractArray{Tc}, λ::T; sparseTrafo::Trafo=nothing, kargs...) where {T, Tc <: Union{T, Complex{T}}}
+function proxL1!(x::AbstractArray{Tc}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where {T, Tc <: Union{T, Complex{T}}}
   ε = eps(T)
 
   if sparseTrafo != nothing
