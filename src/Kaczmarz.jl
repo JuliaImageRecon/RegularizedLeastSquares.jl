@@ -20,6 +20,7 @@ mutable struct Kaczmarz{matT,T,U,Tsparse} <: AbstractLinearSolver
   sparseTrafo::Tsparse
   iterations::Int64
   constraintMask::Union{Nothing,Vector{Bool}}
+  regMatrix::Union{Nothing,Vector{U}} # Tikhonov regularization matrix
 end
 
 """
@@ -58,6 +59,7 @@ function Kaczmarz(S; b=nothing, λ=[0.0], reg = nothing
               , seed::Int=1234
               , iterations::Int64=10
               , constraintMask=nothing
+              , regMatrix=nothing
               , kargs...)
 
   T = real(eltype(S))
@@ -74,6 +76,12 @@ function Kaczmarz(S; b=nothing, λ=[0.0], reg = nothing
 
   if regName[1] != "L2"
     error("Kaczmarz only supports L2 regularizer")
+  end
+
+  # Apply Tikhonov regularization matrix 
+  if regMatrix != nothing
+    regMatrix = T.(regMatrix) # make sure regMatrix has the same element type as S 
+    S = transpose(1 ./ sqrt.(regMatrix)) .* S # apply Tikhonov regularization to system matrix
   end
 
   # make sure weights are not empty
@@ -97,7 +105,7 @@ function Kaczmarz(S; b=nothing, λ=[0.0], reg = nothing
 
   return Kaczmarz(S,u,reg,denom,rowindex,rowIndexCycle,cl,vl,εw,τl,αl
                   ,T.(w),enforceReal,enforcePositive,shuffleRows
-                  ,Int64(seed),sparseTrafo,iterations, constraintMask)
+                  ,Int64(seed),sparseTrafo,iterations, constraintMask, regMatrix)
 end
 
 """
@@ -175,6 +183,11 @@ function solve(solver::Kaczmarz, u::Vector{T};
   # perform Kaczmarz iterations
   for item in solver
     solverInfo != nothing && storeInfo(solverInfo,solver.cl,norm(solver.vl))
+  end
+
+  # backtransformation of solution with Tikhonov matrix
+  if solver.regMatrix != nothing
+    solver.cl = solver.cl .* (1 ./ sqrt.(solver.regMatrix))
   end
 
   return solver.cl
