@@ -30,3 +30,41 @@
         @test b ≈ β*conj(A[k,:])
     end
 end
+
+# Test Tikhonov regularization matrix
+@testset "Kaczmarz Tikhonov matrix" begin
+  A = rand(3,2)+im*rand(3,2);
+  x = rand(2)+im*rand(2);
+  b = A*x;
+
+  regMatrix = rand(2) # Tikhonov matrix
+
+  solver = "kaczmarz"
+  S = createLinearSolver(solver, A, iterations=100, regMatrix=regMatrix)
+  x_approx = solve(S,b)
+  @info "Testing solver $solver ...: $x  == $x_approx"
+  @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
+
+
+  ## Test spatial regularization
+  M = 12; N = 8;
+  A = rand(M,N)+im*rand(M,N);
+  x = rand(N)+im*rand(N);
+  b = A*x;
+
+  # regularization
+  λ = rand(1);
+  regMatrix = rand(N);
+
+  # use regularization matrix
+  S = createLinearSolver(solver, A, iterations=100, regMatrix=regMatrix, λ=λ)
+  x_matrix = solve(S,b)
+
+  # use standard reconstruction
+  S = createLinearSolver(solver, A * Diagonal(1 ./ sqrt.(regMatrix)), iterations=100, λ=λ)
+  x_approx = solve(S,b) ./ sqrt.(regMatrix)
+  
+  # test
+  #@info "Testing solver $solver ...: $x_matrix  == $x_approx"
+  @test norm(x_approx - x_matrix) / norm(x_approx) ≈ 0 atol=0.1
+end
