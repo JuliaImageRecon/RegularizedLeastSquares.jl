@@ -9,7 +9,7 @@ using IterativeSolvers
 using Random
 using VectorizationBase
 using VectorizationBase: shufflevector, zstridedpointer
-using Polyester
+using FLoops
 #@reexport using SparsityOperators
 using SparsityOperators: normalOperator, opEye
 using ProgressMeter

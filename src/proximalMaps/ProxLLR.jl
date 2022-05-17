@@ -46,7 +46,7 @@ function proxLLR!(
     try
         BLAS.set_num_threads(1)
         xᴸᴸᴿ = [Array{T}(undef, prod(blockSize), K) for _ = 1:Threads.nthreads()]
-        @batch for i ∈ CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
+        @floop for i ∈ CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
             @views xᴸᴸᴿ[Threads.threadid()] .= reshape(xp[i.+block_idx, :], :, K)
             # threshold singular values
             SVDec = svd!(xᴸᴸᴿ[Threads.threadid()])
@@ -183,7 +183,7 @@ function proxLLROverlapping!(
             shift_idx = (Tuple(is)..., 0)
             xs = circshift(xp, shift_idx)
 
-            @batch for i ∈ CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
+            @floop for i ∈ CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
                 @views xᴸᴸᴿ[Threads.threadid()] .= reshape(xs[i.+block_idx, :], :, K)
 
                 # threshold singular values
