@@ -33,7 +33,7 @@ creates a `FISTA` object for the system matrix `A`.
 * (`regName=["L1"]`)        - name of the Regularization to use (if reg==nothing)
 * (`AᴴA=A'*A`)              - specialized normal operator, default is `A'*A`
 * (`λ=0`)                   - regularization paramter
-* (`ρ=1`)                   - step size for gradient step
+* (`ρ=0.95`)                - step size for gradient step
 * (`normalize_ρ=false`)     - normalize step size by the maximum eigenvalue of `AᴴA`
 * (`t=1.0`)                 - parameter for predictor-corrector step
 * (`relTol::Float64=1.e-5`) - tolerance for stopping criterion
@@ -88,6 +88,7 @@ function init!(solver::FISTA{rT,vecT,matA,matAHA}, b::vecT
   else
     solver.x .= x
   end
+  solver.xᵒˡᵈ .= solver.x
 
   solver.t = t
   solver.tᵒˡᵈ = t
@@ -136,11 +137,25 @@ performs one fista iteration.
 function iterate(solver::FISTA, iteration::Int=0)
   if done(solver, iteration) return nothing end
 
-  solver.xᵒˡᵈ .= solver.x
+  # proximal map
+  solver.reg.prox!(solver.x, solver.regFac*solver.ρ*solver.reg.λ; solver.reg.params...)
+
+  # predictor-corrector update
+  solver.tᵒˡᵈ = solver.t
+  solver.t = (1 + sqrt(1 + 4 * solver.tᵒˡᵈ^2)) / 2
+
+  # momentum / Nesterov step
+  for i ∈ eachindex(solver.x) # swap x and xᵒˡᵈ
+    tmp = solver.xᵒˡᵈ[i]
+    solver.xᵒˡᵈ[i] = solver.x[i]
+    solver.x[i] = tmp
+  end
+  solver.x .*= ((1 - solver.tᵒˡᵈ)/solver.t) # x is actually xᵒˡᵈ
+  solver.x .+= ((solver.tᵒˡᵈ-1)/solver.t + 1) .* (solver.xᵒˡᵈ) # add the actual x which is here called xᵒˡᵈ
 
   # calculate residuum and do gradient step
   # solver.x .-= solver.ρ .* (solver.AᴴA * solver.x .- solver.x₀)
-  mul!(solver.res, solver.AᴴA, solver.xᵒˡᵈ)
+  mul!(solver.res, solver.AᴴA, solver.x)
   solver.res .-= solver.x₀
   solver.x .-= solver.ρ .* solver.res
 
@@ -151,13 +166,6 @@ function iterate(solver::FISTA, iteration::Int=0)
   # mul!(solver.x, solver.AᴴA, solver.xᵒˡᵈ, -solver.ρ, 1)
   # solver.x .+= solver.ρ .* solver.x₀
 
-  # proximal map
-  solver.reg.prox!(solver.x, solver.regFac*solver.ρ*solver.reg.λ; solver.reg.params...)
-
-  # predictor-corrector update
-  solver.tᵒˡᵈ = solver.t
-  solver.t = (1 + sqrt(1 + 4 * solver.tᵒˡᵈ^2)) / 2
-  solver.x .+= ((solver.tᵒˡᵈ-1)/solver.t) .* (solver.x .- solver.xᵒˡᵈ)
 
   # return the residual-norm as item and iteration number as state
   return solver, iteration+1
