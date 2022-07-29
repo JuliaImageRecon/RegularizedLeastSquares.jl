@@ -88,7 +88,7 @@ function init!(solver::FISTA{rT,vecT,matA,matAHA}, b::vecT
   else
     solver.x .= x
   end
-  solver.xᵒˡᵈ .= solver.x
+  solver.xᵒˡᵈ .= 0
 
   solver.t = t
   solver.tᵒˡᵈ = t
