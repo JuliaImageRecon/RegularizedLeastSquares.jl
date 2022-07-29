@@ -84,11 +84,11 @@ function init!(solver::FISTA{rT,vecT,matA,matAHA}, b::vecT
   solver.norm_x₀ = norm(solver.x₀)
 
   if isempty(x)
-    solver.x .= solver.ρ .* solver.x₀
+    solver.x .= 0
   else
     solver.x .= x
   end
-  solver.xᵒˡᵈ .= 0
+  solver.xᵒˡᵈ .= 0 # makes no difference in 1st iteration what this is set to
 
   solver.t = t
   solver.tᵒˡᵈ = t
@@ -137,21 +137,15 @@ performs one fista iteration.
 function iterate(solver::FISTA, iteration::Int=0)
   if done(solver, iteration) return nothing end
 
-  # proximal map
-  solver.reg.prox!(solver.x, solver.regFac*solver.ρ*solver.reg.λ; solver.reg.params...)
-
-  # predictor-corrector update
-  solver.tᵒˡᵈ = solver.t
-  solver.t = (1 + sqrt(1 + 4 * solver.tᵒˡᵈ^2)) / 2
-
   # momentum / Nesterov step
+  # this implementation mimics BART, saving memory by first swapping x and xᵒˡᵈ before calculating x + α * (x - xᵒˡᵈ)
   for i ∈ eachindex(solver.x) # swap x and xᵒˡᵈ
     tmp = solver.xᵒˡᵈ[i]
     solver.xᵒˡᵈ[i] = solver.x[i]
     solver.x[i] = tmp
   end
-  solver.x .*= ((1 - solver.tᵒˡᵈ)/solver.t) # x is actually xᵒˡᵈ
-  solver.x .+= ((solver.tᵒˡᵈ-1)/solver.t + 1) .* (solver.xᵒˡᵈ) # add the actual x which is here called xᵒˡᵈ
+  solver.x .*= ((1 - solver.tᵒˡᵈ)/solver.t) # here we calculate -α * xᵒˡᵈ, where x is actually xᵒˡᵈ
+  solver.x .+= ((solver.tᵒˡᵈ-1)/solver.t + 1) .* (solver.xᵒˡᵈ) # add (α+1)*x, where x is now stored in xᵒˡᵈ
 
   # calculate residuum and do gradient step
   # solver.x .-= solver.ρ .* (solver.AᴴA * solver.x .- solver.x₀)
@@ -166,6 +160,12 @@ function iterate(solver::FISTA, iteration::Int=0)
   # mul!(solver.x, solver.AᴴA, solver.xᵒˡᵈ, -solver.ρ, 1)
   # solver.x .+= solver.ρ .* solver.x₀
 
+  # proximal map
+  solver.reg.prox!(solver.x, solver.regFac*solver.ρ*solver.reg.λ; solver.reg.params...)
+
+  # predictor-corrector update
+  solver.tᵒˡᵈ = solver.t
+  solver.t = (1 + sqrt(1 + 4 * solver.tᵒˡᵈ^2)) / 2
 
   # return the residual-norm as item and iteration number as state
   return solver, iteration+1
