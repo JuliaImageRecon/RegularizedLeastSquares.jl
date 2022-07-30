@@ -139,12 +139,10 @@ function iterate(solver::FISTA, iteration::Int=0)
 
   # momentum / Nesterov step
   # this implementation mimics BART, saving memory by first swapping x and xᵒˡᵈ before calculating x + α * (x - xᵒˡᵈ)
-  @floop for i ∈ eachindex(solver.x) # swap x and xᵒˡᵈ
-    tmp = solver.xᵒˡᵈ[i]
-    solver.xᵒˡᵈ[i] = solver.x[i]
-    solver.x[i] = tmp
-  end
-  solver.x .*= ((1 - solver.tᵒˡᵈ)/solver.t) # here we calculate -α * xᵒˡᵈ, where x is actually xᵒˡᵈ
+  tmp = solver.xᵒˡᵈ
+  solver.xᵒˡᵈ = solver.x
+  solver.x = tmp # swap x and xᵒˡᵈ
+  solver.x .*= ((1 - solver.tᵒˡᵈ)/solver.t) # here we calculate -α * xᵒˡᵈ, where xᵒˡᵈ is now stored in x
   solver.x .+= ((solver.tᵒˡᵈ-1)/solver.t + 1) .* (solver.xᵒˡᵈ) # add (α+1)*x, where x is now stored in xᵒˡᵈ
 
   # calculate residuum and do gradient step
