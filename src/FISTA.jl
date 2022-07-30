@@ -139,7 +139,7 @@ function iterate(solver::FISTA, iteration::Int=0)
 
   # momentum / Nesterov step
   # this implementation mimics BART, saving memory by first swapping x and xᵒˡᵈ before calculating x + α * (x - xᵒˡᵈ)
-  for i ∈ eachindex(solver.x) # swap x and xᵒˡᵈ
+  @floop for i ∈ eachindex(solver.x) # swap x and xᵒˡᵈ
     tmp = solver.xᵒˡᵈ[i]
     solver.xᵒˡᵈ[i] = solver.x[i]
     solver.x[i] = tmp
