@@ -33,7 +33,7 @@ creates a `FISTA` object for the system matrix `A`.
 * (`regName=["L1"]`)        - name of the Regularization to use (if reg==nothing)
 * (`AᴴA=A'*A`)              - specialized normal operator, default is `A'*A`
 * (`λ=0`)                   - regularization paramter
-* (`ρ=1`)                   - step size for gradient step
+* (`ρ=0.95`)                - step size for gradient step
 * (`normalize_ρ=false`)     - normalize step size by the maximum eigenvalue of `AᴴA`
 * (`t=1.0`)                 - parameter for predictor-corrector step
 * (`relTol::Float64=1.e-5`) - tolerance for stopping criterion
@@ -84,10 +84,11 @@ function init!(solver::FISTA{rT,vecT,matA,matAHA}, b::vecT
   solver.norm_x₀ = norm(solver.x₀)
 
   if isempty(x)
-    solver.x .= solver.ρ .* solver.x₀
+    solver.x .= 0
   else
     solver.x .= x
   end
+  solver.xᵒˡᵈ .= 0 # makes no difference in 1st iteration what this is set to
 
   solver.t = t
   solver.tᵒˡᵈ = t
@@ -136,11 +137,17 @@ performs one fista iteration.
 function iterate(solver::FISTA, iteration::Int=0)
   if done(solver, iteration) return nothing end
 
-  solver.xᵒˡᵈ .= solver.x
+  # momentum / Nesterov step
+  # this implementation mimics BART, saving memory by first swapping x and xᵒˡᵈ before calculating x + α * (x - xᵒˡᵈ)
+  tmp = solver.xᵒˡᵈ
+  solver.xᵒˡᵈ = solver.x
+  solver.x = tmp # swap x and xᵒˡᵈ
+  solver.x .*= ((1 - solver.tᵒˡᵈ)/solver.t) # here we calculate -α * xᵒˡᵈ, where xᵒˡᵈ is now stored in x
+  solver.x .+= ((solver.tᵒˡᵈ-1)/solver.t + 1) .* (solver.xᵒˡᵈ) # add (α+1)*x, where x is now stored in xᵒˡᵈ
 
   # calculate residuum and do gradient step
   # solver.x .-= solver.ρ .* (solver.AᴴA * solver.x .- solver.x₀)
-  mul!(solver.res, solver.AᴴA, solver.xᵒˡᵈ)
+  mul!(solver.res, solver.AᴴA, solver.x)
   solver.res .-= solver.x₀
   solver.x .-= solver.ρ .* solver.res
 
@@ -157,7 +164,6 @@ function iterate(solver::FISTA, iteration::Int=0)
   # predictor-corrector update
   solver.tᵒˡᵈ = solver.t
   solver.t = (1 + sqrt(1 + 4 * solver.tᵒˡᵈ^2)) / 2
-  solver.x .+= ((solver.tᵒˡᵈ-1)/solver.t) .* (solver.x .- solver.xᵒˡᵈ)
 
   # return the residual-norm as item and iteration number as state
   return solver, iteration+1

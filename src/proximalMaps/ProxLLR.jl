@@ -48,10 +48,14 @@ function proxLLR!(
         xᴸᴸᴿ = [Array{T}(undef, prod(blockSize), K) for _ = 1:Threads.nthreads()]
         @floop for i ∈ CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
             @views xᴸᴸᴿ[Threads.threadid()] .= reshape(xp[i.+block_idx, :], :, K)
-            # threshold singular values
-            SVDec = svd!(xᴸᴸᴿ[Threads.threadid()])
-            proxL1!(SVDec.S, λ)
-            xp[i.+block_idx, :] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
+            ub = sqrt(norm(xᴸᴸᴿ[Threads.threadid()]' * xᴸᴸᴿ[Threads.threadid()], Inf)) #upper bound on singular values given by matrix infinity norm
+            if λ >= ub #save time by skipping the SVT as recommended by Ong/Lustig, IEEE 2016
+                xp[i.+block_idx, :] .= 0
+            else # threshold singular values
+                SVDec = svd!(xᴸᴸᴿ[Threads.threadid()])
+                proxL1!(SVDec.S, λ)
+                xp[i.+block_idx, :] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
+            end
         end
     finally
         BLAS.set_num_threads(bthreads)
@@ -186,10 +190,14 @@ function proxLLROverlapping!(
             @floop for i ∈ CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
                 @views xᴸᴸᴿ[Threads.threadid()] .= reshape(xs[i.+block_idx, :], :, K)
 
-                # threshold singular values
-                SVDec = svd!(xᴸᴸᴿ[Threads.threadid()])
-                proxL1!(SVDec.S, λ)
-                xs[i.+block_idx, :] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
+                ub = sqrt(norm(xᴸᴸᴿ[Threads.threadid()]' * xᴸᴸᴿ[Threads.threadid()], Inf)) #upper bound on singular values given by matrix infinity norm
+                if λ >= ub #save time by skipping the SVT as recommended by Ong/Lustig, IEEE 2016
+                    xs[i.+block_idx, :] .= 0
+                else # threshold singular values
+                    SVDec = svd!(xᴸᴸᴿ[Threads.threadid()])
+                    proxL1!(SVDec.S, λ)
+                    xs[i.+block_idx, :] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
+                end
             end
             x .+= circshift(xs, -1 .* shift_idx)[CartesianIndices(x)]
         end
