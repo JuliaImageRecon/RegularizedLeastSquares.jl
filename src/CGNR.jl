@@ -70,7 +70,7 @@ function CGNR(S, x::vecT=zeros(eltype(S),size(S,2)); λ::Real=0.0, reg::R = Regu
   αl = zero(T)        #temporary scalar
   βl = zero(T)        #temporary scalar
   ζl = zero(T)        #temporary scalar
-  SHWS = normalOperator(S, isempty(weights) ? opEye() : WeightingOp(weights))
+  SHWS = normalOperator(S, isempty(weights) ? opEye(T, size(S,1)) : WeightingOp(weights))
 
   return CGNR(S,SHWS,
              reg,cl,rl,zl,pl,vl,xl,αl,βl,ζl,
@@ -92,7 +92,7 @@ function init!(solver::CGNR{vecT,T,Tsparse}, u::vecT
 
   solver.S = S
   # TODO, the following line is called a second time...
-  #solver.SHWS = normalOperator(S, isempty(weights) ? opEye() : WeightingOp(weights))
+  #solver.SHWS = normalOperator(S, isempty(weights) ? opEye(T, size(S,1)) : WeightingOp(weights))
   if isempty(cl)
     solver.cl[:] .= zero(T)
   else
@@ -111,10 +111,10 @@ function init!(solver::CGNR{vecT,T,Tsparse}, u::vecT
   if !isempty(weights)
     solver.xl[:] .= solver.rl .* weights
     ## gemv!('C',one(T), S, xl, zero(T), zl)
-    solver.zl[:] .= adjoint(S)*solver.xl
+    mul!(solver.zl, adjoint(S), solver.xl)
   else
     ## gemv!('C',one(T), S, rl, zero(T), zl)
-    solver.zl[:] .= adjoint(S)*solver.rl
+    mul!(solver.zl, adjoint(S), solver.rl)
   end
   solver.z0 = norm(solver.zl)
   copyto!(solver.pl,solver.zl)
@@ -169,7 +169,7 @@ function iterate(solver::CGNR{vecT,T,Tsparse}, iteration::Int=0) where {vecT,T,T
       return nothing
     end
 
-    solver.vl[:] .= solver.SHWS*solver.pl
+    mul!(solver.vl, solver.SHWS, solver.pl)
 
     # αl = zlᴴ⋅zl/(vlᴴ⋅vl+λ*plᴴ⋅pl)
     solver.ζl= norm(solver.zl)^2
