@@ -156,7 +156,7 @@ end
                 , weights::Vector=solver.weights, shuffleRows::Bool=false
                 , solverInfo=nothing, kargs...) where {T,matT}
 
-solves Thikhonov-regularized inverse problem using Kaczmarz algorithm.
+solves Tikhonov-regularized inverse problem using Kaczmarz algorithm.
 
 # Arguments
 * `solver::Kaczmarz  - the solver containing both system matrix and regularizer
