@@ -1,7 +1,7 @@
 export admm
 
 mutable struct ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT} <: AbstractLinearSolver where {vecT <: AbstractVector{Union{rT, Complex{rT}}}, rvecT <: AbstractVector{rT}}
-  # oerators and regularization
+  # operators and regularization
   A::matT
   reg::Vector{Regularization}
   regTrafo::Vector{ropT}
@@ -234,7 +234,7 @@ function iterate(solver::ADMM, iteration::Integer=0)
     solver.β[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*(solver.z[i].-solver.u[i])
     AᴴA += solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
   end
-  solver.verbose && println("conjugated gardients: ")
+  solver.verbose && println("conjugated gradients: ")
   solver.xᵒˡᵈ .= solver.x
   cg!(solver.x, AᴴA, solver.β, Pl=solver.precon
       , maxiter=solver.iterationsInner, reltol=solver.tolInner, statevars=solver.cgStateVars, verbose = solver.verbose)
@@ -285,7 +285,7 @@ function iterate(solver::ADMM, iteration::Integer=0)
     end
   end
 
-  # return the primal feasibilty measure as item and iteration number as state
+  # return the primal feasibility measure as item and iteration number as state
   return solver.rᵏ, iteration+1
 end
 

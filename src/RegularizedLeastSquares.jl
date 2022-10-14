@@ -10,8 +10,7 @@ using Random
 using VectorizationBase
 using VectorizationBase: shufflevector, zstridedpointer
 using FLoops
-#@reexport using SparsityOperators
-using SparsityOperators: normalOperator, opEye
+using LinearOperators: opEye
 using ProgressMeter
 using StatsBase
 

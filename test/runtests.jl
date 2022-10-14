@@ -1,7 +1,7 @@
 using RegularizedLeastSquares, LinearAlgebra
 # Packages for testing only
 using Random, Test
-using SparsityOperators: fft
+using FFTW
 
 include("Kaczmarz.jl")
 include("testProxMaps.jl")
