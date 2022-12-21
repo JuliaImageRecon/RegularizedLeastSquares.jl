@@ -102,6 +102,34 @@ function testTVprox(N=1024; numEdges=5, σ=0.05)
   @test 0.5*norm(xNoisy-x_tv)^2+normTV(x_tv,2*σ,shape=(N,N)) <= 0.5*norm(xNoisy-x_l1)^2+normTV(x_l1,2*σ,shape=(N,N))
 end
 
+# denoise a signal that is piecewise constant along a given direction
+function testDirectionalTVprox(N=256; numEdges=5, σ=0.05, T=ComplexF64)
+  x = zeros(T,N,N)
+  for i=1:numEdges
+    idx = rand(0:N-1)
+    img[:,idx+1:end,:] .+= randn(T)
+  end
+
+  xNoisy = copy(x)
+  σ = sum(abs.(x))/length(x)*σ
+  xNoisy[:] += σ/sqrt(2.0)*(randn(N*N)+1im*randn(N*N))
+
+  x_tv = copy(xNoisy)
+  proxTV!(vec(x_tv), 2*σ, shape=(N,N), dim=1)
+
+  x_tv2 = copy(xNoisy)
+  for i=1:N
+    x_tmp = x_tv2[:,i]
+    proxTV!(x_tmp, 2*σ, shape=(N,))
+    x_tv2[:,i] .= x_tmp
+  end
+
+  # directional TV and 1d TV should yield the same result
+  @test norm(x_tv-x_tv2) / norm(x) ≈ 0 atol=1e-8
+  # check decrease of error
+  @test norm(x - x_tv) <= norm(x-xNoisy)
+end
+
 # test enforcement of positivity constraint
 function testPositive(N=1024)
   @info "test positivity-constraint"
