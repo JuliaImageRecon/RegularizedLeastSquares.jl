@@ -54,7 +54,7 @@ function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = nothing
   if typeof(regName)==String
       regName = [regName]
   end
-  
+
   if regName[1] == "L1"
     gradientOp = opEye(T,N) #UniformScaling(one(T))
   elseif regName[1] == "TV"
@@ -76,7 +76,7 @@ function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = nothing
 end
 
 function init!(solver::PrimalDualSolver; S::Matrix{T}=solver.S, u::Vector{T}=T[], c::Vector{T}=T[],
-    PrimalDualGap::T=solver.PrimalDualGap) where {T,R}
+    PrimalDualGap::T=solver.PrimalDualGap) where {T}
 
   solver.u[:] .= u
   solver.PrimalDualGap = (1/2)*(norm(solver.u,2))^2

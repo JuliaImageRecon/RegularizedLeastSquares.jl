@@ -9,7 +9,7 @@ proximal map for LLR regularization using singular-value-thresholding
 * `x::Vector{T}`                - Vector to apply proximal map to
 * `λ`                           - regularization parameter
 * `shape::Tuple{Int}=[]`        - dimensions of the image
-* `blockSize::Tuple{Int}=[2;2]` - size of patches to perform singluar value thresholding on
+* `blockSize::Tuple{Int}=[2;2]` - size of patches to perform singular value thresholding on
 * `randshift::Bool=true`        - randomly shifts the patches to ensure translation invariance
 """
 function proxLLR!(
@@ -46,15 +46,17 @@ function proxLLR!(
     try
         BLAS.set_num_threads(1)
         xᴸᴸᴿ = [Array{T}(undef, prod(blockSize), K) for _ = 1:Threads.nthreads()]
-        @floop for i ∈ CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
-            @views xᴸᴸᴿ[Threads.threadid()] .= reshape(xp[i.+block_idx, :], :, K)
-            ub = sqrt(norm(xᴸᴸᴿ[Threads.threadid()]' * xᴸᴸᴿ[Threads.threadid()], Inf)) #upper bound on singular values given by matrix infinity norm
-            if λ >= ub #save time by skipping the SVT as recommended by Ong/Lustig, IEEE 2016
-                xp[i.+block_idx, :] .= 0
-            else # threshold singular values
-                SVDec = svd!(xᴸᴸᴿ[Threads.threadid()])
-                proxL1!(SVDec.S, λ)
-                xp[i.+block_idx, :] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
+        let xp = xp # Avoid boxing error
+            @floop for i ∈ CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
+                @views xᴸᴸᴿ[Threads.threadid()] .= reshape(xp[i.+block_idx, :], :, K)
+                ub = sqrt(norm(xᴸᴸᴿ[Threads.threadid()]' * xᴸᴸᴿ[Threads.threadid()], Inf)) #upper bound on singular values given by matrix infinity norm
+                if λ >= ub #save time by skipping the SVT as recommended by Ong/Lustig, IEEE 2016
+                    xp[i.+block_idx, :] .= 0
+                else # threshold singular values
+                    SVDec = svd!(xᴸᴸᴿ[Threads.threadid()])
+                    proxL1!(SVDec.S, λ)
+                    xp[i.+block_idx, :] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
+                end
             end
         end
     finally
@@ -154,7 +156,7 @@ proximal map for LLR regularization with fully overlapping blocks
 * `x::Vector{T}`                - Vector to apply proximal map to
 * `λ`                           - regularization parameter
 * `shape::Tuple{Int}=[]`        - dimensions of the image
-* `blockSize::NTuple{Int}=ntuple(_ -> 2, N)` - size of patches to perform singluar value thresholding on
+* `blockSize::NTuple{Int}=ntuple(_ -> 2, N)` - size of patches to perform singular value thresholding on
 """
 function proxLLROverlapping!(
         x::Vector{T},
