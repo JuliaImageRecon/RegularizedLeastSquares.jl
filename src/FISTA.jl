@@ -1,8 +1,8 @@
-export fista
+export FISTA
 
 mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractLinearSolver
   A::matA
-  AᴴA::matAHA
+  AHA::matAHA
   reg::Regularization
   x::vecT
   x₀::vecT
@@ -31,28 +31,32 @@ creates a `FISTA` object for the system matrix `A`.
 * `x::vecT`                 - array with the same type and size as the solution
 * (`reg=nothing`)           - regularization object
 * (`regName=["L1"]`)        - name of the Regularization to use (if reg==nothing)
-* (`AᴴA=A'*A`)              - specialized normal operator, default is `A'*A`
+* (`AHA=A'*A`)              - specialized normal operator, default is `A'*A`
 * (`λ=0`)                   - regularization parameter
 * (`ρ=0.95`)                - step size for gradient step
-* (`normalize_ρ=false`)     - normalize step size by the maximum eigenvalue of `AᴴA`
+* (`normalize_ρ=false`)     - normalize step size by the maximum eigenvalue of `AHA`
 * (`t=1.0`)                 - parameter for predictor-corrector step
 * (`relTol::Float64=1.e-5`) - tolerance for stopping criterion
 * (`iterations::Int64=50`)  - maximum number of iterations
 """
-function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=nothing, regName=["L1"]
-              , AᴴA=A'*A
-              , λ=0
+function FISTA(
+              ; A=nothing
+              , AHA=A'*A
+              , x::AbstractVector{T}=Vector{eltype(AHA)}(undef,size(AHA,2))
+              , reg=nothing
+              , regName=["L1"]
+              , λ=[zero(real(eltype(x)))]
               , ρ=0.95
               , normalize_ρ=true
               , t=1
-              , relTol=eps(real(T))
+              , relTol=eps(real(eltype(x)))
               , iterations=50
               , normalizeReg=false
               , verbose = false
               , kargs...) where {T}
 
   rT = real(T)
-  if reg == nothing
+  if reg === nothing
     reg = Regularization(regName, λ, kargs...)
   end
 
@@ -62,10 +66,10 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=n
   res[1] = Inf # avoid spurious convergence in first iterations
 
   if normalize_ρ
-    ρ /= abs(power_iterations(AᴴA))
+    ρ /= abs(power_iterations(AHA))
   end
 
-  return FISTA(A, AᴴA, vec(reg)[1], x, x₀, xᵒˡᵈ, res, rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,one(rT),one(rT),rT(Inf),verbose)
+  return FISTA(A, AHA, vec(reg)[1], x, x₀, xᵒˡᵈ, res, rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,one(rT),one(rT),rT(Inf),verbose)
 end
 
 """
@@ -81,7 +85,11 @@ function init!(solver::FISTA{rT,vecT,matA,matAHA}, b::vecT
               , t=1
               ) where {rT,vecT,matA,matAHA}
 
-  solver.x₀ .= adjoint(solver.A) * b
+  if solver.A === nothing
+    solver.x₀ = b
+  else
+    solver.x₀ .= adjoint(solver.A) * b
+  end
   solver.norm_x₀ = norm(solver.x₀)
 
   if isempty(x)
@@ -147,16 +155,16 @@ function iterate(solver::FISTA, iteration::Int=0)
   solver.x .+= ((solver.tᵒˡᵈ-1)/solver.t + 1) .* (solver.xᵒˡᵈ) # add (α+1)*x, where x is now stored in xᵒˡᵈ
 
   # calculate residuum and do gradient step
-  # solver.x .-= solver.ρ .* (solver.AᴴA * solver.x .- solver.x₀)
-  mul!(solver.res, solver.AᴴA, solver.x)
+  # solver.x .-= solver.ρ .* (solver.AHA * solver.x .- solver.x₀)
+  mul!(solver.res, solver.AHA, solver.x)
   solver.res .-= solver.x₀
   solver.x .-= solver.ρ .* solver.res
 
   solver.rel_res_norm = norm(solver.res) / solver.norm_x₀
   solver.verbose && println("Iteration $iteration; rel. residual = $(solver.rel_res_norm)")
 
-  # the two lines below are equivalent to the ones above and non-allocating, but require the 5-argument mul! function to implemented for AᴴA, i.e. if AᴴA is LinearOperator, it requires LinearOperators.jl v2
-  # mul!(solver.x, solver.AᴴA, solver.xᵒˡᵈ, -solver.ρ, 1)
+  # the two lines below are equivalent to the ones above and non-allocating, but require the 5-argument mul! function to implemented for AHA, i.e. if AHA is LinearOperator, it requires LinearOperators.jl v2
+  # mul!(solver.x, solver.AHA, solver.xᵒˡᵈ, -solver.ρ, 1)
   # solver.x .+= solver.ρ .* solver.x₀
 
   # proximal map
