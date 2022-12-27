@@ -1,6 +1,6 @@
 export fista
 
-mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractLinearSolver where {rT}
+mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractLinearSolver
   A::matA
   AᴴA::matAHA
   reg::Regularization
@@ -32,7 +32,7 @@ creates a `FISTA` object for the system matrix `A`.
 * (`reg=nothing`)           - regularization object
 * (`regName=["L1"]`)        - name of the Regularization to use (if reg==nothing)
 * (`AᴴA=A'*A`)              - specialized normal operator, default is `A'*A`
-* (`λ=0`)                   - regularization paramter
+* (`λ=0`)                   - regularization parameter
 * (`ρ=0.95`)                - step size for gradient step
 * (`normalize_ρ=false`)     - normalize step size by the maximum eigenvalue of `AᴴA`
 * (`t=1.0`)                 - parameter for predictor-corrector step
@@ -49,8 +49,9 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=n
               , iterations=50
               , normalizeReg=false
               , verbose = false
-              , kargs...) where {rT <: Real, T <: Union{rT, Complex{rT}}}
+              , kargs...) where {T}
 
+  rT = real(T)
   if reg == nothing
     reg = Regularization(regName, λ, kargs...)
   end
