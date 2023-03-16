@@ -115,7 +115,7 @@ function testDirectionalTVprox(N=256; numEdges=5, σ=0.05, T=ComplexF64)
   xNoisy[:] += σ/sqrt(2.0)*(randn(N*N)+1im*randn(N*N))
 
   x_tv = copy(xNoisy)
-  proxTV!(vec(x_tv), 2*σ, shape=(N,N), dim=1)
+  proxTV!(vec(x_tv), 2*σ, shape=(N,N), dims=1)
 
   x_tv2 = copy(xNoisy)
   for i=1:N
