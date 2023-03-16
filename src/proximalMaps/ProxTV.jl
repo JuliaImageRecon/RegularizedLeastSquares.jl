@@ -27,9 +27,12 @@ end
 
 
 """
-  proxTV!(x::Vector{Tc}, λ::T; shape::NTuple{N,Int}, dims=1:length(shape), iterationsTV=20, tvpar=TVParams(x; shape=shape, dims=dims))
+  proxTV!(x::Vector{Tc}, λ::T; shape::NTuple{N,Int}, dims, iterationsTV=20, tvpar=TVParams(x; shape=shape, dims=dims))
 
-proximal map for ansitropic TV regularization using the Fast Gradient Projection algorithm.
+Proximal map for TV regularization. Calculated with the Condat algorithm if the TV is calculated only along one dimension and with the Fast Gradient Projection algorithm otherwise.
+
+Reference for the Condat algorithm:
+https://lcondat.github.io/publis/Condat-fast_TV-SPL-2013.pdf
 
 Reference for the FGP algorithm:
 A. Beck and T. Teboulle, "Fast Gradient-Based Algorithms for Constrained
@@ -38,12 +41,42 @@ and Deblurring Problems", IEEE Trans. Image Process. 18(11), 2009
 
 # Arguments
 * `x::Array{Tc}`            - Vector to apply proximal map to
-* `λ::T`                    - regularization paramter
+* `λ::T`                    - regularization parameter
 * `shape::NTuple`           - size of the underlying image
-* `iterationsTV::Int64=20`  - number of FGP iterations
+* `dims`                    - Dimension to perform the TV along. If `Integer`, the Condat algorithm is called, and the FDG algorithm otherwise.
+* `iterationsTV=20`         - number of FGP iterations
 """
-function proxTV!(x::AbstractVector{Tc}, λ::T; shape, dims=1:length(shape), iterationsTV=20, tvpar=TVParams(x; shape=shape, dims=dims)) where {T <: Real,Tc <: Union{T, Complex{T}}}
-  proxTV!(x,λ,tvpar; iterationsTV=iterationsTV)
+function proxTV!(x, λ; shape, dims=1:length(shape), kwargs...) # use kwargs for shape and dims
+  return proxTV!(x, λ, shape, dims; kwargs...) # define shape and dims w/o kwargs to enable multiple dispatch on dims
+end
+
+function proxTV!(x::AbstractVector{T}, λ::T, shape, dims::Integer) where {T <: Real}
+  x_ = reshape(x, shape)
+
+  if dims == 1
+    for j ∈ CartesianIndices(shape[dims+1:end])
+      @views @inbounds tv_denoise_1d_condat!(x_[:,j], shape[dims], λ)
+    end
+  elseif dims == length(shape)
+    for i ∈ CartesianIndices(shape[1:dims-1])
+      @views @inbounds tv_denoise_1d_condat!(x_[i,:], shape[dims], λ)
+    end
+  else
+    for j ∈ CartesianIndices(shape[dims+1:end]), i ∈ CartesianIndices(shape[1:dims-1])
+      @views @inbounds tv_denoise_1d_condat!(x_[i,:,j], shape[dims], λ)
+    end
+  end
+  return x
+end
+
+# reinterpret complex-valued vector as 2xN matrix and change the shape etc accordingly
+function proxTV!(x::AbstractVector{Tc}, λ::T, shape, dims::Integer) where {T <: Real, Tc <: Complex{T}}
+  proxTV!(vec(reinterpret(reshape, T, x)), λ, shape=(2, shape...), dims=(dims+1))
+  return x
+end
+
+function proxTV!(x::AbstractVector{Tc}, λ::T, shape, dims; iterationsTV=20, tvpar=TVParams(x; shape=shape, dims=dims)) where {T <: Real,Tc <: Union{T, Complex{T}}}
+  return proxTV!(x,λ,tvpar; iterationsTV=iterationsTV)
 end
 
 function proxTV!(x::AbstractVector{Tc}, λ::T, p::TVParams{Tc}; iterationsTV=20) where {T <: Real, Tc <: Union{T, Complex{T}}}
@@ -64,7 +97,7 @@ function proxTV!(x::AbstractVector{Tc}, λ::T, p::TVParams{Tc}; iterationsTV=20)
     mul!(p.pq, p.∇, p.xTmp, 1/(8λ), 1) # rs = ∇*xTmp/(8λ)
     restrictMagnitude!(p.pq)
 
-    # form linear combinaion of old and new estimates
+    # form linear combination of old and new estimates
     tOld = t
     t = (1 + sqrt(1+4*tOld^2)) / 2
     t2 = ((tOld-1)/t)
@@ -72,6 +105,7 @@ function proxTV!(x::AbstractVector{Tc}, λ::T, p::TVParams{Tc}; iterationsTV=20)
   end
 
   mul!(x, transpose(p.∇), p.pq, -λ, one(Tc)) # x .-= λ*transpose(∇)*pq
+  return x
 end
 
 # restrict x to a number smaller then one
@@ -82,7 +116,7 @@ end
 """
   normTV(x::Vector{Tc},λ::T; shape, dims=1:length(shape))
 
-returns the value of the ansisotropic TV-regularization term.
+returns the value of the TV-regularization term.
 Arguments are the same as in `proxTV!`
 """
 function normTV(x::Vector{Tc},λ::T; shape, dims=1:length(shape)) where {T <: Real, Tc <: Union{T, Complex{T}}}
