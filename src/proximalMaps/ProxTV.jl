@@ -39,6 +39,11 @@ A. Beck and T. Teboulle, "Fast Gradient-Based Algorithms for Constrained
 Total Variation Image Denoising
 and Deblurring Problems", IEEE Trans. Image Process. 18(11), 2009
 
+Reference for the FGP algorithm:
+A. Beck and T. Teboulle, "Fast Gradient-Based Algorithms for Constrained
+Total Variation Image Denoising
+and Deblurring Problems", IEEE Trans. Image Process. 18(11), 2009
+
 # Arguments
 * `x::Array{Tc}`            - Vector to apply proximal map to
 * `λ::T`                    - regularization parameter
