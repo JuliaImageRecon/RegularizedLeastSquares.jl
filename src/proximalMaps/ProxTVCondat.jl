@@ -142,7 +142,7 @@ end
 """
 This function performs the 1d tv algorithm.
 """
-function tv_denoise_1d_condat!(c::Array{T,1},width::Int64,lambda) where {T<:Real}
+function tv_denoise_1d_condat!(c, width, lambda)
 
   cLength = width
 

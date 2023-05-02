@@ -34,13 +34,13 @@ function testL1Prox(N=1024; numPeaks=5, σ=0.03)
   @info "rel. L1 error : $(norm(x - x_l1)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
   @test norm(x - x_l1) <= norm(x - xNoisy)
   @test norm(x - x_l1) / norm(x) ≈ 0 atol=0.1
-  # check decrease of ojective function
+  # check decrease of objective function
   @test 0.5*norm(xNoisy-x_l1)^2+normL1(x_l1,2*σ) <= normL1(xNoisy,2*σ)
 end
 
 # denoise a signal consisting  of multiple slices with delta peaks at the same locations
 # only the last slices are noisy.
-# Thus, the first slices serve as a reference to inhance denoising
+# Thus, the first slices serve as a reference to enhance denoising
 function testL21Prox(N=1024; numPeaks=5, numSlices=8, noisySlices=2, σ=0.05)
   @info "test L21-regularization"
   Random.seed!(1234)
@@ -91,7 +91,7 @@ function testTVprox(N=1024; numEdges=5, σ=0.05)
   proxL1!(x_l1, 2*σ)
 
   x_tv = copy(xNoisy)
-  proxTV!(x_tv, 2*σ, shape=(N,N))
+  proxTV!(x_tv, 2*σ, shape=(N,N), dims=1:2)
 
   @info "rel. TV error : $(norm(x - x_tv)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
   @test norm(x - x_tv) <= norm(x - xNoisy)
@@ -107,20 +107,20 @@ function testDirectionalTVprox(N=256; numEdges=5, σ=0.05, T=ComplexF64)
   x = zeros(T,N,N)
   for i=1:numEdges
     idx = rand(0:N-1)
-    img[:,idx+1:end,:] .+= randn(T)
+    x[:,idx+1:end,:] .+= randn(T)
   end
 
   xNoisy = copy(x)
   σ = sum(abs.(x))/length(x)*σ
-  xNoisy[:] += σ/sqrt(2.0)*(randn(N*N)+1im*randn(N*N))
+  xNoisy .+= (σ/sqrt(2)) .* randn(T, N, N)
 
   x_tv = copy(xNoisy)
-  proxTV!(vec(x_tv), 2*σ, shape=(N,N), dim=1)
+  proxTV!(vec(x_tv), 2*σ, shape=(N,N), dims=1)
 
   x_tv2 = copy(xNoisy)
   for i=1:N
     x_tmp = x_tv2[:,i]
-    proxTV!(x_tmp, 2*σ, shape=(N,))
+    proxTV!(x_tmp, 2*σ, shape=(N,), dims=1)
     x_tv2[:,i] .= x_tmp
   end
 
@@ -128,6 +128,11 @@ function testDirectionalTVprox(N=256; numEdges=5, σ=0.05, T=ComplexF64)
   @test norm(x_tv-x_tv2) / norm(x) ≈ 0 atol=1e-8
   # check decrease of error
   @test norm(x - x_tv) <= norm(x-xNoisy)
+
+  ## cf. Condat and gradient based algorithm
+  x_tv3 = copy(xNoisy)
+  proxTV!(vec(x_tv3), 2*σ, shape=(N,N), dims=(1,))
+  @test norm(x_tv-x_tv3) / norm(x) ≈ 0 atol=1e-2
 end
 
 # test enforcement of positivity constraint
@@ -182,7 +187,7 @@ function testNuclear(N=32,rank=2;σ=0.05)
   @test norm(x - x_lr) <= norm(x - xNoisy)
   @test norm(x - x_lr) / norm(x) ≈ 0 atol=0.05
   @info "rel. LR error : $(norm(x - x_lr)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
-  # check decreas of objective function
+  # check decrease of objective function
   @test 0.5*norm(xNoisy-x_lr)^2+normNuclear(x_lr,5*σ,svtShape=(N,N)) <= normNuclear(xNoisy,5*σ,svtShape=(N,N))
 end
 
@@ -210,7 +215,7 @@ function testLLR(shape=(32,32,80),blockSize=(4,4);σ=0.05)
   @test norm(x - x_llr) <= norm(x - xNoisy)
   @test norm(x - x_llr) / norm(x) ≈ 0 atol=0.05
   @info "rel. LLR error : $(norm(x - x_llr)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
-  # check decreas of objective function
+  # check decrease of objective function
   @test 0.5*norm(xNoisy-x_llr)^2+normLLR(x_llr,10*σ,shape=shape[1:2],blockSize=blockSize,randshift=false) <= normLLR(xNoisy,10*σ,shape=shape[1:2],blockSize=blockSize,randshift=false)
 end
 
@@ -238,7 +243,7 @@ function testLLROverlapping(shape=(32,32,80),blockSize=(4,4);σ=0.05)
   @test norm(x - x_llr) <= norm(x - xNoisy)
   @test norm(x - x_llr) / norm(x) ≈ 0 atol=0.05
   @info "rel. LLR error : $(norm(x - x_llr)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
-  # check decreas of objective function
+  # check decrease of objective function
   @test 0.5*norm(xNoisy-x_llr)^2+normLLR(x_llr,10*σ,shape=shape[1:2],blockSize=blockSize,randshift=false) <= normLLR(xNoisy,10*σ,shape=shape[1:2],blockSize=blockSize,randshift=false)
 end
 
@@ -268,7 +273,7 @@ function testLLR_3D(shape=(32,32,32,80),blockSize=(4,4,4);σ=0.05)
   @test norm(x - x_llr) <= norm(x - xNoisy)
   @test norm(x - x_llr) / norm(x) ≈ 0 atol=0.05
   @info "rel. LLR 3D error : $(norm(x - x_llr)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
-  # check decreas of objective function # TODO: Implement norm as ND
+  # check decrease of objective function # TODO: Implement norm as ND
   # @test 0.5*norm(xNoisy-x_llr)^2+normLLR(x_llr,10*σ,shape=shape[1:3],blockSize=blockSize,randshift=false) <= normLLR(xNoisy,10*σ,shape=shape[1:3],blockSize=blockSize,randshift=false)
 end
 
@@ -277,6 +282,7 @@ end
   testL1Prox()
   testL21Prox()
   testTVprox()
+  testDirectionalTVprox()
   testPositive()
   testProj()
   testNuclear()
