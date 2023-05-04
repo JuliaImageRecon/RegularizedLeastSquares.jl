@@ -49,13 +49,13 @@ and Deblurring Problems", IEEE Trans. Image Process. 18(11), 2009
 * `λ::T`                    - regularization parameter
 * `shape::NTuple`           - size of the underlying image
 * `dims`                    - Dimension to perform the TV along. If `Integer`, the Condat algorithm is called, and the FDG algorithm otherwise.
-* `iterationsTV=20`         - number of FGP iterations
+* `iterationsTV=20`         - number of FGP iterations (ignored for the 1D TV)
 """
-function proxTV!(x, λ; shape, dims=1:length(shape), kwargs...) # use kwargs for shape and dims
-  return proxTV!(x, λ, shape, dims; kwargs...) # define shape and dims w/o kwargs to enable multiple dispatch on dims
+function proxTV!(x, λ; shape, dims=1:length(shape), iterationsTV=20) # use kwargs for shape and dims
+  return proxTV!(x, λ, shape, dims; iterationsTV=iterationsTV) # define shape and dims w/o kwargs to enable multiple dispatch on dims
 end
 
-function proxTV!(x::AbstractVector{T}, λ::T, shape, dims::Integer; kwargs...) where {T <: Real}
+function proxTV!(x::AbstractVector{T}, λ::T, shape, dims::Integer; iterationsTV=nothing) where {T <: Real} # iterationsTV is not used in this implementation
   x_ = reshape(x, shape)
 
   if dims == 1
@@ -75,16 +75,16 @@ function proxTV!(x::AbstractVector{T}, λ::T, shape, dims::Integer; kwargs...) w
 end
 
 # reinterpret complex-valued vector as 2xN matrix and change the shape etc accordingly
-function proxTV!(x::AbstractVector{Tc}, λ::T, shape, dims::Integer; kwargs...) where {T <: Real, Tc <: Complex{T}}
+function proxTV!(x::AbstractVector{Tc}, λ::T, shape, dims::Integer; iterationsTV=nothing) where {T <: Real, Tc <: Complex{T}} # iterationsTV is not used in this implementation
   proxTV!(vec(reinterpret(reshape, T, x)), λ, shape=(2, shape...), dims=(dims+1))
   return x
 end
 
-function proxTV!(x::AbstractVector{Tc}, λ::T, shape, dims; iterationsTV=20, tvpar=TVParams(x; shape=shape, dims=dims), kwargs...) where {T <: Real,Tc <: Union{T, Complex{T}}}
+function proxTV!(x::AbstractVector{Tc}, λ::T, shape, dims; iterationsTV=20, tvpar=TVParams(x; shape=shape, dims=dims)) where {T <: Real,Tc <: Union{T, Complex{T}}}
   return proxTV!(x,λ,tvpar; iterationsTV=iterationsTV)
 end
 
-function proxTV!(x::AbstractVector{Tc}, λ::T, p::TVParams{Tc}; iterationsTV=20, kwargs...) where {T <: Real, Tc <: Union{T, Complex{T}}}
+function proxTV!(x::AbstractVector{Tc}, λ::T, p::TVParams{Tc}; iterationsTV=20) where {T <: Real, Tc <: Union{T, Complex{T}}}
   # initialize dual variables
   p.xTmp  .= 0
   p.pq    .= 0
