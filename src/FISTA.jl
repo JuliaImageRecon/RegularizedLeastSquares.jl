@@ -1,4 +1,4 @@
-export fista
+export fista, FISTA
 
 mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractLinearSolver
   A::matA
