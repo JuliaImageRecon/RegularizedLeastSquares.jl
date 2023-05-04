@@ -1,4 +1,4 @@
-export cgnr
+export cgnr, CGNR
 
 mutable struct CGNR{matT,opT,vecT,T,Tsparse} <: AbstractLinearSolver
   A::matT

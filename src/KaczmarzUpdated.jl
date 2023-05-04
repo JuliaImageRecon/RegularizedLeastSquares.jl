@@ -1,4 +1,4 @@
-export kaczmarzUpdated
+export kaczmarzUpdated, KaczmarzUpdated
 
 mutable struct KaczmarzUpdated{matT,T,U,Tsparse} <: AbstractLinearSolver
   S::matT

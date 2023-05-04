@@ -1,4 +1,4 @@
-export pseudoinverse, directSolver
+export pseudoinverse, directSolver, PseudoInverse, DirectSolver
 
 
 ### Direct Solver ###

@@ -1,4 +1,4 @@
-export admm
+export admm, ADMM
 
 mutable struct ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT} <: AbstractLinearSolver where {vecT <: AbstractVector{Union{rT, Complex{rT}}}, rvecT <: AbstractVector{rT}}
   # operators and regularization

@@ -16,7 +16,7 @@ using StatsBase
 using FastClosures
 using LinearOperators
 
-export createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
+export AbstractLinearSolver, createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
 
 abstract type AbstractLinearSolver end
 # The following is just for documentation purposes. To allow for different operator
