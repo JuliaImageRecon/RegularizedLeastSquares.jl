@@ -58,6 +58,17 @@ function Regularization(name::String, λ::AbstractFloat; kargs...)
   elseif name=="L21"
     return Regularization(proxL21!, normL21, λ, kargs)
   elseif name=="TV"
+    # preallocate fields for computation of proximal map
+    # shape = get(kargs, :shape, nothing)
+    # if haskey(kargs, :T)
+    #   T = kargs[:T]
+    # else
+    #   @info "no type T for TV-regularization given. Assuming ComplexF64"
+    #   T = ComplexF64
+    # end
+    # tvpar = TVParams(shape, T; kargs...)
+    # tvprox! = (x,λ)->proxTV!(x,λ,tvpar; kargs...)
+    # return Regularization(tvprox!, normTV, λ, kargs)
     return Regularization(proxTV!, normTV, λ, kargs)
   elseif name=="LLR"
     return Regularization(proxLLR!, normLLR, λ, kargs)
