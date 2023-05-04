@@ -20,7 +20,7 @@ end
 function GradientOp(T::Type, shape::NTuple{N,Int64}, dim::Integer) where N
   nrow = div( (shape[dim]-1)*prod(shape), shape[dim] )
   ncol = prod(shape)
-  return LinOp{T}(nrow, ncol, false, false,
+  return LinearOperator{T}(nrow, ncol, false, false,
                           (res,x) -> (grad!(res,x,shape,dim) ),
                           (res,x) -> (grad_t!(res,x,shape,dim) ),
                           nothing )
