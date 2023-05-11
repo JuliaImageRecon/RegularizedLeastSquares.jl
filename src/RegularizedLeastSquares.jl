@@ -87,39 +87,47 @@ Function returns choosen solver.
 * `"splitBregman"`    - Split Bregman method for constrained & regularized inverse problems
 * `"primaldualsolver"`- First order primal dual method
 """
-function createLinearSolver(solver::AbstractString, A, x=zeros(eltype(A),size(A,2));
-                            log::Bool=false, kargs...)
-
-  log ? solverInfo = SolverInfo(;kargs...) : solverInfo=nothing
+function createLinearSolver(solver::AbstractString, A, x=zeros(eltype(A),size(A,2)); kargs...)
 
   if solver == "kaczmarz"
-    return Kaczmarz(A; kargs...)
+    return createLinearSolver(Kaczmarz, A; kargs...)
   elseif solver == "kaczmarzUpdated"
-    return KaczmarzUpdated(A; kargs...)
+    return createLinearSolver(KaczmarzUpdated, A; kargs...)
   elseif solver == "cgnr"
-    return CGNR(A, x; kargs...)
+    return createLinearSolver(CGNR, A, x; kargs...)
   elseif solver == "direct"
-    return DirectSolver(A; kargs...)
+    return createLinearSolver(DirectSolver, A; kargs...)
   elseif solver == "daxkaczmarz"
-    return DaxKaczmarz(A; kargs...)
+    return createLinearSolver(DaxKaczmarz, A; kargs...)
   elseif solver == "daxconstrained"
-    return DaxConstrained(A; kargs...)
+    return createLinearSolver(DaxConstrained, A; kargs...)
   elseif solver == "pseudoinverse"
-    return PseudoInverse(A; kargs...)
+    return createLinearSolver(PseudoInverse, A; kargs...)
   elseif solver == "fusedlasso"
-    return FusedLasso(A; kargs...)
+    return createLinearSolver(FusedLasso, A; kargs...)
   elseif solver == "fista"
-    return FISTA(A, x; kargs...)
+    return createLinearSolver(FISTA, A, x; kargs...)
   elseif solver == "admm"
-    return ADMM(A, x; kargs...)
+    return createLinearSolver(ADMM, A, x; kargs...)
   elseif solver == "splitBregman"
-    return SplitBregman(A, x; kargs...)
+    return createLinearSolver(SplitBregman, A, x; kargs...)
   elseif solver == "primaldualsolver"
-    return PrimalDualSolver(A; kargs...)
+    return createLinearSolver(PrimalDualSolver, A; kargs...)
   else
     error("Solver $solver not found.")
     return Kaczmarz(A; kargs...)
   end
 end
+
+function createLinearSolver(solver::Type{T}, A; log::Bool=false, kargs...) where {T<:AbstractLinearSolver}
+  log ? solverInfo = SolverInfo(;kargs...) : solverInfo=nothing
+  return solver(A; kargs...)
+end
+
+function createLinearSolver(solver::Type{T}, A, x; log::Bool=false, kargs...) where {T<:AbstractLinearSolver}
+  log ? solverInfo = SolverInfo(;kargs...) : solverInfo=nothing
+  return solver(A, x; kargs...)
+end
+
 
 end
