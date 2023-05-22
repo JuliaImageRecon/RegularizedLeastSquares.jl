@@ -3,7 +3,7 @@ export kaczmarzUpdated, KaczmarzUpdated
 mutable struct KaczmarzUpdated{matT,T,U,Tsparse} <: AbstractLinearSolver
   S::matT
   u::Vector{T}
-  reg::Vector{Regularization}
+  reg::Vector{AbstractRegularization}
   denom::Vector{U}
   rowindex::Vector{Int64}
   rowIndexCycle::Vector{Int64}

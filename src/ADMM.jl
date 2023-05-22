@@ -3,7 +3,7 @@ export admm, ADMM
 mutable struct ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT} <: AbstractLinearSolver where {vecT <: AbstractVector{Union{rT, Complex{rT}}}, rvecT <: AbstractVector{rT}}
   # operators and regularization
   A::matT
-  reg::Vector{Regularization}
+  reg::Vector{AbstractRegularization}
   regTrafo::Vector{ropT}
   # fields and operators for x update
   AᴴA::opT

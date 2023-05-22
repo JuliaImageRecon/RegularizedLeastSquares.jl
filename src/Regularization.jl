@@ -22,8 +22,8 @@ prox!(reg::CustomRegularization, x) = reg.prox!(x, reg.λ; reg.params...)
 norm(reg::CustomRegularization, x) = reg.norm(x, reg.λ; reg.params...)
 Regularization(prox!::Function = x->x, norm::Function = norm0, λ::AbstractFloat=0.0, params=Dict{Symbol,Any}()) = CustomRegularization(prox!, norm, λ, params)
 
-Base.vec(reg::Regularization) = [reg]
-Base.vec(reg::Vector{Regularization}) = reg
+Base.vec(reg::AbstractRegularization) = [reg]
+Base.vec(reg::Vector{AbstractRegularization}) = reg
 
 Regularization(;prox!::Function = x->x, norm::Function = norm0,
                          λ::AbstractFloat=0.0, params=Dict{Symbol,Any}()) = Regularization(prox!,norm,λ,params)
@@ -104,9 +104,9 @@ function Regularization(names::Vector{String},
   return reg
 end
 
-function prox!(x::Array, reg::Vector{Regularization})
+function prox!(x::Array, reg::Vector{AbstractRegularization})
   for d=1:length(reg)
-    reg[d].prox!(x, reg[d].λ; reg[d].params...)
+    reg[d].prox!(x)
   end
 end
 

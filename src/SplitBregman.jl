@@ -3,7 +3,7 @@ export SplitBregman
 mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT} <: AbstractLinearSolver
   # oerators and regularization
   A::matT
-  reg::Vector{Regularization}
+  reg::Vector{AbstractRegularization}
   regTrafo::Vector{ropT}
   y::vecT
   # fields and operators for x update
@@ -220,7 +220,7 @@ function solve(solver::SplitBregman, b::vecT; A::matT=solver.A, startVector::vec
 end
 
 """
-    splitBregman(A, y::vecT, reg::Vector{Regularization}; kargs...) where vecT
+    splitBregman(A, y::vecT, reg::Vector{AbstractRegularization}; kargs...) where vecT
 
 Split Bregman method
 
@@ -238,7 +238,7 @@ The Split Bregman Method for l1 Regularized Problems
   # Arguments
   * `A`                           - system matrix
   * `y::vecT`                     - data vector (right hand size)
-  * `reg::Vector{Regularization}` - Regularization objects
+  * `reg::Vector{AbstractRegularization}` - Regularization objects
   * `regTrafo::Vector{Trafo}`     - transformations applied inside each regularizer
   * (`ρ1::Float64=1.0`)           - weighting factor for constraint u=v1
   * (`ρ2::Float64=1.0`)           - weighting factor for constraint u=v2

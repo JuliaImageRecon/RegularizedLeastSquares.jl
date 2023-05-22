@@ -5,7 +5,7 @@ mutable struct FusedLasso{T} <: AbstractLinearSolver
     # System matrix
     A::Array{T,2}
     # Regularizer
-    reg::Vector{Regularization}
+    reg::Vector{AbstractRegularization}
     # Solution
     x::Vector{T}
     # Measurement vector

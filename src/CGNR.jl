@@ -3,7 +3,7 @@ export cgnr, CGNR
 mutable struct CGNR{matT,opT,vecT,T,Tsparse} <: AbstractLinearSolver
   A::matT
   AᴴA::opT
-  reg::Regularization
+  reg::AbstractRegularization
   cl::vecT
   rl::vecT
   zl::vecT
@@ -50,9 +50,9 @@ function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); λ::Real=0.0, reg::R = Regu
               , iterations::Int64=10
               , relTol::Float64=eps()
               , normalizeReg::Bool=false
-              , kargs...) where {opT,vecT<:AbstractVector,R<:Union{Regularization, Vector{Regularization}}}
+              , kargs...) where {opT,vecT<:AbstractVector,R<:Union{Regularization, Vector{AbstractRegularization}}}
 
-  if typeof(reg)==Vector{Regularization}
+  if typeof(reg)==Vector{AbstractRegularization}
     reg = reg[1]
   end
 

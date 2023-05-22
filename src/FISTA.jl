@@ -3,7 +3,7 @@ export fista, FISTA
 mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractLinearSolver
   A::matA
   AᴴA::matAHA
-  reg::Regularization
+  reg::AbstractRegularization
   x::vecT
   x₀::vecT
   xᵒˡᵈ::vecT
