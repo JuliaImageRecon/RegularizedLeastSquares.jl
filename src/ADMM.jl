@@ -244,7 +244,7 @@ function iterate(solver::ADMM, iteration::Integer=0)
     solver.zᵒˡᵈ[i] .= solver.z[i]
     solver.z[i] .= solver.regTrafo[i]*solver.x .+ solver.u[i]
     if solver.ρ[i] != 0
-      solver.reg[i].prox!(solver.z[i], solver.regFac*solver.reg[i].λ/solver.ρ[i]; solver.reg[i].params...)
+      prox!(solver.reg[i], solver.z[i], solver.regFac*solver.reg[i].λ/solver.ρ[i])
     end
 
     # 3. update u

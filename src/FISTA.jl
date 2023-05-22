@@ -160,7 +160,7 @@ function iterate(solver::FISTA, iteration::Int=0)
   # solver.x .+= solver.ρ .* solver.x₀
 
   # proximal map
-  solver.reg.prox!(solver.x, solver.regFac*solver.ρ*solver.reg.λ; solver.reg.params...)
+  prox!(solver.reg, solver.x, solver.regFac*solver.ρ*solver.reg.λ)
 
   # predictor-corrector update
   solver.tᵒˡᵈ = solver.t
