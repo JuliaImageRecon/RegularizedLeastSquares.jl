@@ -4,8 +4,8 @@ struct PositiveRegularization <: AbstractRegularization
   λ::Float64
 end
 
-prox!(reg::PositiveRegularization, x) = proxPositive!(x, reg.λ)
-norm(reg::PositiveRegularization, x) = normPositive(x, reg.λ)
+prox!(reg::PositiveRegularization, x, λ) = proxPositive!(x, λ)
+norm(reg::PositiveRegularization, x, λ) = normPositive(x, λ)
 
 
 """

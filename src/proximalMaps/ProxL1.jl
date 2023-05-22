@@ -6,8 +6,8 @@ struct L1Regularization <: AbstractRegularization
 end
 L1Regularization(λ; sparseTrafo::Trafo=nothing, kargs...) = L1Regularization(λ, sparseTrafo)
 
-prox!(reg::L1Regularization, x) = proxL1!(x, reg.λ; sparseTrafo = reg.sparseTrafo)
-norm(reg::L1Regularization, x) = normL1(x, reg.λ; sparseTrafo = reg.sparseTrafo)
+prox!(reg::L1Regularization, x, λ) = proxL1!(x, λ; sparseTrafo = reg.sparseTrafo)
+norm(reg::L1Regularization, x, λ) = normL1(x, λ; sparseTrafo = reg.sparseTrafo)
 
 
 """

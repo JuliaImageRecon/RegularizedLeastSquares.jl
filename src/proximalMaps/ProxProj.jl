@@ -6,8 +6,8 @@ struct ProjectionRegularization <: AbstractRegularization
 end
 ProjectionRegularization(λ; projFunc::Function=x->x, kargs...) = ProjectionRegularization(λ, projFunc)
 
-prox!(reg::ProjectionRegularization, x) = proxProj!(x, reg.λ; projFunct = reg.projFunc)
-norm(reg::ProjectionRegularization, x) = normProj(x, reg.λ; projFunct = reg.projFunc)
+prox!(reg::ProjectionRegularization, x, λ) = proxProj!(x, λ; projFunct = reg.projFunc)
+norm(reg::ProjectionRegularization, x, λ) = normProj(x, λ; projFunct = reg.projFunc)
 
 
 """

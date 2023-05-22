@@ -7,8 +7,8 @@ struct L21Regularization <: AbstractRegularization
 end
 L21Regularization(λ; slices::Int64 = 1, sparseTrafo::Trafo=nothing, kargs...) = L21Regularization(λ, slices, sparseTrafo)
 
-prox!(reg::L21Regularization, x) = proxL21!(x, reg.λ; slices = reg.slices, sparseTrafo = reg.sparseTrafo)
-norm(reg::L21Regularization, x) = normL21(x, reg.λ; slices = reg.slices, sparseTrafo = reg.sparseTrafo)
+prox!(reg::L21Regularization, x, λ) = proxL21!(x, λ; slices = reg.slices, sparseTrafo = reg.sparseTrafo)
+norm(reg::L21Regularization, x, λ) = normL21(x, λ; slices = reg.slices, sparseTrafo = reg.sparseTrafo)
 
 
 """

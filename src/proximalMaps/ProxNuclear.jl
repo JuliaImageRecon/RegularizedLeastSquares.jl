@@ -6,8 +6,8 @@ struct NuclearRegularization <: AbstractRegularization
 end
 NuclearRegularization(λ; svtShape::NTuple=[], kargs...) = NuclearRegularization(λ, svtShape)
 
-prox!(reg::NuclearRegularization, x) = proxNuclear!(x, reg.λ; svtShape = reg.svtShape)
-norm(reg::NuclearRegularization, x) = normNuclear(x, reg.λ; svtShape = reg.svtShape)
+prox!(reg::NuclearRegularization, x, λ) = proxNuclear!(x, λ; svtShape = reg.svtShape)
+norm(reg::NuclearRegularization, x, λ) = normNuclear(x, λ; svtShape = reg.svtShape)
 
 
 """

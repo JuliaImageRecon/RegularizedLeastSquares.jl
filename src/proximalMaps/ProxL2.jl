@@ -4,8 +4,8 @@ struct L2Regularization <: AbstractRegularization
   λ::Float64
 end
 
-prox!(reg::L2Regularization, x) = proxL2!(x, reg.λ)
-norm(reg::L2Regularization, x) = normL2(x, reg.λ)
+prox!(reg::L2Regularization, x, λ) = proxL2!(x, λ)
+norm(reg::L2Regularization, x, λ) = normL2(x, λ)
 
 
 """

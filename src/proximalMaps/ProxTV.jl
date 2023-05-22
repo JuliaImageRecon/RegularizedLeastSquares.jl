@@ -8,8 +8,8 @@ struct TVRegularization <: AbstractRegularization
 end
 TVRegularization(λ; shape, dims = 1:length(shape), iterationsTV = 10, kargs...) = TVRegularization(λ, shape, dims, iterationsTV)
 
-prox!(reg::TVRegularization, x) = proxTV!(x, reg.λ; shape = reg.shape, dims = reg.dims, iterationsTV = reg.iterationsTV)
-norm(reg::TVRegularization, x) = normTV(x, reg.λ; shape = reg.shape, dims = reg.dims)
+prox!(reg::TVRegularization, x, λ) = proxTV!(x, λ; shape = reg.shape, dims = reg.dims, iterationsTV = reg.iterationsTV)
+norm(reg::TVRegularization, x, λ) = normTV(x, λ; shape = reg.shape, dims = reg.dims)
 
 
 mutable struct TVParams{Tc, matT}

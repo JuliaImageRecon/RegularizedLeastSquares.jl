@@ -1,6 +1,8 @@
 export Regularization, lambdList, prox! #, norm
 
 abstract type AbstractRegularization end
+prox!(reg::AbstractRegularization, x) = prox!(reg, x, reg.λ)
+norm(reg::AbstractRegularization, x) = norm(reg, x, reg.λ)
 
 """
 Type describing custom regularizers
