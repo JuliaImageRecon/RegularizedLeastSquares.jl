@@ -24,11 +24,8 @@ prox!(reg::CustomRegularization, x) = reg.prox!(x, reg.λ; reg.params...)
 norm(reg::CustomRegularization, x) = reg.norm(x, reg.λ; reg.params...)
 Regularization(prox!::Function = x->x, norm::Function = norm0, λ::AbstractFloat=0.0, params=Dict{Symbol,Any}()) = CustomRegularization(prox!, norm, λ, params)
 
-Base.vec(reg::AbstractRegularization) = [reg]
+Base.vec(reg::AbstractRegularization) = AbstractRegularization[reg]
 Base.vec(reg::Vector{AbstractRegularization}) = reg
-
-Regularization(;prox!::Function = x->x, norm::Function = norm0,
-                         λ::AbstractFloat=0.0, params=Dict{Symbol,Any}()) = Regularization(prox!,norm,λ,params)
 
 """
     RegularizationList()
@@ -99,7 +96,7 @@ function Regularization(names::Vector{String},
   if length(names) != length(λ)
     @error names " and " λ " need to have the same length "
   end
-  reg = Regularization[]
+  reg = AbstractRegularization[]
   for l=1:length(names)
     push!(reg, Regularization(names[l],λ[l]; kargs...))
   end

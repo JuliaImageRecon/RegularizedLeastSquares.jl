@@ -4,8 +4,8 @@ export LLRRegularization, proxLLR!, normLLR, proxLLROverlapping!
 struct LLRRegularization{N, TI} <: AbstractRegularization where {N, TI<:Integer}
   λ::Float64
   shape::NTuple{N,TI}
-  blockSize::NTuple{N,TI} = ntuple(_ -> 2, N)
-  randshift::Bool = true
+  blockSize::NTuple{N,TI}
+  randshift::Bool
 end
 LLRRegularization(λ;  shape::NTuple{N,TI}, blockSize::NTuple{N,TI} = ntuple(_ -> 2, N), randshift::Bool = true, kargs...) where {N,TI<:Integer} =
  LLRRegularization(λ, shape, blockSize, randshift)

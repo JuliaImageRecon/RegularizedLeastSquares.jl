@@ -90,7 +90,7 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, reg
   tolInner = real(T)(tolInner)
 
   if reg == nothing
-    reg = [Regularization(regName, λ, kargs...)]
+    reg = AbstractRegularization[Regularization(regName, λ, kargs...)]
   else
     reg = vec(reg) # using a custom method of vec(.)
   end

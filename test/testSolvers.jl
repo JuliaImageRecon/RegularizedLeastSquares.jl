@@ -69,7 +69,7 @@ end
         @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
         @test x ≈ x_approx rtol = 0.1
 
-        reg.λ *= length(b) / norm(b, 1)
+        reg = Regularization("L1", reg.λ * length(b) / norm(b, 1))
         scale_F = 1e3 # test invariance to the maximum eigenvalue
         S = createLinearSolver(
             solver,
@@ -153,7 +153,7 @@ end
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol = 0.1
 
-    reg.λ *= length(b) / norm(b, 1)
+    reg = Regularization("L1", reg.λ * length(b) / norm(b, 1))
     S = createLinearSolver(
         solver,
         F;

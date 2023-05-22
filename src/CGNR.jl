@@ -3,7 +3,7 @@ export cgnr, CGNR
 mutable struct CGNR{matT,opT,vecT,T,Tsparse} <: AbstractLinearSolver
   A::matT
   AᴴA::opT
-  reg::AbstractRegularization
+  reg::L2Regularization
   cl::vecT
   rl::vecT
   zl::vecT
@@ -50,14 +50,10 @@ function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); λ::Real=0.0, reg::R = Regu
               , iterations::Int64=10
               , relTol::Float64=eps()
               , normalizeReg::Bool=false
-              , kargs...) where {opT,vecT<:AbstractVector,R<:Union{Regularization, Vector{AbstractRegularization}}}
+              , kargs...) where {opT,vecT<:AbstractVector,R<:Union{AbstractRegularization, Vector{AbstractRegularization}}}
 
   if typeof(reg)==Vector{AbstractRegularization}
     reg = reg[1]
-  end
-
-  if (reg.prox!) != (proxL2!)
-    @error "CGNR only supports L2 regularizer"
   end
 
   if AᴴA == nothing

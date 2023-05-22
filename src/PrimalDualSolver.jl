@@ -35,7 +35,7 @@ function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = nothing
 
   if reg == nothing
     if typeof(λ)<:AbstractFloat && typeof(regName)==String
-        reg = [Regularization(regName, T(λ); kargs...)]
+        reg = AbstractRegularization[Regularization(regName, T(λ); kargs...)]
     elseif typeof(λ)<:AbstractVector && typeof(regName)<:AbstractVector{String}
         reg = Regularization(regName, T(λ); kargs...)
     else

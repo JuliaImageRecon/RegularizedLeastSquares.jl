@@ -28,6 +28,7 @@ setlambda(S::AbstractMatrix, λ::Real) = nothing
 
 include("linearOperators/GradientOp.jl")
 
+include("Regularization.jl")
 include("proximalMaps/ProxL1.jl")
 include("proximalMaps/ProxL2.jl")
 include("proximalMaps/ProxL21.jl")
@@ -39,7 +40,6 @@ include("proximalMaps/ProxTV.jl")
 include("proximalMaps/ProxTVCondat.jl")
 include("proximalMaps/ProxNuclear.jl")
 
-include("Regularization.jl")
 include("Utils.jl")
 include("Kaczmarz.jl")
 include("KaczmarzUpdated.jl")

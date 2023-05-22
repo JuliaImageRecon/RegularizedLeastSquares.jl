@@ -4,7 +4,7 @@ struct TVRegularization <: AbstractRegularization
   λ::Float64
   dims
   shape
-  iterationsTV::Integer64
+  iterationsTV::Int64
 end
 TVRegularization(λ; shape, dims = 1:length(shape), iterationsTV = 10, kargs...) = TVRegularization(λ, shape, dims, iterationsTV)
 
