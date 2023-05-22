@@ -1,4 +1,14 @@
-export proxL1!, proxL1, normL1
+export L1Regularization, proxL1!, proxL1, normL1
+
+struct L1Regularization <: AbstractRegularization
+  λ::Float64
+  sparseTrafo::Trafo
+end
+L1Regularization(λ; sparseTrafo::Trafo=nothing, kargs...) = L1Regularization(λ, sparseTrafo)
+
+prox!(reg::L1Regularization, x) = proxL1!(x, reg.λ; sparseTrafo = reg.sparseTrafo)
+norm(reg::L1Regularization, x) = normL1(x, reg.λ; sparseTrafo = reg.sparseTrafo)
+
 
 """
     proxL1!(x::Array{T}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T

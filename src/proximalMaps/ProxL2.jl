@@ -1,4 +1,11 @@
-export proxL2!, normL2
+export L2Regularization, proxL2!, normL2
+
+struct L2Regularization <: AbstractRegularization
+  λ::Float64
+end
+
+prox!(reg::L2Regularization, x) = proxL2!(x, reg.λ)
+norm(reg::L2Regularization, x) = normL2(x, reg.λ)
 
 
 """

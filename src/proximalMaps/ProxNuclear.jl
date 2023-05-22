@@ -1,4 +1,14 @@
-export proxNuclear!, normNuclear
+export NuclearRegularization, proxNuclear!, normNuclear
+
+struct NuclearRegularization <: AbstractRegularization
+  λ::Float64
+  svtShape::NTuple
+end
+NuclearRegularization(λ; svtShape::NTuple=[], kargs...) = NuclearRegularization(λ, svtShape)
+
+prox!(reg::NuclearRegularization, x) = proxNuclear!(x, reg.λ; svtShape = reg.svtShape)
+norm(reg::NuclearRegularization, x) = normNuclear(x, reg.λ; svtShape = reg.svtShape)
+
 
 """
     proxNuclear!(x::Vector{T}, λ::Float64; svtShape::NTuple=[],kargs...)

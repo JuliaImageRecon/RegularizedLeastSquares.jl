@@ -1,4 +1,14 @@
-export proxL21!, normL21
+export L21Regularization, proxL21!, normL21
+
+struct L21Regularization <: AbstractRegularization
+  λ::Float64
+  slices::Int64
+  sparseTrafo::Trafo
+end
+L21Regularization(λ; slices::Int64 = 1, sparseTrafo::Trafo=nothing, kargs...) = L21Regularization(λ, slices, sparseTrafo)
+
+prox!(reg::L21Regularization, x) = proxL21!(x, reg.λ; slices = reg.slices, sparseTrafo = reg.sparseTrafo)
+norm(reg::L21Regularization, x) = normL21(x, reg.λ; slices = reg.slices, sparseTrafo = reg.sparseTrafo)
 
 
 """

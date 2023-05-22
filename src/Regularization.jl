@@ -3,7 +3,7 @@ export Regularization, lambdList, prox! #, norm
 abstract type AbstractRegularization end
 
 """
-Type describing Regularizers
+Type describing custom regularizers
 
 # Fields
 * `prox!::Function`           - proximal map for the regularizer
@@ -11,20 +11,22 @@ Type describing Regularizers
 * `λ::AbstractFloat`                - regularization paramter
 * `params::Dict{Symbol,Any}`  - additional parameters
 """
-mutable struct Regularization <: AbstractRegularization
+mutable struct CustomRegularization <: AbstractRegularization
   prox!::Function
   norm::Function
   λ
   params::Dict{Symbol,Any}  # @TODO in die funcs
 end
 
+prox!(reg::CustomRegularization, x) = reg.prox!(x, reg.λ; reg.params...)
+norm(reg::CustomRegularization, x) = reg.norm(x, reg.λ; reg.params...)
+Regularization(prox!::Function = x->x, norm::Function = norm0, λ::AbstractFloat=0.0, params=Dict{Symbol,Any}()) = CustomRegularization(prox!, norm, λ, params)
+
 Base.vec(reg::Regularization) = [reg]
 Base.vec(reg::Vector{Regularization}) = reg
 
-function Regularization(;prox!::Function = x->x, norm::Function = norm0,
-                         λ::AbstractFloat=0.0, params=Dict{Symbol,Any}())
-  Regularization(prox!,norm,λ,params)
-end
+Regularization(;prox!::Function = x->x, norm::Function = norm0,
+                         λ::AbstractFloat=0.0, params=Dict{Symbol,Any}()) = Regularization(prox!,norm,λ,params)
 
 """
     RegularizationList()
@@ -52,11 +54,11 @@ create a Regularization object containing all the infos necessary to calculate a
 """
 function Regularization(name::String, λ::AbstractFloat; kargs...)
   if name=="L2"
-    return Regularization(proxL2!, normL2, λ, kargs)
+    return L2Regularization(λ)
   elseif name=="L1"
-    return Regularization(proxL1!, normL1, λ, kargs)
+    return L1Regularization(λ; kargs...)
   elseif name=="L21"
-    return Regularization(proxL21!, normL21, λ, kargs)
+    return L21Regularization(λ; kargs...)
   elseif name=="TV"
     # preallocate fields for computation of proximal map
     # shape = get(kargs, :shape, nothing)
@@ -69,20 +71,18 @@ function Regularization(name::String, λ::AbstractFloat; kargs...)
     # tvpar = TVParams(shape, T; kargs...)
     # tvprox! = (x,λ)->proxTV!(x,λ,tvpar; kargs...)
     # return Regularization(tvprox!, normTV, λ, kargs)
-    return Regularization(proxTV!, normTV, λ, kargs)
+    return TVRegularization(λ; kargs...)
   elseif name=="LLR"
-    return Regularization(proxLLR!, normLLR, λ, kargs)
+    return LLRRegularization(λ; kargs...)
   elseif name=="Nuclear"
-    return Regularization(proxNuclear!, normNuclear, λ, kargs)
+    return NuclearRegularization(λ; kargs...)
   elseif name=="Positive"
-    return Regularization(proxPositive!, normPositive, λ, kargs)
+    return PositiveRegularization(λ)
   elseif name=="Proj"
-    return Regularization(proxProj!, normProj, λ, kargs)
+    return ProjectionRegularization(λ; kargs...)
   else
     error("Regularization $name not found.")
   end
-
-  return Regularization(proxL2!, normL2, 0.0, kargs)
 end
 
 """

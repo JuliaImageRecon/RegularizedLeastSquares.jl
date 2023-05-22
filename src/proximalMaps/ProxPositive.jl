@@ -1,4 +1,12 @@
-export proxPositive!, normPositive
+export PositiveRegularization, proxPositive!, normPositive
+
+struct PositiveRegularization <: AbstractRegularization
+  λ::Float64
+end
+
+prox!(reg::PositiveRegularization, x) = proxPositive!(x, reg.λ)
+norm(reg::PositiveRegularization, x) = normPositive(x, reg.λ)
+
 
 """
     proxPositive!(x::Vector{T},λ::Float64=1.0;kargs...) where T

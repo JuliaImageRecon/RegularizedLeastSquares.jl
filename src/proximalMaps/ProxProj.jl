@@ -1,4 +1,14 @@
-export proxProj!, normProj
+export ProjectionRegularization, proxProj!, normProj
+
+struct ProjectionRegularization <: AbstractRegularization
+  λ::Float64
+  projFunc::Function
+end
+ProjectionRegularization(λ; projFunc::Function=x->x, kargs...) = ProjectionRegularization(λ, projFunc)
+
+prox!(reg::ProjectionRegularization, x) = proxProj!(x, reg.λ; projFunct = reg.projFunc)
+norm(reg::ProjectionRegularization, x) = normProj(x, reg.λ; projFunct = reg.projFunc)
+
 
 """
     proxProj!(x::Vector{T}, λ::Float64; projFunc=x->x, kargs...)

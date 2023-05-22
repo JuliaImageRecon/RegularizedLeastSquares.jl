@@ -1,4 +1,17 @@
-export proxLLR!, normLLR, proxLLROverlapping!
+export LLRRegularization, proxLLR!, normLLR, proxLLROverlapping!
+
+
+struct LLRRegularization{N, TI} <: AbstractRegularization where {N, TI<:Integer}
+  λ::Float64
+  shape::NTuple{N,TI}
+  blockSize::NTuple{N,TI} = ntuple(_ -> 2, N)
+  randshift::Bool = true
+end
+LLRRegularization(λ;  shape::NTuple{N,TI}, blockSize::NTuple{N,TI} = ntuple(_ -> 2, N), randshift::Bool = true, kargs...) where {N,TI<:Integer} =
+ LLRRegularization(λ, shape, blockSize, randshift)
+
+prox!(reg::LLRRegularization, x) = proxLLR!(x, reg.λ; shape = reg.shape, blockSize = reg.blockSize, randshift = reg.randshift)
+norm(reg::LLRRegularization, x) = normLLR(x, reg.λ; shape = reg.shape, blockSize = reg.blockSize, randshift = reg.randshift)
 
 """
     proxLLR!(x::Vector{T}, λ=1e-6; kargs...) where T
