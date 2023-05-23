@@ -170,7 +170,7 @@ end
 
     ##
     solver = "primaldualsolver"
-    reg = [Regularization("L1", 1.e-4), Regularization("TV", 1.e-4)]
+    reg = [Regularization("L1", 1.e-4), Regularization("TV", 1.e-4, shape = (0,0))]
     solverInfo = SolverInfo(Float64)
     FR = [real.(F ./ norm(F)); imag.(F ./ norm(F))]
     bR = [real.(b ./ norm(F)); imag.(b ./ norm(F))]
