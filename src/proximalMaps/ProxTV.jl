@@ -6,7 +6,7 @@ struct TVRegularization <: AbstractRegularization
   shape
   iterationsTV::Int64
 end
-TVRegularization(λ; shape, dims = 1:length(shape), iterationsTV = 10, kargs...) = TVRegularization(λ, shape, dims, iterationsTV)
+TVRegularization(λ; shape=(0,0), dims = 1:length(shape), iterationsTV = 10, kargs...) = TVRegularization(λ, shape, dims, iterationsTV)
 
 prox!(reg::TVRegularization, x, λ) = proxTV!(x, λ; shape = reg.shape, dims = reg.dims, iterationsTV = reg.iterationsTV)
 norm(reg::TVRegularization, x, λ) = normTV(x, λ; shape = reg.shape, dims = reg.dims)
