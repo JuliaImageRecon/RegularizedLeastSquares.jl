@@ -1,11 +1,11 @@
 export FusedLasso
 export fusedlasso
 
-mutable struct FusedLasso{T} <: AbstractLinearSolver
+mutable struct FusedLasso{T, R<:AbstractRegularization} <: AbstractLinearSolver
     # System matrix
     A::Array{T,2}
     # Regularizer
-    reg::Vector{AbstractRegularization}
+    reg::Vector{R}
     # Solution
     x::Vector{T}
     # Measurement vector
@@ -76,7 +76,7 @@ function FusedLasso(S::Matrix{T};
   	end
 
     # Call constructor interface (function below) and get linear solver object
-    solver = FusedLasso(copy(S), reg,
+    solver = FusedLasso(copy(S), vec(reg),
                zeros(eltype(S),shape[1]*shape[2]*shape[3]),
                zeros(eltype(S), div(length(S),shape[1]*shape[2]*shape[3])),shape,
                zeros(eltype(S),size(S,1)),

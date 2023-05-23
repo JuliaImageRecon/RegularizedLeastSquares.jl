@@ -1,9 +1,9 @@
 export kaczmarzUpdated, KaczmarzUpdated
 
-mutable struct KaczmarzUpdated{matT,T,U,Tsparse} <: AbstractLinearSolver
+mutable struct KaczmarzUpdated{matT,T,U,Tsparse, R <: AbstractRegularization} <: AbstractLinearSolver
   S::matT
   u::Vector{T}
-  reg::Vector{AbstractRegularization}
+  reg::Vector{R}
   denom::Vector{U}
   rowindex::Vector{Int64}
   rowIndexCycle::Vector{Int64}
@@ -57,8 +57,7 @@ creates a KaczmarzUpdated object
 * (iterations::Int64=10)                          - number of iterations
 """
 
-function KaczmarzUpdated(S; b=nothing, λ=[0.0], reg = nothing
-    , regName = ["L2"]
+function KaczmarzUpdated(S; b=nothing, λ=[0.0], reg = L2Regularization(λ[1])
     , weights=nothing
     , sparseTrafo=nothing
     , enforceReal::Bool=false
@@ -80,12 +79,9 @@ end
 # make sure λ has the same element type as S
 λ = T.(λ)
 
-if reg == nothing
-reg = Regularization(regName, λ; kargs...)
-end
 
-if regName[1] != "L2"
-error("Kaczmarz only supports L2 regularizer")
+if !(reg isa L2Regularization || (reg isa Vector && reg[1] isa L2Regularization))
+  error("Kaczmarz only supports L2 regularizer as first regularization term")
 end
 
 # make sure weights are not empty
@@ -112,7 +108,7 @@ vl = zeros(eltype(S),M)
 τl = zero(eltype(S))
 αl = zero(eltype(S))
 
-return KaczmarzUpdated(S,u,reg,denom,rowindex,rowIndexCycle,cl,vl,εw,τl,αl
+return KaczmarzUpdated(S,u,vec(reg),denom,rowindex,rowIndexCycle,cl,vl,εw,τl,αl
         ,T.(w),enforceReal,enforcePositive,Randomized,SubMatrixPercentage,SubMatrixSize,Probabilities
         ,shuffleRows,Int64(seed),sparseTrafo,iterations, constraintMask)
 end

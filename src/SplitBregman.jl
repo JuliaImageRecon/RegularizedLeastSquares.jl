@@ -1,9 +1,9 @@
 export SplitBregman
 
-mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT} <: AbstractLinearSolver
+mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT, R<:AbstractRegularization} <: AbstractLinearSolver
   # oerators and regularization
   A::matT
-  reg::Vector{AbstractRegularization}
+  reg::Vector{R}
   regTrafo::Vector{ropT}
   y::vecT
   # fields and operators for x update
@@ -50,7 +50,6 @@ creates a `SplitBregman` object for the system matrix `A`.
 * `A::matT`                     - system matrix
 * `x::vecT`                     - Array with the same type and size as the solution
 * (`reg=nothing`)               - Regularization object
-* (`regName=["L1"]`)            - name of the regularizations to use (if reg==nothing)
 * (`λ=[0.0]`)                   - Regularization paramters
 * (`regTrafo=nothing`)          - transformations applied inside each regularizer
 * (`precon=Identity()`)         - preconditionner for the internal CG algorithm
@@ -62,7 +61,7 @@ creates a `SplitBregman` object for the system matrix `A`.
 * (`relTol::Float64=eps()`)     - rel tolerance for stopping criterion
 * (`tolInner::Float64=1.e-5`)   - tolerance for CG stopping criterion
 """
-function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing; reg=nothing, regName=["L1"]
+function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing; reg=L1Regularization(λ[1])
                     , λ=[0.0]
                     , regTrafo=nothing 
                     , precon=Identity()
@@ -75,10 +74,6 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing; re
                     , tolInner::Float64=1.e-6
                     , normalizeReg::Bool=false
                     , kargs...) where {matT<:Trafo, vecT<:AbstractVector}
-
-  if reg == nothing
-    reg = Regularization(regName, λ, kargs...)
-  end
 
   if regTrafo == nothing
     regTrafo = [opEye(eltype(x),size(A,2)) for i=1:length(vec(reg))]

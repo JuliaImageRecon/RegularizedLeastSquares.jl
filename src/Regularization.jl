@@ -96,7 +96,7 @@ function Regularization(names::Vector{String},
   if length(names) != length(λ)
     @error names " and " λ " need to have the same length "
   end
-  reg = AbstractRegularization[]
+  reg = []
   for l=1:length(names)
     push!(reg, Regularization(names[l],λ[l]; kargs...))
   end

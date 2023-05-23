@@ -1,9 +1,9 @@
 export admm, ADMM
 
-mutable struct ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT} <: AbstractLinearSolver where {vecT <: AbstractVector{Union{rT, Complex{rT}}}, rvecT <: AbstractVector{rT}}
+mutable struct ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT, R} <: AbstractLinearSolver where {vecT <: AbstractVector{Union{rT, Complex{rT}}}, rvecT <: AbstractVector{rT}, R <: AbstractRegularization}
   # operators and regularization
   A::matT
-  reg::Vector{AbstractRegularization}
+  reg::Vector{R}
   regTrafo::Vector{ropT}
   # fields and operators for x update
   AᴴA::opT
@@ -49,7 +49,6 @@ creates an `ADMM` object for the system matrix `A`.
 * `A`                           - system matrix
 * `x::vecT`                     - Array with the same type and size as the solution
 * (`reg=nothing`)               - Regularization object
-* (`regName=["L1"]`)            - name of the Regularization to use (if reg==nothing)
 * (`λ=[0.0]`)                   - Regularization paramter
 * (`regTrafo=nothing`)          - transformations applied inside each regularizer
 * (`precon=Identity()`)         - preconditionner for the internal CG algorithm
@@ -61,7 +60,7 @@ creates an `ADMM` object for the system matrix `A`.
 * (`relTol::Real=eps()`)     - rel tolerance for stopping criterion
 * (`tolInner::Real=1.e-5`)   - rel tolerance for CG stopping criterion
 """
-function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, regName=["L1"]
+function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=L1Regularization(λ[1])
             , λ=[0.0]
             , regTrafo=nothing
             , AᴴA::opT=nothing
@@ -89,11 +88,7 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=nothing, reg
   relTol = real(T)(relTol)
   tolInner = real(T)(tolInner)
 
-  if reg == nothing
-    reg = AbstractRegularization[Regularization(regName, λ, kargs...)]
-  else
-    reg = vec(reg) # using a custom method of vec(.)
-  end
+  reg = vec(reg) # using a custom method of vec(.)
 
   if regTrafo == nothing
     regTrafo = [opEye(eltype(x),size(A,2)) for _=1:length(reg)]

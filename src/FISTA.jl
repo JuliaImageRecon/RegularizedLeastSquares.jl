@@ -1,9 +1,9 @@
 export fista, FISTA
 
-mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractLinearSolver
+mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA, R<:AbstractRegularization} <: AbstractLinearSolver
   A::matA
   AᴴA::matAHA
-  reg::AbstractRegularization
+  reg::R
   x::vecT
   x₀::vecT
   xᵒˡᵈ::vecT
@@ -39,7 +39,7 @@ creates a `FISTA` object for the system matrix `A`.
 * (`relTol::Float64=1.e-5`) - tolerance for stopping criterion
 * (`iterations::Int64=50`)  - maximum number of iterations
 """
-function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=nothing, regName=["L1"]
+function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1Regularization(0)
               , AᴴA=A'*A
               , λ=0
               , ρ=0.95

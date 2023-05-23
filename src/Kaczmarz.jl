@@ -1,10 +1,10 @@
 export kaczmarz
 export Kaczmarz
 
-mutable struct Kaczmarz{matT,T,U,Tsparse} <: AbstractLinearSolver
+mutable struct Kaczmarz{matT,T,U,Tsparse, R} <: AbstractLinearSolver where {R<:AbstractRegularization}
   S::matT
   u::Vector{T}
-  reg::Vector{AbstractRegularization}
+  reg::Vector{R}
   denom::Vector{U}
   rowindex::Vector{Int64}
   rowIndexCycle::Vector{Int64}
@@ -50,8 +50,7 @@ creates a Kaczmarz object
 * (`seed::Int=1234`)                              - seed for randomized algorithm
 * (iterations::Int64=10)                          - number of iterations
 """
-function Kaczmarz(S; b=nothing, λ=[0.0], reg = nothing
-              , regName = ["L2"]
+function Kaczmarz(S; b=nothing, λ=[0.0], reg = L2Regularization(λ[1])
               , weights=nothing
               , sparseTrafo=nothing
               , enforceReal::Bool=false
@@ -71,12 +70,8 @@ function Kaczmarz(S; b=nothing, λ=[0.0], reg = nothing
   # make sure λ has the same element type as S
   λ = T.(λ)
 
-  if reg == nothing
-    reg = Regularization(regName, λ; kargs...)
-  end
-
-  if regName[1] != "L2"
-    error("Kaczmarz only supports L2 regularizer")
+  if !(reg isa L2Regularization || (reg isa Vector && reg[1] isa L2Regularization))
+    error("Kaczmarz only supports L2 regularizer as first regularization term")
   end
 
   # Apply Tikhonov regularization matrix 
@@ -104,7 +99,7 @@ function Kaczmarz(S; b=nothing, λ=[0.0], reg = nothing
   τl = zero(eltype(S))
   αl = zero(eltype(S))
 
-  return Kaczmarz(S,u,reg,denom,rowindex,rowIndexCycle,cl,vl,εw,τl,αl
+  return Kaczmarz(S,u,vec(reg),denom,rowindex,rowIndexCycle,cl,vl,εw,τl,αl
                   ,T.(w),enforceReal,enforcePositive,shuffleRows
                   ,Int64(seed),sparseTrafo,iterations, constraintMask, regMatrix)
 end

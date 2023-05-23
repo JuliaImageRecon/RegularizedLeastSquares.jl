@@ -1,9 +1,8 @@
 export primaldualsolver
 
-mutable struct PrimalDualSolver{T,S} <: AbstractLinearSolver
+mutable struct PrimalDualSolver{T,S,R<:AbstractRegularization} <: AbstractLinearSolver
     S::Matrix{T}
-    reg::Vector{AbstractRegularization}
-    regName::Vector{String}
+    reg::Vector{R}
     gradientOp::S
     u::Vector{T}
     c::Vector{T}
@@ -20,8 +19,7 @@ mutable struct PrimalDualSolver{T,S} <: AbstractLinearSolver
     shape::NTuple{2,Int64}
 end
 
-function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = nothing
-			 , regName = "L1"
+function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = L1Regularization(λ)
                          , gradientOp = nothing
                          , enforceReal::Bool=false
                          , enforcePositive::Bool=false
@@ -32,17 +30,6 @@ function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = nothing
                          , PrimalDualGap=1.0
                          , shape::NTuple{2,Int64}=(0,0)
                          , kargs...) where T
-
-  if reg == nothing
-    if typeof(λ)<:AbstractFloat && typeof(regName)==String
-        reg = AbstractRegularization[Regularization(regName, T(λ); kargs...)]
-    elseif typeof(λ)<:AbstractVector && typeof(regName)<:AbstractVector{String}
-        reg = Regularization(regName, T(λ); kargs...)
-    else
-        error("could not initialize regularization")
-    end
-  end
-
   M,N = size(S)
 
   if shape == (0,0)
@@ -51,13 +38,9 @@ function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = nothing
     shape = shape
   end
 
-  if typeof(regName)==String
-      regName = [regName]
-  end
-
-  if regName[1] == "L1"
+  if (reg isa Vector && reg[1] isa L1Regularization) || reg isa L1Regularization
     gradientOp = opEye(T,N) #UniformScaling(one(T))
-  elseif regName[1] == "TV"
+  elseif (reg isa Vector && reg[1] isa TVRegularization) || reg isa TVRegularization
     gradientOp = gradientOperator(T,shape)
   end
 
@@ -72,7 +55,7 @@ function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = nothing
   y1 = zeros(T,M)
   y2 = zeros(T,size(gradientOp*c,1))
 
-  return PrimalDualSolver(S,reg,regName,gradientOp,u,c,cO,y1,y2,T(σ),T(τ),T(ϵ),T(PrimalDualGap),enforceReal,enforcePositive,iterations,shape)
+  return PrimalDualSolver(S,vec(reg),gradientOp,u,c,cO,y1,y2,T(σ),T(τ),T(ϵ),T(PrimalDualGap),enforceReal,enforcePositive,iterations,shape)
 end
 
 function init!(solver::PrimalDualSolver; S::Matrix{T}=solver.S, u::Vector{T}=T[], c::Vector{T}=T[],
@@ -116,9 +99,9 @@ function iterate(solver::PrimalDualSolver, iteration::Int=0)
   # updating dual variables
   for i=1:length(solver.reg)
       solver.y1 .= (solver.y1 + solver.σ*(solver.S*solver.c - solver.u))./(1+solver.σ)
-      if solver.regName[1] == "L1"
+      if solver.reg[1] isa L1Regularization
           solver.y2 .= ProxL1Conj(solver.y2 + solver.σ*solver.gradientOp*solver.c, solver.reg[1].λ, solver.shape)
-      elseif solver.regName[1] == "TV"
+      elseif solver.reg[1] isa TVRegularization
           solver.y2 .= ProxTVConj(solver.y2 + solver.σ*solver.gradientOp*solver.c, solver.reg[1].λ, solver.shape)
       end
   end

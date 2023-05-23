@@ -41,7 +41,7 @@ creates an `CGNR` object for the system matrix `A`.
 * (iterations::Int64=10)            - number of iterations
 * (`relTol::Float64=eps()`)         - rel tolerance for stopping criterion
 """
-function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); λ::Real=0.0, reg::R = Regularization("L2", λ)
+function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); λ::Real=0.0, reg::R = L2Regularization(λ)
               , weights::vecT=similar(x,0)
               , AᴴA::opT=nothing
               , sparseTrafo=nothing
@@ -52,7 +52,7 @@ function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); λ::Real=0.0, reg::R = Regu
               , normalizeReg::Bool=false
               , kargs...) where {opT,vecT<:AbstractVector,R<:Union{AbstractRegularization, Vector{AbstractRegularization}}}
 
-  if typeof(reg)==Vector{AbstractRegularization}
+  if reg isa Vector
     reg = reg[1]
   end
 
