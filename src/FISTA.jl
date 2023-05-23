@@ -52,9 +52,6 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L
               , kargs...) where {T}
 
   rT = real(T)
-  if reg == nothing
-    reg = Regularization(regName, λ, kargs...)
-  end
 
   x₀   = similar(x)
   xᵒˡᵈ = similar(x)
