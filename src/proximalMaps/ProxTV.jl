@@ -6,7 +6,7 @@ struct TVRegularization{T} <: AbstractRegularization{T}
   shape
   iterationsTV::Int64
 end
-TVRegularization(λ; shape, dims = 1:length(shape), iterationsTV = 10, kargs...) = TVRegularization(λ, shape, dims, iterationsTV)
+TVRegularization(λ; shape, dims = 1:length(shape), iterationsTV = 10, kargs...) = TVRegularization(λ, dims, shape, iterationsTV)
 
 
 mutable struct TVParams{Tc, matT}
