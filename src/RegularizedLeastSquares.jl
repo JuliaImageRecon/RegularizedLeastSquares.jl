@@ -87,40 +87,40 @@ Function returns choosen solver.
 * `"splitBregman"`    - Split Bregman method for constrained & regularized inverse problems
 * `"primaldualsolver"`- First order primal dual method
 """
-function createLinearSolver(solver::AbstractString, A, x=zeros(eltype(A),size(A,2));regName = nothing, λ = 0,kargs...)
+function createLinearSolver(solver::AbstractString, A, x=zeros(eltype(A),size(A,2));regName = nothing, λ = nothing, kargs...)
 
   # Resolve regNames if reg does not exist
   # Checks if reg exists in such a way that doesnt overwrite default reg values for Solvers
   kwargs = values(kargs)
-  if !isnothing(regName) && !haskey(kwargs, :reg)
+  if !isnothing(regName) && !isnothing(λ) && !haskey(kwargs, :reg)
     reg = Regularization(regName, λ; kargs...)
-    kargs = (kargs..., reg = reg)
+    kargs = (kargs..., λ = λ, reg = reg)
   end
 
   if solver == "kaczmarz"
-    return createLinearSolver(Kaczmarz, A; λ = λ, kargs...)
+    return createLinearSolver(Kaczmarz, A; kargs...)
   elseif solver == "kaczmarzUpdated"
-    return createLinearSolver(KaczmarzUpdated, A; λ = λ, kargs...)
+    return createLinearSolver(KaczmarzUpdated, A; kargs...)
   elseif solver == "cgnr"
-    return createLinearSolver(CGNR, A, x; λ = λ, kargs...)
+    return createLinearSolver(CGNR, A, x; kargs...)
   elseif solver == "direct"
-    return createLinearSolver(DirectSolver, A; λ = λ, kargs...)
+    return createLinearSolver(DirectSolver, A; kargs...)
   elseif solver == "daxkaczmarz"
-    return createLinearSolver(DaxKaczmarz, A; λ = λ, kargs...)
+    return createLinearSolver(DaxKaczmarz, A; kargs...)
   elseif solver == "daxconstrained"
-    return createLinearSolver(DaxConstrained, A; λ = λ, kargs...)
+    return createLinearSolver(DaxConstrained, A; kargs...)
   elseif solver == "pseudoinverse"
-    return createLinearSolver(PseudoInverse, A; λ = λ, kargs...)
+    return createLinearSolver(PseudoInverse, A; kargs...)
   elseif solver == "fusedlasso"
-    return createLinearSolver(FusedLasso, A; λ = λ, kargs...)
+    return createLinearSolver(FusedLasso, A; kargs...)
   elseif solver == "fista"
-    return createLinearSolver(FISTA, A, x; λ = λ, kargs...)
+    return createLinearSolver(FISTA, A, x; kargs...)
   elseif solver == "admm"
-    return createLinearSolver(ADMM, A, x; λ = λ, kargs...)
+    return createLinearSolver(ADMM, A, x; kargs...)
   elseif solver == "splitBregman"
-    return createLinearSolver(SplitBregman, A, x; λ = λ, kargs...)
+    return createLinearSolver(SplitBregman, A, x; kargs...)
   elseif solver == "primaldualsolver"
-    return createLinearSolver(PrimalDualSolver, A; λ = λ, kargs...)
+    return createLinearSolver(PrimalDualSolver, A; kargs...)
   else
     error("Solver $solver not found.")
   end
