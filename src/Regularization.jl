@@ -1,8 +1,21 @@
-export Regularization, lambdList, prox! #, norm
+export Regularization, AbstractRegularization, lambdList, prox! #, norm
 
-abstract type AbstractRegularization end
-prox!(reg::AbstractRegularization, x) = prox!(reg, x, reg.λ)
-norm(reg::AbstractRegularization, x) = norm(reg, x, reg.λ)
+abstract type AbstractRegularization{T} end
+prox!(reg::AbstractRegularization{T}, x::AbstractArray{Tc}) where {T, Tc <: Union{T, Complex{T}}} = prox!(reg, x, reg.λ)
+norm(reg::AbstractRegularization{T}, x::AbstractArray{Tc}) where {T, Tc <: Union{T, Complex{T}}} = norm(reg, x, reg.λ)
+prox!(reg::AbstractRegularization, x::AbstractArray{T}) where {T} = prox!(reg, x, T(reg.λ))
+norm(reg::AbstractRegularization, x::AbstractArray{T}) where {T} = norm(reg, x, T(reg.λ))
+
+@generated function prox!(reg::T, x, λ) where {T<:AbstractRegularization}
+  kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in fieldnames(T)[2:end]]
+  return Expr(:call, :prox!, Expr(:parameters, kwargs...), T, :x, :λ)
+end
+
+@generated function norm(reg::T, x, λ) where {T<:AbstractRegularization}
+  kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in fieldnames(T)[2:end]]
+  return Expr(:call, :norm, Expr(:parameters, kwargs...), T, :x, :λ)
+end
+
 
 """
 Type describing custom regularizers
@@ -13,10 +26,10 @@ Type describing custom regularizers
 * `λ::AbstractFloat`                - regularization paramter
 * `params::Dict{Symbol,Any}`  - additional parameters
 """
-mutable struct CustomRegularization <: AbstractRegularization
+mutable struct CustomRegularization{T} <: AbstractRegularization{T}
   prox!::Function
   norm::Function
-  λ
+  λ::T
   params::Dict{Symbol,Any}  # @TODO in die funcs
 end
 

@@ -1,19 +1,16 @@
 export PositiveRegularization, proxPositive!, normPositive
 
-struct PositiveRegularization <: AbstractRegularization
-  λ::Float64
+struct PositiveRegularization{T} <: AbstractRegularization{T}
+  λ::T
 end
-
-prox!(reg::PositiveRegularization, x, λ) = proxPositive!(x, λ)
-norm(reg::PositiveRegularization, x, λ) = normPositive(x, λ)
-
 
 """
     proxPositive!(x::Vector{T},λ::Float64=1.0;kargs...) where T
 
     enforce positivity and realness of solution `x`.
 """
-function proxPositive!(x::Vector{T},λ::Float64=1.0;kargs...) where T
+proxPositive!(x, λ::Float64=1.0; kargs...) = prox!(PositiveRegularization, x, λ; kargs...)
+function prox!(::Type{<:PositiveRegularization}, x::Vector{T},λ::Float64=1.0;kargs...) where T
   enfReal!(x)
   enfPos!(x)
 end
@@ -22,7 +19,8 @@ end
     returns the value of the characteristic function of real, positive numbers.
     normPositive(x) = (isreal(x)&&x>0) ? 0 : Inf
 """
-function normPositive(x::Vector{T},λ::Float64=1.0;kargs...) where T
+normPositive(x, λ::Float64=1.0; kargs...) = norm(PositiveRegularization, x, λ; kargs...)
+function norm(::Type{<:PositiveRegularization}, x::Vector{T},λ::Float64=1.0;kargs...) where T
   y = copy(x)
   proxPositive!(y)
   if y != x

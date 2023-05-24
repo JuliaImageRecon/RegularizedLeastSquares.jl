@@ -1,7 +1,7 @@
 export LLRRegularization, proxLLR!, normLLR, proxLLROverlapping!
 
 
-struct LLRRegularization{N, TI} <: AbstractRegularization where {N, TI<:Integer}
+struct LLRRegularization{T, N, TI} <: AbstractRegularization{T} where {N, TI<:Integer}
   λ::Float64
   shape::NTuple{N,TI}
   blockSize::NTuple{N,TI}
@@ -9,9 +9,6 @@ struct LLRRegularization{N, TI} <: AbstractRegularization where {N, TI<:Integer}
 end
 LLRRegularization(λ;  shape::NTuple{N,TI}, blockSize::NTuple{N,TI} = ntuple(_ -> 2, N), randshift::Bool = true, kargs...) where {N,TI<:Integer} =
  LLRRegularization(λ, shape, blockSize, randshift)
-
-prox!(reg::LLRRegularization, x, λ) = proxLLR!(x, λ; shape = reg.shape, blockSize = reg.blockSize, randshift = reg.randshift)
-norm(reg::LLRRegularization, x, λ) = normLLR(x, λ; shape = reg.shape, blockSize = reg.blockSize, randshift = reg.randshift)
 
 """
     proxLLR!(x::Vector{T}, λ=1e-6; kargs...) where T
@@ -25,7 +22,8 @@ proximal map for LLR regularization using singular-value-thresholding
 * `blockSize::Tuple{Int}=[2;2]` - size of patches to perform singular value thresholding on
 * `randshift::Bool=true`        - randomly shifts the patches to ensure translation invariance
 """
-function proxLLR!(
+proxLLR!(x, λ; kargs...) = prox!(LLRRegularization, x, λ; kargs...)
+function prox!(::Type{<:LLRRegularization},
     x::Vector{T},
     λ;
     shape::NTuple{N,TI},
@@ -94,7 +92,8 @@ end
 returns the value of the LLR-regularization term.
 Arguments are the same is in `proxLLR!`
 """
-function normLLR(
+normLLR(x, λ; kargs...) = norm(LLRRegularization, x, λ; kargs...)
+function norm(::Type{<:LLRRegularization},
     x::Vector{T},
     λ::Float64;
     shape::NTuple{N,TI},

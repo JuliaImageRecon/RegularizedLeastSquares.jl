@@ -1,15 +1,12 @@
 export TVRegularization, proxTV!, normTV
 
-struct TVRegularization <: AbstractRegularization
-  λ::Float64
+struct TVRegularization{T} <: AbstractRegularization{T}
+  λ::T
   dims
   shape
   iterationsTV::Int64
 end
 TVRegularization(λ; shape, dims = 1:length(shape), iterationsTV = 10, kargs...) = TVRegularization(λ, shape, dims, iterationsTV)
-
-prox!(reg::TVRegularization, x, λ) = proxTV!(x, λ; shape = reg.shape, dims = reg.dims, iterationsTV = reg.iterationsTV)
-norm(reg::TVRegularization, x, λ) = normTV(x, λ; shape = reg.shape, dims = reg.dims)
 
 
 mutable struct TVParams{Tc, matT}
@@ -63,7 +60,8 @@ and Deblurring Problems", IEEE Trans. Image Process. 18(11), 2009
 * `dims`                    - Dimension to perform the TV along. If `Integer`, the Condat algorithm is called, and the FDG algorithm otherwise.
 * `iterationsTV=20`         - number of FGP iterations
 """
-function proxTV!(x, λ; shape, dims=1:length(shape), kwargs...) # use kwargs for shape and dims
+proxTV!(x, λ; kargs...) = prox!(TVRegularization, x, λ; kargs...)
+function prox!(::Type{<:TVRegularization}, x, λ; shape, dims=1:length(shape), kwargs...) # use kwargs for shape and dims
   return proxTV!(x, λ, shape, dims; kwargs...) # define shape and dims w/o kwargs to enable multiple dispatch on dims
 end
 
@@ -136,7 +134,8 @@ end
 returns the value of the TV-regularization term.
 Arguments are the same as in `proxTV!`
 """
-function normTV(x::Vector{Tc},λ::T; shape, dims=1:length(shape)) where {T <: Real, Tc <: Union{T, Complex{T}}}
+normTV(x, λ; kargs...) = norm(TVRegularization, x, λ; kargs...)
+function norm(::Type{<:TVRegularization}, x::Vector{Tc},λ::T; shape, dims=1:length(shape)) where {T <: Real, Tc <: Union{T, Complex{T}}}
   ∇ = GradientOp(Tc,shape, dims)
   return λ * norm(∇*x, 1)
 end

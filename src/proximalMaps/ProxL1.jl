@@ -1,14 +1,10 @@
 export L1Regularization, proxL1!, proxL1, normL1
 
-struct L1Regularization <: AbstractRegularization
-  λ::Float64
+struct L1Regularization{T} <: AbstractRegularization{T}
+  λ::T
   sparseTrafo::Trafo
 end
 L1Regularization(λ; sparseTrafo::Trafo=nothing, kargs...) = L1Regularization(λ, sparseTrafo)
-
-prox!(reg::L1Regularization, x, λ) = proxL1!(x, λ; sparseTrafo = reg.sparseTrafo)
-norm(reg::L1Regularization, x, λ) = normL1(x, λ; sparseTrafo = reg.sparseTrafo)
-
 
 """
     proxL1!(x::Array{T}, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T
@@ -20,7 +16,8 @@ performs soft-thresholding - i.e. proximal map for the Lasso problem.
 * `λ::Float64`                  - regularization paramter
 * `sparseTrafo::Trafo=nothing`  - sparsifying transform to apply
 """
-function proxL1!(x::AbstractArray{Tc}, λ::T; sparseTrafo::Trafo=nothing, kargs...) where {T, Tc <: Union{T, Complex{T}}}
+proxL1!(x, λ; kargs...) = prox!(L1Regularization, x, λ; kargs...)
+function prox!(::Type{<:L1Regularization}, x::AbstractArray{Tc}, λ::T; sparseTrafo::Trafo=nothing, kargs...) where {T, Tc <: Union{T, Complex{T}}}
   ε = eps(T)
 
   if sparseTrafo != nothing
@@ -40,7 +37,8 @@ end
 returns the value of the L1-regularization term.
 Arguments are the same as in `proxL1!`
 """
-function normL1(x::T, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T<:AbstractArray
+normL1(x, λ; kargs...) = norm(L1Regularization, x, λ; kargs...)
+function norm(::Type{<:L1Regularization}, x::T, λ::Float64; sparseTrafo::Trafo=nothing, kargs...) where T<:AbstractArray
   if sparseTrafo != nothing
     l1Norm = λ*norm(sparseTrafo*x,1)
   else

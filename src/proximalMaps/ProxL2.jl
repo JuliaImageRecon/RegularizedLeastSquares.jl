@@ -1,19 +1,16 @@
 export L2Regularization, proxL2!, normL2
 
-struct L2Regularization <: AbstractRegularization
-  λ::Float64
+struct L2Regularization{T} <: AbstractRegularization{T}
+  λ::T
 end
-
-prox!(reg::L2Regularization, x, λ) = proxL2!(x, λ)
-norm(reg::L2Regularization, x, λ) = normL2(x, λ)
-
 
 """
     proxL2!(x::Vector{T}, λ::Float64; kargs...) where T
 
 proximal map for Tikhonov regularization.
 """
-function proxL2!(x::T, λ::Float64; kargs...) where T<:AbstractArray
+proxL2!(x, λ; kargs...) = prox!(L2Regularization, x, λ; kargs...)
+function prox!(::Type{<:L2Regularization}, x::T, λ::Float64; kargs...) where T<:AbstractArray
   x[:] .*= 1. / (1. + 2. *λ)#*x
 end
 
@@ -22,4 +19,5 @@ end
 
 returns the value of the L2-regularization term
 """
-normL2(x::T, λ::Float64; kargs...) where T<:AbstractArray = λ*norm(x,2)^2
+normL2(x, λ; kargs...) = norm(L2Regularization, x, λ; kargs...)
+norm(::Type{<:L2Regularization}, x::T, λ::Float64; kargs...) where T<:AbstractArray = λ*norm(x,2)^2
