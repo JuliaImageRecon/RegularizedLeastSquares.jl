@@ -218,7 +218,9 @@ function iterate(solver::KaczmarzUpdated, iteration::Int=0)
   
     if length(solver.reg) > 1
       # We skip the L2 regularizer, since it has already been applied
-      prox!(solver.cl, solver.reg[2:end])
+      for r in solver.reg[2:end]
+        r.prox!(solver.cl)
+      end
     end
   
     return solver.vl, iteration+1

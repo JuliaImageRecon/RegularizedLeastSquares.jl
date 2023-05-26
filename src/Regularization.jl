@@ -116,10 +116,4 @@ function Regularization(names::Vector{String},
   return reg
 end
 
-function prox!(x::Array, reg::Vector{AbstractRegularization})
-  for d=1:length(reg)
-    reg[d].prox!(x)
-  end
-end
-
 norm0(x::Array{T}, λ::T; sparseTrafo::Trafo=nothing, kargs...) where T = 0.0

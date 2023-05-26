@@ -210,7 +210,10 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
     # We skip the L2 regularizer, since it has already been applied
     fac = maximum(abs.(solver.cl))
     solver.cl ./= fac
-    prox!(solver.cl, solver.reg[2:end])
+    for r in solver.reg[2:end]
+      r.prox!(solver.cl)
+    end
+
     solver.cl .*= fac
   end
 
