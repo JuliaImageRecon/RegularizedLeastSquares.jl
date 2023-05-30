@@ -1,10 +1,10 @@
 export Regularization, AbstractRegularization, lambdList, prox! #, norm
 
 abstract type AbstractRegularization{T} end
-prox!(reg::AbstractRegularization{T}, x::AbstractArray{Tc}; factor::T = 1) where {T, Tc <: Union{T, Complex{T}}} = prox!(reg, x, reg.λ * factor)
-norm(reg::AbstractRegularization{T}, x::AbstractArray{Tc}; factor::T = 1) where {T, Tc <: Union{T, Complex{T}}} = norm(reg, x, reg.λ * factor)
-prox!(reg::AbstractRegularization, x::AbstractArray{T}; factor::T = 1) where {T} = prox!(reg, x, T(reg.λ * factor))
-norm(reg::AbstractRegularization, x::AbstractArray{T}; factor::T = 1) where {T} = norm(reg, x, T(reg.λ * factor))
+prox!(reg::AbstractRegularization{T}, x::AbstractArray{Tc}; factor::T = one(T)) where {T, Tc <: Union{T, Complex{T}}} = prox!(reg, x, reg.λ * factor)
+norm(reg::AbstractRegularization{T}, x::AbstractArray{Tc}; factor::T = one(T)) where {T, Tc <: Union{T, Complex{T}}} = norm(reg, x, reg.λ * factor)
+prox!(reg::AbstractRegularization, x::AbstractArray{T}; factor::T = one(T)) where {T} = prox!(reg, x, T(reg.λ * factor))
+norm(reg::AbstractRegularization, x::AbstractArray{T}; factor::T = one(T)) where {T} = norm(reg, x, T(reg.λ * factor))
 
 @generated function prox!(reg::T, x, λ) where {T<:AbstractRegularization}
   kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in fieldnames(T)[2:end]]
