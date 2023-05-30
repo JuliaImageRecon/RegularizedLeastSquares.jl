@@ -258,7 +258,7 @@ function iterate(solver::SplitBregman{matT,vecT,opT,rvecT,preconT}, iteration::I
     copyto!(solver.vᵒˡᵈ[i], solver.v[i])
     solver.v[i][:] .= solver.regTrafo[i]*solver.u .+ solver.b[i]
     if solver.ρ[i] != 0
-      prox!(solver.reg[i], solver.v[i],solver.regFac*solver.reg[i].λ/solver.ρ[i])
+      prox!(solver.reg[i], solver.v[i]; factor = solver.regFac/solver.ρ[i])
     end
   end
 
