@@ -21,15 +21,32 @@ abstract type AbstractRegularizationNormalization end
 struct NoNormalization <: AbstractRegularizationNormalization end
 struct MeasurementBasedNormalization <: AbstractRegularizationNormalization end
 struct SystemMatrixBasedNormalization <: AbstractRegularizationNormalization end
+# TODO weighted systemmatrix, maybe weighted measurementbased?
 
-function normalize(::MeasurementBasedNormalization, regs::Union{AbstractRegularization, Vector{<:AbstractRegularization}}, A::AbstractArray, b)
+function normalize(::MeasurementBasedNormalization, regs, A, b::AbstractArray)
   return norm(b, 1)/length(b)
 end
-function normalize(::SystemMatrixBasedNormalization, regs::Union{AbstractRegularization, Vector{<:AbstractRegularization}}, A::AbstractArray, b)
-  return norm(b, 1)/length(b)
+normalize(::MeasurementBasedNormalization, regs, A, b::Nothing) = normalize(NoNormalization(), regs, A, b)
+function normalize(::SystemMatrixBasedNormalization, regs, A::AbstractArray, b)
+  M = size(A, 1)
+  N = size(A, 2)
+
+  energy = zeros(T, M)
+  for m=1:M
+    energy[m] = sqrt(rownorm²(A,m))
+  end
+
+  trace = norm(energy)^2/N
+  # TODO where setlamda? here we dont know λ
+  return trace
 end
-normalize(::NoNormalization, regs::Union{AbstractRegularization, Vector{<:AbstractRegularization}}, A, b) = 1.0
+normalize(::NoNormalization, regs, A, b) = 1.0
+
+
 normalize(solver::AbstractLinearSolver, norm::AbstractRegularizationNormalization, regs, A, b) = normalize(norm, regs, A, b)
+# System matrix based normalization is already done in constructor
+normalize(solver::AbstractLinearSolver, norm::SystemMatrixBasedNormalization, regs, A, b) = solver.regFac
+
 """
 Type describing custom regularizers
 
