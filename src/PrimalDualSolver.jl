@@ -81,6 +81,7 @@ function init!(solver::PrimalDualSolver; S::Matrix{T}=solver.S, u::Vector{T}=T[]
   solver.y1[:] .= zero(T)
   solver.y2[:] .= zero(T)
 
+  solver.regFac = normalize(solver, solver.normalizeReg, solver.reg, S, u)
 end
 
 function solve(solver::PrimalDualSolver, u::Vector{T}; S::Matrix{T}=solver.S, startVector::Vector{T}=eltype(S)[]

@@ -159,6 +159,8 @@ function init!(solver::KaczmarzUpdated
     j = solver.rowindex[i]
     solver.ɛw[i] = sqrt(solver.reg[1].λ) / weights[j]
   end
+
+  solver.regFac = normalize(solver, solver.normalizeReg, solver.reg, S, u)
 end
 
 """
@@ -225,7 +227,7 @@ function iterate(solver::KaczmarzUpdated, iteration::Int=0)
     if length(solver.reg) > 1
       # We skip the L2 regularizer, since it has already been applied
       for r in solver.reg[2:end]
-        r.prox!(solver.cl)
+        r.prox!(solver.cl; factor = solver.regFac)
       end
     end
   

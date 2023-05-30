@@ -103,6 +103,7 @@ function Kaczmarz(S; b=nothing, λ=[0.0], reg = L2Regularization(λ[1])
   αl = zero(eltype(S))
 
   # normalization parameters
+  # TODO regFac for first L2 term 
   regFac = normalize(normalizeReg, reg, S, nothing)
 
   return Kaczmarz(S,u,vec(reg),denom,rowindex,rowIndexCycle,cl,vl,εw,τl,αl
@@ -151,6 +152,8 @@ function init!(solver::Kaczmarz
     j = solver.rowindex[i]
     solver.ɛw[i] = sqrt(solver.reg[1].λ) / weights[j]
   end
+
+  solver.regFac = normalize(solver, solver.normalizeReg, solver.reg, S, u)
 end
 
 """
@@ -218,7 +221,7 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
     fac = maximum(abs.(solver.cl))
     solver.cl ./= fac
     for r in solver.reg[2:end]
-      r.prox!(solver.cl)
+      r.prox!(solver.cl; factor = solver.regFac)
     end
 
     solver.cl .*= fac
