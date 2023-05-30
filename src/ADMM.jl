@@ -120,9 +120,12 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=L1Regulariza
   ɛᵈᵘᵃ = similar(rᵏ)
   Δ    = similar(rᵏ)
 
+  # normalization parameters
+  regFac = normalize(normalizeReg, reg, A, nothing)
+
   return ADMM(A,reg,regTrafo,AᴴA,β,β_y,x,xᵒˡᵈ,z,zᵒˡᵈ,u,uᵒˡᵈ,precon,ρ_vec,iterations
               ,iterationsInner,statevars, rᵏ,sᵏ,ɛᵖʳⁱ,ɛᵈᵘᵃ,zero(real(T)),Δ,absTol,relTol,tolInner
-              ,normalizeReg,one(real(T)), vary_ρ, verbose)
+              ,normalizeReg,regFac, vary_ρ, verbose)
 end
 
 """

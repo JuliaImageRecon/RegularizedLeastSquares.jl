@@ -120,9 +120,12 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing; re
     ρ_vec = typeof(real.(x))(ρ)
   end
 
+  # normalization parameters
+  regFac = normalize(normalizeReg, reg, A, nothing)
+
   return SplitBregman(A,vec(reg),regTrafo,y,op,β,β_yj,y_j,u,v,vᵒˡᵈ,b,precon,ρ_vec
               ,iterations,iterationsInner,iterationsCG,statevars, rk,sk
-              ,eps_pri,eps_dt,0.0,absTol,relTol,tolInner,iter_cnt,normalizeReg,1.0)
+              ,eps_pri,eps_dt,0.0,absTol,relTol,tolInner,iter_cnt,normalizeReg,regFac)
 end
 
 """

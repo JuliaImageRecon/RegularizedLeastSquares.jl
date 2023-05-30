@@ -17,6 +17,8 @@ mutable struct PrimalDualSolver{T,S,R<:AbstractRegularization} <: AbstractLinear
     enforcePositive::Bool
     iterations::Int64
     shape::NTuple{2,Int64}
+    normalizeReg::AbstractRegularizationNormalization
+    regFac::Float64
 end
 
 function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = L1Regularization(λ)
@@ -29,6 +31,7 @@ function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = L1Regularizati
                          , ϵ=1e-10
                          , PrimalDualGap=1.0
                          , shape::NTuple{2,Int64}=(0,0)
+                         , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
                          , kargs...) where T
   M,N = size(S)
 
@@ -55,7 +58,11 @@ function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = L1Regularizati
   y1 = zeros(T,M)
   y2 = zeros(T,size(gradientOp*c,1))
 
-  return PrimalDualSolver(S,vec(reg),gradientOp,u,c,cO,y1,y2,T(σ),T(τ),T(ϵ),T(PrimalDualGap),enforceReal,enforcePositive,iterations,shape)
+  # normalization parameters
+  regFac = normalize(normalizeReg, reg, S, nothing)
+
+  return PrimalDualSolver(S,vec(reg),gradientOp,u,c,cO,y1,y2,T(σ),T(τ),T(ϵ),T(PrimalDualGap),enforceReal,enforcePositive,iterations,shape,
+  normalizeReg, regFac)
 end
 
 function init!(solver::PrimalDualSolver; S::Matrix{T}=solver.S, u::Vector{T}=T[], c::Vector{T}=T[],

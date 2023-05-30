@@ -24,6 +24,8 @@ mutable struct KaczmarzUpdated{matT,T,U,Tsparse, R <: AbstractRegularization} <:
   sparseTrafo::Tsparse
   iterations::Int64
   constraintMask::Union{Nothing,Vector{Bool}}
+  normalizeReg::AbstractRegularizationNormalization
+  regFac::Float64
 end
 
 """
@@ -69,6 +71,7 @@ function KaczmarzUpdated(S; b=nothing, λ=[0.0], reg = L2Regularization(λ[1])
     , seed::Int=1234
     , iterations::Int64=10
     , constraintMask=nothing
+    , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
     , kargs...)
 
 T = real(eltype(S))
@@ -108,9 +111,12 @@ vl = zeros(eltype(S),M)
 τl = zero(eltype(S))
 αl = zero(eltype(S))
 
+# normalization parameters
+regFac = normalize(normalizeReg, reg, S, nothing)
+
 return KaczmarzUpdated(S,u,vec(reg),denom,rowindex,rowIndexCycle,cl,vl,εw,τl,αl
         ,T.(w),enforceReal,enforcePositive,Randomized,SubMatrixPercentage,SubMatrixSize,Probabilities
-        ,shuffleRows,Int64(seed),sparseTrafo,iterations, constraintMask)
+        ,shuffleRows,Int64(seed),sparseTrafo,iterations, constraintMask, normalizeReg, regFac)
 end
 
 """

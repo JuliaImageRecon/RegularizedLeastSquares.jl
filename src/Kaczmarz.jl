@@ -1,7 +1,7 @@
 export kaczmarz
 export Kaczmarz
 
-mutable struct Kaczmarz{matT,T,U,Tsparse, R} <: AbstractLinearSolver where {R<:AbstractRegularization}
+mutable struct Kaczmarz{matT,rT,T,U,Tsparse, R} <: AbstractLinearSolver where {rT <: Real, T <: Union{rT, Complex{rT}}, R<:AbstractRegularization}
   S::matT
   u::Vector{T}
   reg::Vector{R}
@@ -22,6 +22,8 @@ mutable struct Kaczmarz{matT,T,U,Tsparse, R} <: AbstractLinearSolver where {R<:A
   iterations::Int64
   constraintMask::Union{Nothing,Vector{Bool}}
   regMatrix::Union{Nothing,Vector{U}} # Tikhonov regularization matrix
+  normalizeReg::AbstractRegularizationNormalization
+  regFac::rT
 end
 
 """
@@ -60,6 +62,7 @@ function Kaczmarz(S; b=nothing, λ=[0.0], reg = L2Regularization(λ[1])
               , iterations::Int64=10
               , constraintMask=nothing
               , regMatrix=nothing
+              , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
               , kargs...)
 
   T = real(eltype(S))
@@ -99,9 +102,13 @@ function Kaczmarz(S; b=nothing, λ=[0.0], reg = L2Regularization(λ[1])
   τl = zero(eltype(S))
   αl = zero(eltype(S))
 
+  # normalization parameters
+  regFac = normalize(normalizeReg, reg, S, nothing)
+
   return Kaczmarz(S,u,vec(reg),denom,rowindex,rowIndexCycle,cl,vl,εw,τl,αl
                   ,T.(w),enforceReal,enforcePositive,shuffleRows
-                  ,Int64(seed),sparseTrafo,iterations, constraintMask, regMatrix)
+                  ,Int64(seed),sparseTrafo,iterations, constraintMask, regMatrix, 
+                  normalizeReg, regFac)
 end
 
 """

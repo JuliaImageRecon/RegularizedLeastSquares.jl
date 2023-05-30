@@ -72,9 +72,12 @@ function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); λ::Real=0.0, reg::R = L2Re
   βl = zero(T)        #temporary scalar
   ζl = zero(T)        #temporary scalar
 
+  # normalization parameters
+  regFac = normalize(normalizeReg, reg, A, nothing)
+
   return CGNR(A, AᴴA,
              reg,cl,rl,zl,pl,vl,xl,αl,βl,ζl,
-             weights,enforceReal,enforcePositive,sparseTrafo,iterations,relTol,0.0,normalizeReg,1.0)
+             weights,enforceReal,enforcePositive,sparseTrafo,iterations,relTol,0.0,normalizeReg,regFac)
 end
 
 """
