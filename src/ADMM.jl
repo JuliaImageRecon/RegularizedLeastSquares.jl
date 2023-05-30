@@ -33,7 +33,7 @@ mutable struct ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT, R} <: AbstractLinearSol
   absTol::rT
   relTol::rT
   tolInner::rT
-  normalizeReg::Bool
+  normalizeReg::AbstractRegularizationNormalization
   regFac::rT
   vary_ρ::Symbol
   verbose::Bool
@@ -71,7 +71,7 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=L1Regulariza
             , absTol::Real=eps(real(T))
             , relTol::Real=eps(real(T))
             , tolInner::Real=1e-5
-            , normalizeReg::Bool=false
+            , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
             , vary_ρ::Symbol=:none
             , verbose::Bool=false
             , kargs...) where {T,matT,opT}
@@ -171,11 +171,8 @@ function init!(solver::ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT}, b::vecT
   solver.Δ .= Inf
 
   # normalization of regularization parameters
-  if solver.normalizeReg
-    solver.regFac = norm(b,1)/length(b)
-  else
-    solver.regFac = 1
-  end
+  solver.regFac = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
+
 end
 
 """
@@ -239,7 +236,7 @@ function iterate(solver::ADMM, iteration::Integer=0)
     solver.zᵒˡᵈ[i] .= solver.z[i]
     solver.z[i] .= solver.regTrafo[i]*solver.x .+ solver.u[i]
     if solver.ρ[i] != 0
-      prox!(solver.reg[i], solver.z[i], solver.regFac*solver.reg[i].λ/solver.ρ[i])
+      prox!(solver.reg[i], solver.z[i]; factor = solver.regFac/solver.ρ[i])
     end
 
     # 3. update u

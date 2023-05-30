@@ -1,10 +1,10 @@
 export Regularization, AbstractRegularization, lambdList, prox! #, norm
 
 abstract type AbstractRegularization{T} end
-prox!(reg::AbstractRegularization{T}, x::AbstractArray{Tc}) where {T, Tc <: Union{T, Complex{T}}} = prox!(reg, x, reg.λ)
-norm(reg::AbstractRegularization{T}, x::AbstractArray{Tc}) where {T, Tc <: Union{T, Complex{T}}} = norm(reg, x, reg.λ)
-prox!(reg::AbstractRegularization, x::AbstractArray{T}) where {T} = prox!(reg, x, T(reg.λ))
-norm(reg::AbstractRegularization, x::AbstractArray{T}) where {T} = norm(reg, x, T(reg.λ))
+prox!(reg::AbstractRegularization{T}, x::AbstractArray{Tc}; factor::T = 1) where {T, Tc <: Union{T, Complex{T}}} = prox!(reg, x, reg.λ * factor)
+norm(reg::AbstractRegularization{T}, x::AbstractArray{Tc}; factor::T = 1) where {T, Tc <: Union{T, Complex{T}}} = norm(reg, x, reg.λ * factor)
+prox!(reg::AbstractRegularization, x::AbstractArray{T}; factor::T = 1) where {T} = prox!(reg, x, T(reg.λ * factor))
+norm(reg::AbstractRegularization, x::AbstractArray{T}; factor::T = 1) where {T} = norm(reg, x, T(reg.λ * factor))
 
 @generated function prox!(reg::T, x, λ) where {T<:AbstractRegularization}
   kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in fieldnames(T)[2:end]]
@@ -16,7 +16,20 @@ end
   return Expr(:call, :norm, Expr(:parameters, kwargs...), T, :x, :λ)
 end
 
+export AbstractRegularizationNormalization, NoNormalization, MeasurementBasedNormalization, SystemMatrixBasedNormalization
+abstract type AbstractRegularizationNormalization end
+struct NoNormalization <: AbstractRegularizationNormalization end
+struct MeasurementBasedNormalization <: AbstractRegularizationNormalization end
+struct SystemMatrixBasedNormalization <: AbstractRegularizationNormalization end
 
+function normalize(::MeasurementBasedNormalization, regs::Union{AbstractRegularization, Vector{<:AbstractRegularization}}, A::AbstractArray, b)
+  return norm(b, 1)/length(b)
+end
+function normalize(::SystemMatrixBasedNormalization, regs::Union{AbstractRegularization, Vector{<:AbstractRegularization}}, A::AbstractArray, b)
+  return norm(b, 1)/length(b)
+end
+normalize(::NoNormalization, regs::Union{AbstractRegularization, Vector{<:AbstractRegularization}}, A, b) = 1.0
+normalize(solver::AbstractLinearSolver, norm::AbstractRegularizationNormalization, regs, A, b) = normalize(norm, regs, A, b)
 """
 Type describing custom regularizers
 

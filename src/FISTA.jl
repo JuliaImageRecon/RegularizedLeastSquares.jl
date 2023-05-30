@@ -13,7 +13,7 @@ mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVecto
   tᵒˡᵈ::rT
   iterations::Int64
   relTol::rT
-  normalizeReg::Bool
+  normalizeReg::AbstractRegularizationNormalization
   regFac::rT
   norm_x₀::rT
   rel_res_norm::rT
@@ -47,7 +47,7 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L
               , t=1
               , relTol=eps(real(T))
               , iterations=50
-              , normalizeReg=false
+              , normalizeReg=NoNormalization()
               , verbose = false
               , kargs...) where {T}
 
@@ -91,11 +91,7 @@ function init!(solver::FISTA{rT,vecT,matA,matAHA}, b::vecT
   solver.t = t
   solver.tᵒˡᵈ = t
   # normalization of regularization parameters
-  if solver.normalizeReg
-    solver.regFac = norm(solver.x₀,1)/length(solver.x₀)
-  else
-    solver.regFac = 1
-  end
+  solver.regFac = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
 end
 
 """
@@ -157,7 +153,7 @@ function iterate(solver::FISTA, iteration::Int=0)
   # solver.x .+= solver.ρ .* solver.x₀
 
   # proximal map
-  prox!(solver.reg, solver.x, solver.regFac*solver.ρ*solver.reg.λ)
+  prox!(solver.reg, solver.x; factor = solver.regFac*solver.ρ)
 
   # predictor-corrector update
   solver.tᵒˡᵈ = solver.t

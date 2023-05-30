@@ -63,7 +63,7 @@ end
             reg = reg,
             iterations = 200,
             solverInfo = solverInfo,
-            normalizeReg = false,
+            normalizeReg = NoNormalization(),
         )
         x_approx = solve(S, b)
         @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
@@ -77,7 +77,7 @@ end
             reg = reg,
             iterations = 200,
             solverInfo = solverInfo,
-            normalizeReg = true,
+            normalizeReg = MeasurementBasedNormalization(),
         )
         x_approx = solve(S, b)
         x_approx .*= scale_F
@@ -95,7 +95,7 @@ end
         reg = reg,
         iterations = 200,
         solverInfo = solverInfo,
-        normalizeReg = false,
+        normalizeReg = NoNormalization(),
         ρ = 1e6,
         vary_ρ = :balance,
         verbose = false,
@@ -110,7 +110,7 @@ end
         reg = reg,
         iterations = 200,
         solverInfo = solverInfo,
-        normalizeReg = false,
+        normalizeReg = NoNormalization(),
         ρ = 1e-6,
         vary_ρ = :balance,
         verbose = false,
@@ -126,7 +126,7 @@ end
         reg = reg,
         iterations = 200,
         solverInfo = solverInfo,
-        normalizeReg = false,
+        normalizeReg = NoNormalization(),
         ρ = 1e-6,
         vary_ρ = :PnP,
         verbose = false,
@@ -147,7 +147,7 @@ end
         iterationsInner = 40,
         ρ = 1.0,
         solverInfo = solverInfo,
-        normalizeReg = false,
+        normalizeReg = NoNormalization(),
     )
     x_approx = solve(S, b)
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
@@ -162,7 +162,7 @@ end
         iterationsInner = 40,
         ρ = 1.0,
         solverInfo = solverInfo,
-        normalizeReg = true,
+        normalizeReg = MeasurementBasedNormalization(),
     )
     x_approx = solve(S, b)
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"

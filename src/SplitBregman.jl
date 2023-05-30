@@ -36,7 +36,7 @@ mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT, R<:AbstractRegular
   tolInner::Float64
   #counter for internal iterations
   iter_cnt::Int64
-  normalizeReg::Bool
+  normalizeReg::AbstractRegularizationNormalization
   regFac::Float64
 end
 
@@ -72,7 +72,7 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing; re
                     , absTol::Float64=eps()
                     , relTol::Float64=eps()
                     , tolInner::Float64=1.e-6
-                    , normalizeReg::Bool=false
+                    , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
                     , kargs...) where {matT<:Trafo, vecT<:AbstractVector}
 
   if regTrafo == nothing
@@ -174,11 +174,7 @@ function init!(solver::SplitBregman{matT,vecT,opT,ropT,rvecT,preconT}, b::vecT
   solver.σᵃᵇˢ = sqrt(length(b))*solver.absTol
 
   # normalization of regularization parameters
-  if solver.normalizeReg
-    solver.regFac = norm(b,1)/length(b)
-  else
-    solver.regFac = 1.0
-  end
+  solver.regFac = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
 
   # reset interation counter
   solver.iter_cnt = 1

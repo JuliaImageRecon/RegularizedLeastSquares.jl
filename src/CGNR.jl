@@ -20,7 +20,7 @@ mutable struct CGNR{matT,opT,vecT,T,Tsparse} <: AbstractLinearSolver
   iterations::Int64
   relTol::Float64
   z0::Float64
-  normalizeReg::Bool
+  normalizeReg::AbstractRegularizationNormalization
   regFac::Float64
 end
 
@@ -49,7 +49,7 @@ function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); λ::Real=0.0, reg::R = L2Re
               , enforcePositive::Bool=false
               , iterations::Int64=10
               , relTol::Float64=eps()
-              , normalizeReg::Bool=false
+              , normalizeReg::AbstractRegularizationNormalization=NoNormalization()
               , kargs...) where {opT,vecT<:AbstractVector,R<:Union{AbstractRegularization, Vector{AbstractRegularization}}}
 
   if reg isa Vector
@@ -113,11 +113,7 @@ function init!(solver::CGNR, u::vecT
   copyto!(solver.pl,solver.zl)
 
   # normalization of regularization parameters
-  if solver.normalizeReg
-    solver.regFac = norm(u,1)/length(u)
-  else
-    solver.regFac = 1.0
-  end
+  solver.regFac = normalize(solver, solver.normalizeReg, solver.reg, solver.A, u)
 end
 
 """
