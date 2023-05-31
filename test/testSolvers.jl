@@ -66,7 +66,7 @@ end
             normalizeReg = false,
         )
         x_approx = solve(S, b)
-        @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
+        @info "Testing solver $solver w/o restart: relative error = $(norm(x - x_approx) / norm(x))"
         @test x ≈ x_approx rtol = 0.1
 
         #additionally test the gradient restarting scheme
@@ -81,7 +81,7 @@ end
                 restart = :gradient,
             )
             x_approx = solve(S, b)
-            @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
+            @info "Testing solver $solver  w/ gradient restart: relative error = $(norm(x - x_approx) / norm(x))"
             @test x ≈ x_approx rtol = 0.1
         end
 
@@ -98,7 +98,7 @@ end
         )
         x_approx = solve(S, b)
         x_approx .*= scale_F
-        @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
+        @info "Testing solver $solver w/o restart and after re-scaling: relative error = $(norm(x - x_approx) / norm(x))"
         @test x ≈ x_approx rtol = 0.1
     end
 

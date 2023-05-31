@@ -45,9 +45,9 @@ References:
     for composite convex optimization," Arxiv:1512.07516, 2015,
     SIAM J. Opt. 2017
     [http://doi.org/10.1137/16m108104x]
-- Kim, D., & Fessler, J. A. (2018). 
+- Kim, D., & Fessler, J. A. (2018).
     Adaptive Restart of the Optimized Gradient Method for Convex Optimization.
-    Journal of Optimization Theory and Applications, 178(1), 240–263. 
+    Journal of Optimization Theory and Applications, 178(1), 240–263.
     [https://doi.org/10.1007/s10957-018-1287-4]
 
 # Arguments
@@ -124,7 +124,7 @@ function init!(solver::POGM{rT,vecT,matA,matAHA}, b::vecT
   solver.xᵒˡᵈ .= 0 # makes no difference in 1st iteration what this is set to
   solver.y .= 0
   solver.z .= 0
-  if solver.restart != :none #save memory if not using restart
+  if solver.restart != :none #save time if not using restart
     solver.w .= 0
   end
 
@@ -220,14 +220,15 @@ function iterate(solver::POGM, iteration::Int=0)
 
   # gradient restart conditions
   if solver.restart == :gradient
-    if real((solver.y + solver.ρ / solver.γ .* (solver.x .- solver.z) .- solver.w) ⋅ ((solver.x .- solver.z) ./ solver.γ .- solver.res)) < 0
+    solver.w .+= solver.y .+ solver.ρ ./ solver.γ .* (solver.x .- solver.z)
+    if real((solver.w ⋅ solver.x - solver.w ⋅ solver.z) / solver.γ - solver.w ⋅ solver.res) < 0
       solver.verbose && println("Gradient restart at iter $iteration")
       solver.σ = 1
       solver.t = 1
-    else #decreasing γ
+    else # decreasing γ
       solver.σ *= solver.σ_fac
     end
-    solver.w = solver.y + solver.ρ / solver.γ .* (solver.x .- solver.z) #this computation is doubled to avoid having to store wᵒˡᵈ
+    solver.w .= solver.ρ / solver.γ .* (solver.z .- solver.x) .- solver.y
   end
 
   # return the residual-norm as item and iteration number as state
