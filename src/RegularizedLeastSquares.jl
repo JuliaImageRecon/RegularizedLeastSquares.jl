@@ -49,6 +49,7 @@ include("CGNR.jl")
 include("Direct.jl")
 include("FusedLasso.jl")
 include("FISTA.jl")
+include("POGM.jl")
 include("ADMM.jl")
 include("SplitBregman.jl")
 include("PrimalDualSolver.jl")
@@ -83,6 +84,7 @@ Function returns choosen solver.
 * `"pseudoinverse"`   - approximates a solution using the More-Penrose pseudo inverse
 * `"fusedlasso"`      - solver for the Fused-Lasso problem
 * `"fista"`           - Fast Iterative Shrinkage Thresholding Algorithm
+* `"pogm"`            - Proximal Optimal Gradient Method
 * `"admm"`            - Alternating Direcion of Multipliers Method
 * `"splitBregman"`    - Split Bregman method for constrained & regularized inverse problems
 * `"primaldualsolver"`- First order primal dual method
@@ -110,6 +112,8 @@ function createLinearSolver(solver::AbstractString, A, x=zeros(eltype(A),size(A,
     return FusedLasso(A; kargs...)
   elseif solver == "fista"
     return FISTA(A, x; kargs...)
+  elseif solver == "pogm"
+    return POGM(A, x; kargs...)
   elseif solver == "admm"
     return ADMM(A, x; kargs...)
   elseif solver == "splitBregman"
