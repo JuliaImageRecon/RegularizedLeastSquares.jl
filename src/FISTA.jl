@@ -18,7 +18,7 @@ mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVecto
   norm_x₀::rT
   rel_res_norm::rT
   verbose::Bool
-  restart::Bool
+  restart::Symbol
 end
 
 """
@@ -39,7 +39,7 @@ creates a `FISTA` object for the system matrix `A`.
 * (`t=1.0`)                 - parameter for predictor-corrector step
 * (`relTol::Float64=1.e-5`) - tolerance for stopping criterion
 * (`iterations::Int64=50`)  - maximum number of iterations
-* (`restart=true`)          - toggle whether to use adaptive GR scheme
+* (`restart::Symbol=:none`) - :none, :gradient options for restarting
 """
 function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=nothing, regName=["L1"]
               , AᴴA=A'*A
@@ -50,7 +50,7 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=n
               , relTol=eps(real(T))
               , iterations=50
               , normalizeReg=false
-              , restart=false
+              , restart = :none
               , verbose = false
               , kargs...) where {T}
 
@@ -166,7 +166,7 @@ function iterate(solver::FISTA, iteration::Int=0)
   solver.reg.prox!(solver.x, solver.regFac*solver.ρ*solver.reg.λ; solver.reg.params...)
 
   # gradient restart conditions
-  if solver.restart
+  if solver.restart == :gradient
     if real(solver.res ⋅ (solver.x .- solver.xᵒˡᵈ) ) > 0 #if momentum is at an obtuse angle to the negative gradient
       solver.verbose && println("Gradient restart at iter $iteration")
       solver.t = 1
