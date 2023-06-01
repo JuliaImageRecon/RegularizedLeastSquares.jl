@@ -221,7 +221,7 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
     fac = maximum(abs.(solver.cl))
     solver.cl ./= fac
     for r in solver.reg[2:end]
-      r.prox!(solver.cl; factor = solver.regFac)
+      prox!(r, solver.cl; factor = solver.regFac)
     end
 
     solver.cl .*= fac
