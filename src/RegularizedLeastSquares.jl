@@ -49,6 +49,7 @@ include("CGNR.jl")
 include("Direct.jl")
 include("FusedLasso.jl")
 include("FISTA.jl")
+include("OptISTA.jl")
 include("POGM.jl")
 include("ADMM.jl")
 include("SplitBregman.jl")
@@ -112,6 +113,8 @@ function createLinearSolver(solver::AbstractString, A, x=zeros(eltype(A),size(A,
     return FusedLasso(A; kargs...)
   elseif solver == "fista"
     return FISTA(A, x; kargs...)
+  elseif solver == "optfista"
+    return OptFISTA(A, x; kargs...)
   elseif solver == "pogm"
     return POGM(A, x; kargs...)
   elseif solver == "admm"
