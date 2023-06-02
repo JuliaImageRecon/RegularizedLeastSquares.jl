@@ -1,4 +1,4 @@
-export OptISTA
+export optista, OptISTA
 
 mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractLinearSolver
   A::matA
@@ -32,7 +32,7 @@ end
 
 creates a `OptISTA` object for the system matrix `A`.
 OptISTA has a 2x better worst-case bound than FISTA, but actual performance varies by application.
-It stores 3 extra intermediate variables the size of the image compared to FISTA
+It stores 2 extra intermediate variables the size of the image compared to FISTA
 
 Reference:
 - Uijeong Jang, Shuvomoy Das Gupta, Ernest K. Ryu,
@@ -66,7 +66,7 @@ function OptISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg
               , kargs...) where {T}
 
   rT = real(T)
-  if reg == nothing
+  if reg === nothing
     reg = Regularization(regName, λ, kargs...)
   end
 
@@ -81,7 +81,7 @@ function OptISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg
     ρ /= abs(power_iterations(AᴴA))
   end
   θn = 1
-  for i = 1:(iterations-1)
+  for _ = 1:(iterations-1)
     θn = (1 + sqrt(1 + 4 * θn^2)) / 2
   end
   θn = (1 + sqrt(1 + 8 * θn^2)) / 2
@@ -111,14 +111,14 @@ function init!(solver::OptISTA{rT,vecT,matA,matAHA}, b::vecT
   else
     solver.x .= x
   end
-  solver.y .= 0
-  solver.z .= 0
-  solver.zᵒˡᵈ .= 0
+  solver.y .= solver.x
+  solver.z .= solver.x
+  solver.zᵒˡᵈ .= solver.x
 
   solver.θ = θ
   solver.θᵒˡᵈ = θ
   solver.θn = θ
-  for i = 1:(solver.iterations-1)
+  for _ = 1:(solver.iterations-1)
     solver.θn = (1 + sqrt(1 + 4 * solver.θn^2)) / 2
   end
   solver.θn = (1 + sqrt(1 + 8 * solver.θn^2)) / 2
@@ -150,11 +150,11 @@ function solve(solver::OptISTA, b; A=solver.A, startVector=similar(b,0), solverI
   init!(solver, b; x=startVector)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
+  solverInfo !== nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
 
   # perform OptISTA iterations
   for (iteration, item) = enumerate(solver)
-    solverInfo != nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
+    solverInfo !== nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
   end
 
   return solver.x
@@ -169,6 +169,7 @@ function iterate(solver::OptISTA, iteration::Int=0)
   if done(solver, iteration) return nothing end
 
   # inertial parameters
+  solver.γ = 2solver.θ / solver.θn^2 * (solver.θn^2 - 2solver.θ^2 + solver.θ)
   solver.θᵒˡᵈ = solver.θ
   if iteration == solver.iterations - 1 #the convergence rate depends on choice of # iterations!
     solver.θ = (1 + sqrt(1 + 8 * solver.θᵒˡᵈ^2)) / 2
@@ -177,7 +178,6 @@ function iterate(solver::OptISTA, iteration::Int=0)
   end
   solver.α = (solver.θᵒˡᵈ - 1) / solver.θ
   solver.β = solver.θᵒˡᵈ / solver.θ
-  solver.γ = 2solver.θ / solver.θn^2 * (solver.θn^2 - 2solver.θ^2 + solver.θ)
 
   # calculate residuum and do gradient step
   # solver.y .-= solver.ρ * solver.γ .* (solver.AᴴA * solver.x .- solver.x₀)

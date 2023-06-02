@@ -54,7 +54,7 @@ end
     b = b[idx]
     F = F[idx, :]
 
-    for solver in ["pogm", "fista", "admm"]
+    for solver in ["pogm", "optista", "fista", "admm"]
         reg = Regularization("L1", 1e-3)
         solverInfo = SolverInfo(ComplexF64)
         S = createLinearSolver(

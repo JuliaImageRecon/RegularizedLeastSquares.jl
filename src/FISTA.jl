@@ -55,7 +55,7 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=n
               , kargs...) where {T}
 
   rT = real(T)
-  if reg == nothing
+  if reg === nothing
     reg = Regularization(regName, λ, kargs...)
   end
 
@@ -123,11 +123,11 @@ function solve(solver::FISTA, b; A=solver.A, startVector=similar(b,0), solverInf
   init!(solver, b; x=startVector)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
+  solverInfo !== nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
 
   # perform FISTA iterations
   for (iteration, item) = enumerate(solver)
-    solverInfo != nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
+    solverInfo !== nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
   end
 
   return solver.x

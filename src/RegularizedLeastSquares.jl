@@ -85,6 +85,7 @@ Function returns choosen solver.
 * `"pseudoinverse"`   - approximates a solution using the More-Penrose pseudo inverse
 * `"fusedlasso"`      - solver for the Fused-Lasso problem
 * `"fista"`           - Fast Iterative Shrinkage Thresholding Algorithm
+* `"optista"`         - "Optimal" ISTA
 * `"pogm"`            - Proximal Optimal Gradient Method
 * `"admm"`            - Alternating Direcion of Multipliers Method
 * `"splitBregman"`    - Split Bregman method for constrained & regularized inverse problems
@@ -113,8 +114,8 @@ function createLinearSolver(solver::AbstractString, A, x=zeros(eltype(A),size(A,
     return FusedLasso(A; kargs...)
   elseif solver == "fista"
     return FISTA(A, x; kargs...)
-  elseif solver == "optfista"
-    return OptFISTA(A, x; kargs...)
+  elseif solver == "optista"
+    return OptISTA(A, x; kargs...)
   elseif solver == "pogm"
     return POGM(A, x; kargs...)
   elseif solver == "admm"

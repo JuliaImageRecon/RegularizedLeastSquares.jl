@@ -80,7 +80,7 @@ function POGM(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=no
               , kargs...) where {T}
 
   rT = real(T)
-  if reg == nothing
+  if reg === nothing
     reg = Regularization(regName, λ, kargs...)
   end
 
@@ -130,8 +130,6 @@ function init!(solver::POGM{rT,vecT,matA,matAHA}, b::vecT
 
   solver.t = t
   solver.tᵒˡᵈ = t
-  solver.γ = 1 #doesn't matter
-  solver.γᵒˡᵈ = 1 #doesn't matter
   solver.σ = 1
   # normalization of regularization parameters
   if solver.normalizeReg
@@ -160,11 +158,11 @@ function solve(solver::POGM, b; A=solver.A, startVector=similar(b,0), solverInfo
   init!(solver, b; x=startVector)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
+  solverInfo !== nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
 
   # perform POGM iterations
   for (iteration, item) = enumerate(solver)
-    solverInfo != nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
+    solverInfo !== nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
   end
 
   return solver.x
