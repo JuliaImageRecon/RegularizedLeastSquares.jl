@@ -27,7 +27,7 @@ function normalize(::MeasurementBasedNormalization, regs, A, b::AbstractArray)
   return norm(b, 1)/length(b)
 end
 normalize(::MeasurementBasedNormalization, regs, A, b::Nothing) = normalize(NoNormalization(), regs, A, b)
-function normalize(::SystemMatrixBasedNormalization, regs, A::AbstractArray, b)
+function normalize(::SystemMatrixBasedNormalization, regs, A::AbstractArray{T}, b) where {T}
   M = size(A, 1)
   N = size(A, 2)
 
