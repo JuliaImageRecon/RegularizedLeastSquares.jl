@@ -59,7 +59,7 @@ creates a KaczmarzUpdated object
 * (iterations::Int64=10)                          - number of iterations
 """
 
-function KaczmarzUpdated(S; b=nothing, λ=[0.0], reg = L2Regularization(λ[1])
+function KaczmarzUpdated(S; b=nothing, reg = L2Regularization(0.0)
     , weights=nothing
     , sparseTrafo=nothing
     , enforceReal::Bool=false
@@ -76,22 +76,19 @@ function KaczmarzUpdated(S; b=nothing, λ=[0.0], reg = L2Regularization(λ[1])
 
 T = real(eltype(S))
 
-if typeof(λ) <: Number
-λ = [λ]
-end
-# make sure λ has the same element type as S
-λ = T.(λ)
-
-
 if !(reg isa L2Regularization || (reg isa Vector && reg[1] isa L2Regularization))
   error("Kaczmarz only supports L2 regularizer as first regularization term")
 end
+reg = vec(reg)
 
 # make sure weights are not empty
 w = (weights!=nothing ? weights : ones(T,size(S,1)))
 
+# normalization parameters
+regFac = normalize(normalizeReg, reg, S, nothing)
+
 # setup denom and rowindex
-denom, rowindex = initkaczmarz(S, λ[1], w)
+denom, rowindex = initkaczmarz(S, regFac * reg[1].λ, w)
 rowIndexCycle=collect(1:length(rowindex))
 
 Probabilities = Find_Rows_Probaboloties(S)
@@ -111,10 +108,8 @@ vl = zeros(eltype(S),M)
 τl = zero(eltype(S))
 αl = zero(eltype(S))
 
-# normalization parameters
-regFac = normalize(normalizeReg, reg, S, nothing)
 
-return KaczmarzUpdated(S,u,vec(reg),denom,rowindex,rowIndexCycle,cl,vl,εw,τl,αl
+return KaczmarzUpdated(S,u,reg,denom,rowindex,rowIndexCycle,cl,vl,εw,τl,αl
         ,T.(w),enforceReal,enforcePositive,Randomized,SubMatrixPercentage,SubMatrixSize,Probabilities
         ,shuffleRows,Int64(seed),sparseTrafo,iterations, constraintMask, normalizeReg, regFac)
 end
