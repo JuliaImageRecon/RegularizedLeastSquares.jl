@@ -18,6 +18,7 @@ mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVecto
   norm_x₀::rT
   rel_res_norm::rT
   verbose::Bool
+  restart::Symbol
 end
 
 """
@@ -38,6 +39,7 @@ creates a `FISTA` object for the system matrix `A`.
 * (`t=1.0`)                 - parameter for predictor-corrector step
 * (`relTol::Float64=1.e-5`) - tolerance for stopping criterion
 * (`iterations::Int64=50`)  - maximum number of iterations
+* (`restart::Symbol=:none`) - :none, :gradient options for restarting
 """
 function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=nothing, regName=["L1"]
               , AᴴA=A'*A
@@ -48,11 +50,12 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=n
               , relTol=eps(real(T))
               , iterations=50
               , normalizeReg=false
+              , restart = :none
               , verbose = false
               , kargs...) where {T}
 
   rT = real(T)
-  if reg == nothing
+  if reg === nothing
     reg = Regularization(regName, λ, kargs...)
   end
 
@@ -65,7 +68,7 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=n
     ρ /= abs(power_iterations(AᴴA))
   end
 
-  return FISTA(A, AᴴA, vec(reg)[1], x, x₀, xᵒˡᵈ, res, rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,one(rT),one(rT),rT(Inf),verbose)
+  return FISTA(A, AᴴA, vec(reg)[1], x, x₀, xᵒˡᵈ, res, rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,one(rT),one(rT),rT(Inf),verbose,restart)
 end
 
 """
@@ -120,11 +123,11 @@ function solve(solver::FISTA, b; A=solver.A, startVector=similar(b,0), solverInf
   init!(solver, b; x=startVector)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
+  solverInfo !== nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
 
   # perform FISTA iterations
   for (iteration, item) = enumerate(solver)
-    solverInfo != nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
+    solverInfo !== nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
   end
 
   return solver.x
@@ -161,6 +164,14 @@ function iterate(solver::FISTA, iteration::Int=0)
 
   # proximal map
   solver.reg.prox!(solver.x, solver.regFac*solver.ρ*solver.reg.λ; solver.reg.params...)
+
+  # gradient restart conditions
+  if solver.restart == :gradient
+    if real(solver.res ⋅ (solver.x .- solver.xᵒˡᵈ) ) > 0 #if momentum is at an obtuse angle to the negative gradient
+      solver.verbose && println("Gradient restart at iter $iteration")
+      solver.t = 1
+    end
+  end
 
   # predictor-corrector update
   solver.tᵒˡᵈ = solver.t

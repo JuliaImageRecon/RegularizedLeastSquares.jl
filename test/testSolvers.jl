@@ -54,7 +54,7 @@ end
     b = b[idx]
     F = F[idx, :]
 
-    for solver in ["fista", "admm"]
+    for solver in ["pogm", "optista", "fista", "admm"]
         reg = Regularization("L1", 1e-3)
         solverInfo = SolverInfo(ComplexF64)
         S = createLinearSolver(
@@ -66,11 +66,28 @@ end
             normalizeReg = false,
         )
         x_approx = solve(S, b)
-        @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
+        @info "Testing solver $solver w/o restart: relative error = $(norm(x - x_approx) / norm(x))"
         @test x ≈ x_approx rtol = 0.1
 
+        #additionally test the gradient restarting scheme
+        if solver == "pogm" || solver == "fista"
+            S = createLinearSolver(
+                solver,
+                F;
+                reg = reg,
+                iterations = 200,
+                solverInfo = solverInfo,
+                normalizeReg = false,
+                restart = :gradient,
+            )
+            x_approx = solve(S, b)
+            @info "Testing solver $solver  w/ gradient restart: relative error = $(norm(x - x_approx) / norm(x))"
+            @test x ≈ x_approx rtol = 0.1
+        end
+
+        # test invariance to the maximum eigenvalue
         reg.λ *= length(b) / norm(b, 1)
-        scale_F = 1e3 # test invariance to the maximum eigenvalue
+        scale_F = 1e3
         S = createLinearSolver(
             solver,
             F .* scale_F;
@@ -81,7 +98,7 @@ end
         )
         x_approx = solve(S, b)
         x_approx .*= scale_F
-        @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
+        @info "Testing solver $solver w/o restart and after re-scaling: relative error = $(norm(x - x_approx) / norm(x))"
         @test x ≈ x_approx rtol = 0.1
     end
 
