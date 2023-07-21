@@ -23,15 +23,22 @@ mutable struct FusedLasso{T, R<:AbstractRegularization} <: AbstractLinearSolver
 end
 
 function FusedLasso(S::Matrix{T};
-                    λ=[0.0002,0.0016],
-                    shape::Array{Int64,1}=[size(S,2),1,1],
+                    reg=[TVRegularization(0.0002; shape = [size(S,2),1,1]), L1Regularization(0.0016)],
                     iterations = Int64(50),
                     directions = 3,
                     kappa = T(0.5),
                     gamma = T(10.0^-3),
                     kargs...) where T
 
-    reg = Regularization(["TV","L1"], λ)
+    if !(length(reg) == 2 && reg[1] isa TVRegularization && reg[2] isa L1Regularization)
+      error("FusedLasso only supports TV as first and L1Regularization as second regularization term")
+    end
+
+    tv = reg[1]
+    if isnothing(tv.shape)
+      reg[1] = TVRegularization(tv.λ; shape = [size(S,2),1,1], iterationsTV = tv.iterationsTV)
+    end
+    shape = reg[1].shape
 
     # Determine direction vectors and weights for proximal mapping
   	if directions == 3

@@ -3,10 +3,10 @@ export TVRegularization, proxTV!, normTV
 struct TVRegularization{T} <: AbstractRegularization{T}
   λ::T
   dims
-  shape
+  shape::Union{Nothing, Vector{Int64}}
   iterationsTV::Int64
 end
-TVRegularization(λ; shape, dims = 1:length(shape), iterationsTV = 10, kargs...) = TVRegularization(λ, dims, shape, iterationsTV)
+TVRegularization(λ; shape = nothing, dims = isnothing(shape) ? 0 : 1:length(shape), iterationsTV = 10, kargs...) = TVRegularization(λ, dims, shape, iterationsTV)
 
 
 mutable struct TVParams{Tc, matT}
