@@ -121,9 +121,12 @@ function init!(solver::Kaczmarz
               , cl::Vector{T}=T[]
               , weights::Vector{R}=solver.weights
               , shuffleRows=solver.shuffleRows) where {T,matT,R}
+              
+  solver.regFac = normalize(solver, solver.normalizeReg, solver.reg, S, u)
 
+  λ = solver.regFac * solver.reg[1].λ
   if S != solver.S
-    solver.denom, solver.rowindex = initkaczmarz(S,solver.reg.λ,weights)
+    solver.denom, solver.rowindex = initkaczmarz(S, λ, weights)
     solver.rowIndexCycle = collect(1:length(solver.rowindex))
   end
 
@@ -144,10 +147,9 @@ function init!(solver::Kaczmarz
 
   for i=1:length(solver.rowindex)
     j = solver.rowindex[i]
-    solver.ɛw[i] = sqrt(solver.reg[1].λ) / weights[j]
+    solver.ɛw[i] = sqrt(λ) / weights[j]
   end
 
-  solver.regFac = normalize(solver, solver.normalizeReg, solver.reg, S, u)
 end
 
 """
