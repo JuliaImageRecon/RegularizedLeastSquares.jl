@@ -35,7 +35,7 @@ function FusedLasso(S::Matrix{T};
     end
 
     tv = reg[1]
-    if isnothing(tv.shape)
+    if tv.shape == (0,)
       reg[1] = TVRegularization(tv.λ; shape = [size(S,2),1,1], iterationsTV = tv.iterationsTV)
     end
     shape = reg[1].shape

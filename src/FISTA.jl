@@ -66,7 +66,7 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L
   end
 
   # normalization parameters
-  regFac = normalize(normalizeReg, reg, A, nothing)
+  regFac = normalize(FISTA, normalizeReg, reg, A, nothing)
 
   return FISTA(A, AᴴA, vec(reg)[1], x, x₀, xᵒˡᵈ, res, rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,regFac,one(rT),rT(Inf),verbose,restart)
 end

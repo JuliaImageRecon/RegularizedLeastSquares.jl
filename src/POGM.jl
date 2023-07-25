@@ -92,7 +92,7 @@ function POGM(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1
     ρ /= abs(power_iterations(AᴴA))
   end
   
-  regFac = normalize(normalizeReg, reg, A, nothing)
+  regFac = normalize(POGM, normalizeReg, reg, A, nothing)
 
   return POGM(A, AᴴA, vec(reg)[1], x, x₀, xᵒˡᵈ, y, z, w, res, rT(ρ),rT(t),rT(t),rT(0),rT(1),rT(1),rT(1),rT(1),rT(σ_fac),
     iterations,rT(relTol),normalizeReg,regFac,one(rT),rT(Inf),verbose,restart)

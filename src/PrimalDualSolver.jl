@@ -59,7 +59,7 @@ function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = L1Regularizati
   y2 = zeros(T,size(gradientOp*c,1))
 
   # normalization parameters
-  regFac = normalize(normalizeReg, reg, S, nothing)
+  regFac = normalize(PrimalDualSolver, normalizeReg, reg, S, nothing)
 
   return PrimalDualSolver(S,vec(reg),gradientOp,u,c,cO,y1,y2,T(σ),T(τ),T(ϵ),T(PrimalDualGap),enforceReal,enforcePositive,iterations,shape,
   normalizeReg, regFac)

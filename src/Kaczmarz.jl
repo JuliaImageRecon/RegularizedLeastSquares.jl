@@ -82,7 +82,7 @@ function Kaczmarz(S; b=nothing, reg = L2Regularization(0.0)
   w = (weights!=nothing ? weights : ones(T,size(S,1)))
 
   # normalization parameters
-  regFac = normalize(normalizeReg, reg, S, nothing)
+  regFac = normalize(Kaczmarz, normalizeReg, reg, S, nothing)
 
   # setup denom and rowindex
   denom, rowindex = initkaczmarz(S, regFac * reg[1].λ, w)

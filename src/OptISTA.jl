@@ -82,7 +82,7 @@ function OptISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg
   end
   θn = (1 + sqrt(1 + 8 * θn^2)) / 2
 
-  regFac = normalize(normalizeReg, reg, A, nothing)
+  regFac = normalize(OptISTA, normalizeReg, reg, A, nothing)
 
   return OptISTA(A, AᴴA, vec(reg)[1], x, x₀, y, z, zᵒˡᵈ, res, rT(ρ),rT(θ),rT(θ),rT(θn),rT(0),rT(1),rT(1),
     iterations,rT(relTol),normalizeReg,regFac,one(rT),rT(Inf),verbose)

@@ -43,8 +43,9 @@ end
 normalize(::NoNormalization, regs, A, b) = 1.0
 
 
-normalize(solver::AbstractLinearSolver, norm::AbstractRegularizationNormalization, regs, A, b) = normalize(norm, regs, A, b)
-# System matrix based normalization is already done in constructor
+normalize(solver::AbstractLinearSolver, norm, regs, A, b) = normalize(typeof(solver), norm, regs, A, b)
+normalize(solver::Type{T}, norm::AbstractRegularizationNormalization, regs, A, b) where T<:AbstractLinearSolver = normalize(norm, regs, A, b)
+# System matrix based normalization is already done in constructor, can just return factor for existing solver
 normalize(solver::AbstractLinearSolver, norm::SystemMatrixBasedNormalization, regs, A, b) = solver.regFac
 
 """
