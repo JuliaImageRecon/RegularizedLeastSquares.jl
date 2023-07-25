@@ -39,6 +39,7 @@ include("proximalMaps/ProxProj.jl")
 include("proximalMaps/ProxTV.jl")
 include("proximalMaps/ProxTVCondat.jl")
 include("proximalMaps/ProxNuclear.jl")
+include("proximalMaps/ScaledRegularization.jl")
 
 include("Utils.jl")
 include("Kaczmarz.jl")
