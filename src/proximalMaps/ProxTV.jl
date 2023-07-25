@@ -1,12 +1,12 @@
 export TVRegularization, proxTV!, normTV
 
-struct TVRegularization{T} <: AbstractRegularization{T}
+struct TVRegularization{T, N, TI} <: AbstractRegularization{T} where {N, TI<:Integer}
   λ::T
   dims
-  shape::Union{Nothing, Vector{Int64}}
+  shape::NTuple{N,TI}
   iterationsTV::Int64
 end
-TVRegularization(λ; shape = nothing, dims = isnothing(shape) ? 0 : 1:length(shape), iterationsTV = 10, kargs...) = TVRegularization(λ, dims, shape, iterationsTV)
+TVRegularization(λ; shape = (0,), dims = 1:length(shape), iterationsTV = 10, kargs...) = TVRegularization(λ, dims, shape, iterationsTV)
 
 
 mutable struct TVParams{Tc, matT}
