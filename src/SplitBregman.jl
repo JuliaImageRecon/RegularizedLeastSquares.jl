@@ -1,6 +1,6 @@
 export SplitBregman
 
-mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT} <: AbstractLinearSolver
+mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT,rT} <: AbstractLinearSolver
   # oerators and regularization
   A::matT
   reg::Vector{Regularization}
@@ -30,14 +30,14 @@ mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT} <: AbstractLinearS
   eps_pri::rvecT
   eps_dt::vecT
   # eps_dual::Float64
-  σᵃᵇˢ::Float64
-  absTol::Float64
-  relTol::Float64
-  tolInner::Float64
+  σᵃᵇˢ::rT
+  absTol::rT
+  relTol::rT
+  tolInner::rT
   #counter for internal iterations
   iter_cnt::Int64
   normalizeReg::Bool
-  regFac::Float64
+  regFac::rT
 end
 
 """
@@ -70,11 +70,13 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing; re
                     , iterations::Int64=10
                     , iterationsInner::Int64=50
                     , iterationsCG::Int64=10
-                    , absTol::Float64=eps()
-                    , relTol::Float64=eps()
-                    , tolInner::Float64=1.e-6
+                    , absTol=eps()
+                    , relTol=eps()
+                    , tolInner=1.e-6
                     , normalizeReg::Bool=false
                     , kargs...) where {matT<:Trafo, vecT<:AbstractVector}
+
+  T = eltype(A)
 
   if reg == nothing
     reg = Regularization(regName, λ, kargs...)
@@ -127,7 +129,7 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing; re
 
   return SplitBregman(A,vec(reg),regTrafo,y,op,β,β_yj,y_j,u,v,vᵒˡᵈ,b,precon,ρ_vec
               ,iterations,iterationsInner,iterationsCG,statevars, rk,sk
-              ,eps_pri,eps_dt,0.0,absTol,relTol,tolInner,iter_cnt,normalizeReg,1.0)
+              ,eps_pri,eps_dt,real(T)(0),real(T)(absTol),real(T)(relTol),real(T)(tolInner),iter_cnt,normalizeReg,real(T)(1))
 end
 
 """
