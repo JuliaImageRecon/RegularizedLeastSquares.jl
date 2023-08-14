@@ -2,6 +2,7 @@ export L2Regularization, proxL2!, normL2
 
 struct L2Regularization{T} <: AbstractRegularization{T}
   λ::T
+  L2Regularization(λ::T; kargs...) where T = new{T}(λ)
 end
 
 """
