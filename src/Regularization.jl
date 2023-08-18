@@ -16,7 +16,10 @@ end
   return Expr(:call, :norm, Expr(:parameters, kwargs...), T, :x, :λ)
 end
 
-abstract type AbstractFixedRegularization <: AbstractRegularization end
+abstract type AbstractProjectionRegularization <: AbstractRegularization end
+prox!(::R, x::AbstractArray) where {R<:AbstractProjectionRegularization} = prox!(R, x)
+norm(::R, x::AbstractArray) where {R<:AbstractProjectionRegularization} = norm(R, x)
+λ(::AbstractProjectionRegularization) = nothing
 
 export AbstractRegularizationNormalization, NoNormalization, MeasurementBasedNormalization, SystemMatrixBasedNormalization
 abstract type AbstractRegularizationNormalization end
@@ -57,7 +60,7 @@ function normalize(norm::AbstractRegularizationNormalization, regs::Vector{R}, A
 end
 
 normalize(reg::R, ::Nothing) where {R<:AbstractRegularization} = reg
-normalize(reg::AbstractFixedRegularization, factor::Number) = reg
+normalize(reg::AbstractProjectionRegularization, factor::Number) = reg
 normalize(reg::NormalizedRegularization, factor::Number) = NormalizedRegularization(reg.reg, factor) # Update normalization
 normalize(reg::AbstractParameterizedRegularization, factor::Number) = NormalizedRegularization(reg, factor)
 
