@@ -5,11 +5,10 @@ struct FixedScaledRegularization{T, R<:AbstractParameterizedRegularization{T}} <
   reg::R
   factor::T
 end
+λ(reg::FixedScaledRegularization) = λ(reg.reg) * reg.factor
+prox!(reg::FixedScaledRegularization, x, λ) = prox!(reg.reg, x, λ)
+norm(reg::FixedScaledRegularization, x, λ) = norm(reg.reg, x, λ)
 
-prox!(reg::FixedScaledRegularization{T}, x::AbstractArray{Tc}; factor = one(T)) where {T, Tc <: Union{T, Complex{T}}} = prox!(reg.reg, x; factor =  reg.factor / factor)
-prox!(reg::FixedScaledRegularization, x::AbstractArray{T}; factor = one(T)) where {T} = prox!(reg.reg, x; factor =  reg.factor / factor)
-norm(reg::FixedScaledRegularization{T}, x::AbstractArray{Tc}; factor = one(T)) where {T, Tc <: Union{T, Complex{T}}} = norm(reg.reg, x; factor =  reg.factor / factor)
-norm(reg::FixedScaledRegularization, x::AbstractArray{T}; factor = one(T)) where {T} = norm(reg.reg, x; factor =  reg.factor / factor)
 
 export AutoScaledRegularization
 mutable struct AutoScaledRegularization{T, R<:AbstractParameterizedRegularization{T}} <: AbstractScaledRegularization{T}
@@ -17,22 +16,14 @@ mutable struct AutoScaledRegularization{T, R<:AbstractParameterizedRegularizatio
   factor::Union{Nothing, T}
   AutoScaledRegularization(reg::R) where {T, R<:AbstractParameterizedRegularization{T}} = new{T,R}(reg, nothing)
 end
-
 initFactor!(reg::AutoScaledRegularization, x::AbstractArray) = reg.factor = maximum(abs.(x))
-function prox!(reg::AutoScaledRegularization{T}, x::AbstractArray{Tc}; factor = one(T)) where {T, Tc <: Union{T, Complex{T}}}
-  isnothing(reg.factor) && initFactor!(reg, x)
-  prox!(reg.reg, x; factor = reg.factor / factor)
+# A bit hacky: Factor can only be computed once x is seen, therefore hide factor in λ and silently add it in prox!/norm calls
+λ(reg::AutoScaledRegularization) = λ(reg.reg)
+function prox!(reg::AutoScaledRegularization, x, λ)
+  isnothing(reg.factor) && initFactor!(reg, x) 
+  prox!(reg.reg, x, λ * reg.factor)
 end
-function prox!(reg::AutoScaledRegularization, x::AbstractArray{T}; factor = one(T)) where {T}
-  isnothing(reg.factor) && initFactor!(reg, x)
-  prox!(reg.reg, x; factor = reg.factor / factor)
-end
-
-function norm(reg::AutoScaledRegularization{T}, x::AbstractArray{Tc}; factor = one(T)) where {T, Tc <: Union{T, Complex{T}}}
-  isnothing(reg.factor) && initFactor!(reg, x)
-  norm(reg.reg, x; factor = reg.factor / factor)
-end
-function norm(reg::AutoScaledRegularization, x::AbstractArray{T}; factor = one(T)) where {T}
-  isnothing(reg.factor) && initFactor!(reg, x)
-  norm(reg.reg, x; factor = reg.factor / factor)
+function norm(reg::AutoScaledRegularization, x, λ)
+  isnothing(reg.factor) && initFactor!(reg, x) 
+  norm(reg.reg, x, λ * reg.factor)
 end

@@ -7,12 +7,12 @@ norm(reg::AbstractParameterizedRegularization, x::AbstractArray) = norm(reg, x, 
 λ(reg::AbstractParameterizedRegularization) = reg.λ
 
 @generated function prox!(reg::T, x, λ) where {T<:AbstractParameterizedRegularization}
-  kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in filter(x-> x == :λ, fieldnames(T))]
+  kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in filter(x-> x != :λ, fieldnames(T))]
   return Expr(:call, :prox!, Expr(:parameters, kwargs...), T, :x, :λ)
 end
 
 @generated function norm(reg::T, x, λ) where {T<:AbstractParameterizedRegularization}
-  kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in filter(x-> x == :λ, fieldnames(T))]
+  kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in filter(x-> x != :λ, fieldnames(T))]
   return Expr(:call, :norm, Expr(:parameters, kwargs...), T, :x, :λ)
 end
 
