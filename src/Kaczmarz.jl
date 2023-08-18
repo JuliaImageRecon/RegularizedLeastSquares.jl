@@ -20,7 +20,6 @@ mutable struct Kaczmarz{matT,T,U,Tsparse} <: AbstractLinearSolver
   seed::Int64
   sparseTrafo::Tsparse
   iterations::Int64
-  constraintMask::Union{Nothing,Vector{Bool}}
   regMatrix::Union{Nothing,Vector{U}} # Tikhonov regularization matrix
   normalizeReg::AbstractRegularizationNormalization
   normalizedReg::Vector{<:AbstractRegularization}
@@ -60,7 +59,6 @@ function Kaczmarz(S; b=nothing, reg = L2Regularization(0.0)
               , shuffleRows::Bool=false
               , seed::Int=1234
               , iterations::Int64=10
-              , constraintMask=nothing
               , regMatrix=nothing
               , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
               , kargs...)
@@ -102,7 +100,7 @@ function Kaczmarz(S; b=nothing, reg = L2Regularization(0.0)
 
   return Kaczmarz(S,u,reg,denom,rowindex,rowIndexCycle,cl,vl,εw,τl,αl
                   ,T.(w),enforceReal,enforcePositive,shuffleRows
-                  ,Int64(seed),sparseTrafo,iterations, constraintMask, regMatrix, 
+                  ,Int64(seed),sparseTrafo,iterations, regMatrix, 
                   normalizeReg, normalizedReg)
 end
 
@@ -205,12 +203,6 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
     kaczmarz_update!(solver.S,solver.cl,j,solver.αl)
     solver.vl[j] += solver.αl*solver.ɛw[i]
   end
-
-  # invoke constraints
-  applyConstraints(solver.cl, solver.sparseTrafo,
-                              solver.enforceReal,
-                              solver.enforcePositive,
-                              solver.constraintMask)
 
   # We skip the L2 regularizer, since it has already been applied
   for r in solver.reg[2:end]
