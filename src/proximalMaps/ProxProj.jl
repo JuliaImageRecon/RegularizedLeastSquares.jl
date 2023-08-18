@@ -1,6 +1,6 @@
 export ProjectionRegularization, proxProj!, normProj
 
-struct ProjectionRegularization{T} <: AbstractRegularization{T}
+struct ProjectionRegularization{T} <: AbstractParameterizedRegularization{T}
   λ::T
   projFunc::Function
 end

@@ -1,6 +1,6 @@
 export NuclearRegularization, proxNuclear!, normNuclear
 
-struct NuclearRegularization{T} <: AbstractRegularization{T}
+struct NuclearRegularization{T} <: AbstractParameterizedRegularization{T}
   λ::T
   svtShape::NTuple
 end

@@ -1,7 +1,7 @@
-abstract type AbstractScaledRegularization{T} <: AbstractRegularization{T} end
+abstract type AbstractScaledRegularization{T} <: AbstractParameterizedRegularization{T} end
 
 export FixedScaledRegularization
-struct FixedScaledRegularization{T, R<:AbstractRegularization{T}} <: AbstractScaledRegularization{T}
+struct FixedScaledRegularization{T, R<:AbstractParameterizedRegularization{T}} <: AbstractScaledRegularization{T}
   reg::R
   factor::T
 end
@@ -12,10 +12,10 @@ norm(reg::FixedScaledRegularization{T}, x::AbstractArray{Tc}; factor = one(T)) w
 norm(reg::FixedScaledRegularization, x::AbstractArray{T}; factor = one(T)) where {T} = norm(reg.reg, x; factor =  reg.factor / factor)
 
 export AutoScaledRegularization
-mutable struct AutoScaledRegularization{T, R<:AbstractRegularization{T}} <: AbstractScaledRegularization{T}
+mutable struct AutoScaledRegularization{T, R<:AbstractParameterizedRegularization{T}} <: AbstractScaledRegularization{T}
   reg::R
   factor::Union{Nothing, T}
-  AutoScaledRegularization(reg::R) where {T, R<:AbstractRegularization{T}} = new{T,R}(reg, nothing)
+  AutoScaledRegularization(reg::R) where {T, R<:AbstractParameterizedRegularization{T}} = new{T,R}(reg, nothing)
 end
 
 initFactor!(reg::AutoScaledRegularization, x::AbstractArray) = reg.factor = maximum(abs.(x))

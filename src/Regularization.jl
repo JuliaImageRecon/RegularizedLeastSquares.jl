@@ -1,20 +1,22 @@
 export Regularization, AbstractRegularization, lambdList, prox! #, norm
 
-abstract type AbstractRegularization{T} end
-prox!(reg::AbstractRegularization{T}, x::AbstractArray{Tc}; factor = one(T)) where {T, Tc <: Union{T, Complex{T}}} = prox!(reg, x, reg.λ * T(factor))
-norm(reg::AbstractRegularization{T}, x::AbstractArray{Tc}; factor = one(T)) where {T, Tc <: Union{T, Complex{T}}} = norm(reg, x, reg.λ * T(factor))
-prox!(reg::AbstractRegularization, x::AbstractArray{T}; factor = one(T)) where {T} = prox!(reg, x, reg.λ * T(factor))
-norm(reg::AbstractRegularization, x::AbstractArray{T}; factor = one(T)) where {T} = norm(reg, x, reg.λ * T(factor))
+abstract type AbstractRegularization end
+abstract type AbstractParameterizedRegularization{T} <: AbstractRegularization end
+prox!(reg::AbstractParameterizedRegularization, x::AbstractArray) = prox!(reg, x, λ(reg))
+norm(reg::AbstractParameterizedRegularization, x::AbstractArray) = norm(reg, x, λ(reg))
+λ(reg::AbstractParameterizedRegularization) = reg.λ
 
-@generated function prox!(reg::T, x, λ) where {T<:AbstractRegularization}
-  kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in fieldnames(T)[2:end]]
+@generated function prox!(reg::T, x, λ) where {T<:AbstractParameterizedRegularization}
+  kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in filter(x-> x == :λ, fieldnames(T))]
   return Expr(:call, :prox!, Expr(:parameters, kwargs...), T, :x, :λ)
 end
 
-@generated function norm(reg::T, x, λ) where {T<:AbstractRegularization}
-  kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in fieldnames(T)[2:end]]
+@generated function norm(reg::T, x, λ) where {T<:AbstractParameterizedRegularization}
+  kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in filter(x-> x == :λ, fieldnames(T))]
   return Expr(:call, :norm, Expr(:parameters, kwargs...), T, :x, :λ)
 end
+
+abstract type AbstractFixedRegularization <: AbstractRegularization end
 
 export AbstractRegularizationNormalization, NoNormalization, MeasurementBasedNormalization, SystemMatrixBasedNormalization
 abstract type AbstractRegularizationNormalization end
@@ -23,11 +25,19 @@ struct MeasurementBasedNormalization <: AbstractRegularizationNormalization end
 struct SystemMatrixBasedNormalization <: AbstractRegularizationNormalization end
 # TODO weighted systemmatrix, maybe weighted measurementbased?
 
-function normalize(::MeasurementBasedNormalization, regs, A, b::AbstractArray)
+struct NormalizedRegularization{TF, T, R<:AbstractParameterizedRegularization{T}} <: AbstractParameterizedRegularization{TF}
+  reg::R
+  factor::TF
+end
+λ(reg::NormalizedRegularization) = λ(reg.reg) * reg.factor
+prox!(reg::NormalizedRegularization, x, λ) = prox!(reg.reg, x, λ)
+norm(reg::NormalizedRegularization, x, λ) = norm(reg.reg, x, λ)
+
+function normalize(::MeasurementBasedNormalization, A, b::AbstractArray)
   return norm(b, 1)/length(b)
 end
-normalize(::MeasurementBasedNormalization, regs, A, b::Nothing) = normalize(NoNormalization(), regs, A, b)
-function normalize(::SystemMatrixBasedNormalization, regs, A::AbstractArray{T}, b) where {T}
+normalize(::MeasurementBasedNormalization, A, b::Nothing) = normalize(NoNormalization(), regs, A, b)
+function normalize(::SystemMatrixBasedNormalization, A::AbstractArray{T}, b) where {T}
   M = size(A, 1)
   N = size(A, 2)
 
@@ -40,13 +50,21 @@ function normalize(::SystemMatrixBasedNormalization, regs, A::AbstractArray{T}, 
   # TODO where setlamda? here we dont know λ
   return trace
 end
-normalize(::NoNormalization, regs, A, b) = 1.0
+normalize(::NoNormalization, A, b) = nothing
+function normalize(norm::AbstractRegularizationNormalization, regs::Vector{R}, A, b) where {R<:AbstractRegularization}
+  factor = normalize(norm, A, b)
+  return map(x-> normalize(x, factor), regs)
+end
 
+normalize(reg::R, ::Nothing) where {R<:AbstractRegularization} = reg
+normalize(reg::AbstractFixedRegularization, factor::Number) = reg
+normalize(reg::NormalizedRegularization, factor::Number) = NormalizedRegularization(reg.reg, factor) # Update normalization
+normalize(reg::AbstractParameterizedRegularization, factor::Number) = NormalizedRegularization(reg, factor)
 
 normalize(solver::AbstractLinearSolver, norm, regs, A, b) = normalize(typeof(solver), norm, regs, A, b)
 normalize(solver::Type{T}, norm::AbstractRegularizationNormalization, regs, A, b) where T<:AbstractLinearSolver = normalize(norm, regs, A, b)
-# System matrix based normalization is already done in constructor, can just return factor for existing solver
-normalize(solver::AbstractLinearSolver, norm::SystemMatrixBasedNormalization, regs, A, b) = solver.regFac
+# System matrix based normalization is already done in constructor, can just return regs
+normalize(solver::AbstractLinearSolver, norm::SystemMatrixBasedNormalization, regs, A, b) = regs
 
 """
 Type describing custom regularizers
@@ -57,7 +75,7 @@ Type describing custom regularizers
 * `λ::AbstractFloat`                - regularization paramter
 * `params::Dict{Symbol,Any}`  - additional parameters
 """
-mutable struct CustomRegularization{T} <: AbstractRegularization{T}
+mutable struct CustomRegularization{T} <: AbstractParameterizedRegularization{T}
   prox!::Function
   norm::Function
   λ::T

@@ -1,6 +1,6 @@
 export TVRegularization, proxTV!, normTV
 
-struct TVRegularization{T, N, TI} <: AbstractRegularization{T} where {N, TI<:Integer}
+struct TVRegularization{T, N, TI} <: AbstractParameterizedRegularization{T} where {N, TI<:Integer}
   λ::T
   dims
   shape::NTuple{N,TI}

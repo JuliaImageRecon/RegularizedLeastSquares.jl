@@ -1,6 +1,6 @@
 export L21Regularization, proxL21!, normL21
 
-struct L21Regularization{T} <: AbstractRegularization{T}
+struct L21Regularization{T} <: AbstractParameterizedRegularization{T}
   λ::T
   slices::Int64
 end

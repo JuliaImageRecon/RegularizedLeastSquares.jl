@@ -1,6 +1,6 @@
 export L1Regularization, proxL1!, proxL1, normL1
 
-struct L1Regularization{T} <: AbstractRegularization{T}
+struct L1Regularization{T} <: AbstractParameterizedRegularization{T}
   λ::T
   L1Regularization(λ::T; kargs...) where T = new{T}(λ)
 end
