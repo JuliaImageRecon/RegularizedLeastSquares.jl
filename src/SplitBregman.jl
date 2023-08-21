@@ -1,9 +1,9 @@
 export SplitBregman
 
-mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT, R<:AbstractRegularization} <: AbstractLinearSolver
+mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT} <: AbstractLinearSolver
   # oerators and regularization
   A::matT
-  reg::Vector{R}
+  reg::Vector{<:AbstractRegularization}
   regTrafo::Vector{ropT}
   y::vecT
   # fields and operators for x update
@@ -37,7 +37,6 @@ mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT, R<:AbstractRegular
   #counter for internal iterations
   iter_cnt::Int64
   normalizeReg::AbstractRegularizationNormalization
-  regFac::Float64
 end
 
 """
@@ -121,11 +120,11 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing; re
   end
 
   # normalization parameters
-  regFac = normalize(SplitBregman, normalizeReg, reg, A, nothing)
+  reg = normalize(SplitBregman, normalizeReg, vec(reg), A, nothing)
 
-  return SplitBregman(A,vec(reg),regTrafo,y,op,β,β_yj,y_j,u,v,vᵒˡᵈ,b,precon,ρ_vec
+  return SplitBregman(A,reg,regTrafo,y,op,β,β_yj,y_j,u,v,vᵒˡᵈ,b,precon,ρ_vec
               ,iterations,iterationsInner,iterationsCG,statevars, rk,sk
-              ,eps_pri,eps_dt,0.0,absTol,relTol,tolInner,iter_cnt,normalizeReg,regFac)
+              ,eps_pri,eps_dt,0.0,absTol,relTol,tolInner,iter_cnt,normalizeReg)
 end
 
 """
@@ -177,7 +176,7 @@ function init!(solver::SplitBregman{matT,vecT,opT,ropT,rvecT,preconT}, b::vecT
   solver.σᵃᵇˢ = sqrt(length(b))*solver.absTol
 
   # normalization of regularization parameters
-  solver.regFac = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
+  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
 
   # reset interation counter
   solver.iter_cnt = 1
@@ -261,7 +260,7 @@ function iterate(solver::SplitBregman{matT,vecT,opT,rvecT,preconT}, iteration::I
     copyto!(solver.vᵒˡᵈ[i], solver.v[i])
     solver.v[i][:] .= solver.regTrafo[i]*solver.u .+ solver.b[i]
     if solver.ρ[i] != 0
-      prox!(solver.reg[i], solver.v[i]; factor = solver.regFac/solver.ρ[i])
+      prox!(solver.reg[i], solver.v[i], λ(solver.reg[i])/solver.ρ[i])
     end
   end
 

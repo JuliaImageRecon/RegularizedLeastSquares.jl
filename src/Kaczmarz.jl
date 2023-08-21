@@ -1,7 +1,7 @@
 export kaczmarz
 export Kaczmarz
 
-mutable struct Kaczmarz{matT,T,U,Tsparse} <: AbstractLinearSolver
+mutable struct Kaczmarz{matT,T,U} <: AbstractLinearSolver
   S::matT
   u::Vector{T}
   reg::Vector{<:AbstractRegularization}
@@ -14,15 +14,11 @@ mutable struct Kaczmarz{matT,T,U,Tsparse} <: AbstractLinearSolver
   τl::T
   αl::T
   weights::Vector{U}
-  enforceReal::Bool
-  enforcePositive::Bool
   shuffleRows::Bool
   seed::Int64
-  sparseTrafo::Tsparse
   iterations::Int64
   regMatrix::Union{Nothing,Vector{U}} # Tikhonov regularization matrix
   normalizeReg::AbstractRegularizationNormalization
-  normalizedReg::Vector{<:AbstractRegularization}
 end
 
 """
@@ -53,9 +49,6 @@ creates a Kaczmarz object
 """
 function Kaczmarz(S; b=nothing, reg = L2Regularization(0.0)
               , weights=nothing
-              , sparseTrafo=nothing
-              , enforceReal::Bool=false
-              , enforcePositive::Bool=false
               , shuffleRows::Bool=false
               , seed::Int=1234
               , iterations::Int64=10
@@ -80,10 +73,10 @@ function Kaczmarz(S; b=nothing, reg = L2Regularization(0.0)
   w = (weights!=nothing ? weights : ones(T,size(S,1)))
 
   # normalization parameters
-  normalizedReg = normalize(Kaczmarz, normalizeReg, reg, S, nothing)
+  reg = normalize(Kaczmarz, normalizeReg, reg, S, nothing)
 
   # setup denom and rowindex
-  denom, rowindex = initkaczmarz(S, λ(normalizedReg[1]), w)
+  denom, rowindex = initkaczmarz(S, λ(reg[1]), w)
   rowIndexCycle=collect(1:length(rowindex))
 
   M,N = size(S)
@@ -99,9 +92,9 @@ function Kaczmarz(S; b=nothing, reg = L2Regularization(0.0)
   αl = zero(eltype(S))
 
   return Kaczmarz(S,u,reg,denom,rowindex,rowIndexCycle,cl,vl,εw,τl,αl
-                  ,T.(w),enforceReal,enforcePositive,shuffleRows
-                  ,Int64(seed),sparseTrafo,iterations, regMatrix, 
-                  normalizeReg, normalizedReg)
+                  ,T.(w),shuffleRows
+                  ,Int64(seed),iterations, regMatrix, 
+                  normalizeReg)
 end
 
 """
@@ -120,9 +113,9 @@ function init!(solver::Kaczmarz
               , weights::Vector{R}=solver.weights
               , shuffleRows=solver.shuffleRows) where {T,matT,R}
               
-  solver.normalizedReg = normalize(solver, solver.normalizeReg, solver.normalizedReg, S, u)
+  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, S, u)
   
-  λ_ = λ(solver.normalizedReg[1])
+  λ_ = λ(solver.reg[1])
   if S != solver.S
     solver.denom, solver.rowindex = initkaczmarz(S, λ_, weights)
     solver.rowIndexCycle = collect(1:length(solver.rowindex))

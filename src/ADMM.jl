@@ -1,9 +1,9 @@
 export admm, ADMM
 
-mutable struct ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT, R} <: AbstractLinearSolver where {vecT <: AbstractVector{Union{rT, Complex{rT}}}, rvecT <: AbstractVector{rT}, R <: AbstractRegularization}
+mutable struct ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT} <: AbstractLinearSolver where {vecT <: AbstractVector{Union{rT, Complex{rT}}}, rvecT <: AbstractVector{rT}}
   # operators and regularization
   A::matT
-  reg::Vector{R}
+  reg::Vector{<:AbstractRegularization}
   regTrafo::Vector{ropT}
   # fields and operators for x update
   AᴴA::opT
@@ -34,7 +34,6 @@ mutable struct ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT, R} <: AbstractLinearSol
   relTol::rT
   tolInner::rT
   normalizeReg::AbstractRegularizationNormalization
-  regFac::rT
   vary_ρ::Symbol
   verbose::Bool
 end
@@ -121,11 +120,11 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=L1Regulariza
   Δ    = similar(rᵏ)
 
   # normalization parameters
-  regFac = normalize(ADMM, normalizeReg, reg, A, nothing)
+  reg = normalize(ADMM, normalizeReg, reg, A, nothing)
 
   return ADMM(A,reg,regTrafo,AᴴA,β,β_y,x,xᵒˡᵈ,z,zᵒˡᵈ,u,uᵒˡᵈ,precon,ρ_vec,iterations
               ,iterationsInner,statevars, rᵏ,sᵏ,ɛᵖʳⁱ,ɛᵈᵘᵃ,zero(real(T)),Δ,absTol,relTol,tolInner
-              ,normalizeReg,regFac, vary_ρ, verbose)
+              ,normalizeReg, vary_ρ, verbose)
 end
 
 """
@@ -174,7 +173,7 @@ function init!(solver::ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT}, b::vecT
   solver.Δ .= Inf
 
   # normalization of regularization parameters
-  solver.regFac = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
+  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
 
 end
 
@@ -239,7 +238,7 @@ function iterate(solver::ADMM, iteration::Integer=0)
     solver.zᵒˡᵈ[i] .= solver.z[i]
     solver.z[i] .= solver.regTrafo[i]*solver.x .+ solver.u[i]
     if solver.ρ[i] != 0
-      prox!(solver.reg[i], solver.z[i]; factor = solver.regFac/solver.ρ[i])
+      prox!(solver.reg[i], solver.z[i], λ(solver.reg[i])/solver.ρ[i])
     end
 
     # 3. update u

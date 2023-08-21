@@ -1,9 +1,9 @@
 export kaczmarzUpdated, KaczmarzUpdated
 
-mutable struct KaczmarzUpdated{matT,T,U,Tsparse, R <: AbstractRegularization} <: AbstractLinearSolver
+mutable struct KaczmarzUpdated{matT,T,U} <: AbstractLinearSolver
   S::matT
   u::Vector{T}
-  reg::Vector{R}
+  reg::Vector{<:AbstractRegularization}
   denom::Vector{U}
   rowindex::Vector{Int64}
   rowIndexCycle::Vector{Int64}
@@ -13,19 +13,14 @@ mutable struct KaczmarzUpdated{matT,T,U,Tsparse, R <: AbstractRegularization} <:
   τl::T
   αl::T
   weights::Vector{U}
-  enforceReal::Bool
-  enforcePositive::Bool
   Randomized::Bool
   SubMatrixPercentage::Float64 
   SubMatrixSize::Int64
   Probabilities::Weights
   shuffleRows::Bool
   seed::Int64
-  sparseTrafo::Tsparse
   iterations::Int64
-  constraintMask::Union{Nothing,Vector{Bool}}
   normalizeReg::AbstractRegularizationNormalization
-  regFac::Float64
 end
 
 """
@@ -61,9 +56,6 @@ creates a KaczmarzUpdated object
 
 function KaczmarzUpdated(S; b=nothing, reg = L2Regularization(0.0)
     , weights=nothing
-    , sparseTrafo=nothing
-    , enforceReal::Bool=false
-    , enforcePositive::Bool=false
     , Randomized::Bool=false
     , SubMatrixPercentage::Float64=0.15
     , SubMatrixSize::Int64=150
@@ -85,10 +77,10 @@ reg = vec(reg)
 w = (weights!=nothing ? weights : ones(T,size(S,1)))
 
 # normalization parameters
-regFac = normalize(KaczmarzUpdated, normalizeReg, reg, S, nothing)
+reg = normalize(KaczmarzUpdated, normalizeReg, reg, S, nothing)
 
 # setup denom and rowindex
-denom, rowindex = initkaczmarz(S, regFac * reg[1].λ, w)
+denom, rowindex = initkaczmarz(S, λ(reg[1]), w)
 rowIndexCycle=collect(1:length(rowindex))
 
 Probabilities = Find_Rows_Probaboloties(S)
@@ -110,8 +102,8 @@ vl = zeros(eltype(S),M)
 
 
 return KaczmarzUpdated(S,u,reg,denom,rowindex,rowIndexCycle,cl,vl,εw,τl,αl
-        ,T.(w),enforceReal,enforcePositive,Randomized,SubMatrixPercentage,SubMatrixSize,Probabilities
-        ,shuffleRows,Int64(seed),sparseTrafo,iterations, constraintMask, normalizeReg, regFac)
+        ,T.(w),Randomized,SubMatrixPercentage,SubMatrixSize,Probabilities
+        ,shuffleRows,Int64(seed),iterations, normalizeReg)
 end
 
 """
@@ -130,8 +122,10 @@ function init!(solver::KaczmarzUpdated
               , weights::Vector{R}=solver.weights
               , shuffleRows=solver.shuffleRows) where {T,matT,R}
 
+  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, S, u)
+  λ_ = λ(solver.reg[1])
   if S != solver.S
-    solver.denom, solver.rowindex = initkaczmarz(S,solver.reg.λ,weights)
+    solver.denom, solver.rowindex = initkaczmarz(S,λ_,weights)
     solver.rowIndexCycle = collect(1:length(solver.rowindex))
   end
 
@@ -152,10 +146,9 @@ function init!(solver::KaczmarzUpdated
 
   for i=1:length(solver.rowindex)
     j = solver.rowindex[i]
-    solver.ɛw[i] = sqrt(solver.reg[1].λ) / weights[j]
+    solver.ɛw[i] = sqrt(λ_) / weights[j]
   end
 
-  solver.regFac = normalize(solver, solver.normalizeReg, solver.reg, S, u)
 end
 
 """
@@ -212,18 +205,10 @@ function iterate(solver::KaczmarzUpdated, iteration::Int=0)
       kaczmarz_update!(solver.S,solver.cl,j,solver.αl)
       solver.vl[j] += solver.αl*solver.ɛw[i]
     end
-  
-    # invoke constraints
-    applyConstraints(solver.cl, solver.sparseTrafo,
-                                solver.enforceReal,
-                                solver.enforcePositive,
-                                solver.constraintMask)
-  
-    if length(solver.reg) > 1
-      # We skip the L2 regularizer, since it has already been applied
-      for r in solver.reg[2:end]
-        prox!(r, solver.cl; factor = solver.regFac)
-      end
+    
+    # We skip the L2 regularizer, since it has already been applied
+    for r in solver.reg[2:end]
+      prox!(r, solver.cl)
     end
   
     return solver.vl, iteration+1

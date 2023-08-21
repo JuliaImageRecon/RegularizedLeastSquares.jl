@@ -1,9 +1,9 @@
 export fista, FISTA
 
-mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA, R<:AbstractRegularization} <: AbstractLinearSolver
+mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractLinearSolver
   A::matA
   AᴴA::matAHA
-  reg::R
+  reg::AbstractRegularization
   x::vecT
   x₀::vecT
   xᵒˡᵈ::vecT
@@ -14,7 +14,6 @@ mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVecto
   iterations::Int64
   relTol::rT
   normalizeReg::AbstractRegularizationNormalization
-  regFac::rT
   norm_x₀::rT
   rel_res_norm::rT
   verbose::Bool
@@ -66,9 +65,9 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L
   end
 
   # normalization parameters
-  regFac = normalize(FISTA, normalizeReg, reg, A, nothing)
+  reg = normalize(FISTA, normalizeReg, vec(reg), A, nothing)
 
-  return FISTA(A, AᴴA, vec(reg)[1], x, x₀, xᵒˡᵈ, res, rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,regFac,one(rT),rT(Inf),verbose,restart)
+  return FISTA(A, AᴴA, reg[1], x, x₀, xᵒˡᵈ, res, rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose,restart)
 end
 
 """
@@ -97,7 +96,7 @@ function init!(solver::FISTA{rT,vecT,matA,matAHA}, b::vecT
   solver.t = t
   solver.tᵒˡᵈ = t
   # normalization of regularization parameters
-  solver.regFac = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
+  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
 end
 
 """
@@ -159,7 +158,7 @@ function iterate(solver::FISTA, iteration::Int=0)
   # solver.x .+= solver.ρ .* solver.x₀
 
   # proximal map
-  prox!(solver.reg, solver.x; factor = solver.regFac*solver.ρ)
+  prox!(solver.reg, solver.x, solver.ρ * λ(solver.reg))
 
   # gradient restart conditions
   if solver.restart == :gradient

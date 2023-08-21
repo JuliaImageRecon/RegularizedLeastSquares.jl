@@ -39,7 +39,7 @@ norm(reg::NormalizedRegularization, x, λ) = norm(reg.reg, x, λ)
 function normalize(::MeasurementBasedNormalization, A, b::AbstractArray)
   return norm(b, 1)/length(b)
 end
-normalize(::MeasurementBasedNormalization, A, b::Nothing) = normalize(NoNormalization(), regs, A, b)
+normalize(::MeasurementBasedNormalization, A, b::Nothing) = normalize(NoNormalization(), A, b)
 function normalize(::SystemMatrixBasedNormalization, A::AbstractArray{T}, b) where {T}
   M = size(A, 1)
   N = size(A, 2)
@@ -57,6 +57,10 @@ normalize(::NoNormalization, A, b) = nothing
 function normalize(norm::AbstractRegularizationNormalization, regs::Vector{R}, A, b) where {R<:AbstractRegularization}
   factor = normalize(norm, A, b)
   return map(x-> normalize(x, factor), regs)
+end
+function normalize(norm::AbstractRegularizationNormalization, reg::R, A, b) where {R<:AbstractRegularization}
+  factor = normalize(norm, A, b)
+  return normalize(reg, factor)
 end
 
 normalize(reg::R, ::Nothing) where {R<:AbstractRegularization} = reg

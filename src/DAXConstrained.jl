@@ -44,8 +44,6 @@ Returns an approximate solution to Sᵀx = u s.t. Bx>=0 (each component >=0).
 function DaxConstrained(S, b=nothing; λ::Real=0.0
               , weights::Vector{R}=ones(Float64,size(S,1))
               , sparseTrafo=nothing
-              , enforceReal::Bool=false
-              , enforcePositive::Bool=false
               , iterations::Int=3
               , iterationsInner::Int=2
               , kargs...) where R <: Real

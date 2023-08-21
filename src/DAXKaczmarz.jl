@@ -1,8 +1,9 @@
 export DaxKaczmarz
 
-mutable struct DaxKaczmarz{matT,T,U,Tsparse} <: AbstractLinearSolver
+mutable struct DaxKaczmarz{matT,T,U} <: AbstractLinearSolver
   S::matT
   u::Vector{T}
+  reg::Vector{<:AbstractRegularization}
   λ::Float64
   denom::Vector{U}
   rowindex::Vector{Int64}
@@ -15,9 +16,6 @@ mutable struct DaxKaczmarz{matT,T,U,Tsparse} <: AbstractLinearSolver
   τl::T
   αl::T
   weights::Vector{U}
-  enforceReal::Bool
-  enforcePositive::Bool
-  sparseTrafo::Tsparse
   iterations::Int64
   iterationsInner::Int64
 end
@@ -66,9 +64,17 @@ function DaxKaczmarz(S, b=nothing; λ::Real=0.0
   τl = zero(eltype(S))
   αl = zero(eltype(S))
 
-  return DaxKaczmarz(S,u,Float64(λ),denom,rowindex,sumrowweights,zk,bk,xl,yl,εw,τl,αl
-                  ,T.(weights),enforceReal,enforcePositive
-                  ,sparseTrafo,iterations,iterationsInner)
+  reg = AbstractRegularization[]
+  if enforcePositive && enforceReal
+    push!(reg, PositiveRegularization())
+  elseif enforceReal
+    push!(reg, RealRegularization())
+  end
+  if !isempty(reg) && !isnothing(sparseTrafo)
+    reg[1] = SparseRegularization(sparseTrafo, reg[1])
+  end
+  return DaxKaczmarz(S,u,reg, Float64(λ), denom,rowindex,sumrowweights,zk,bk,xl,yl,εw,τl,αl
+                  ,T.(weights) ,iterations,iterationsInner)
 end
 
 function init!(solver::DaxKaczmarz
@@ -126,7 +132,9 @@ end
 
 function iterate(solver::DaxKaczmarz, iteration::Int=0)
   if done(solver,iteration)
-    applyConstraints(solver.zk, solver.sparseTrafo, solver.enforceReal, solver.enforcePositive)
+    for r in solver.reg
+      prox!(r, solver.zk)
+    end
     return nothing
   end
 

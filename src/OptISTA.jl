@@ -1,9 +1,9 @@
 export optista, OptISTA
 
-mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA, R<:AbstractRegularization} <: AbstractLinearSolver
+mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractLinearSolver
   A::matA
   AᴴA::matAHA
-  reg::R
+  reg::AbstractRegularization
   x::vecT
   x₀::vecT
   y::vecT
@@ -20,7 +20,6 @@ mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVec
   iterations::Int64
   relTol::rT
   normalizeReg::AbstractRegularizationNormalization
-  regFac::rT
   norm_x₀::rT
   rel_res_norm::rT
   verbose::Bool
@@ -82,10 +81,10 @@ function OptISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg
   end
   θn = (1 + sqrt(1 + 8 * θn^2)) / 2
 
-  regFac = normalize(OptISTA, normalizeReg, reg, A, nothing)
+  reg = normalize(OptISTA, normalizeReg, vec(reg), A, nothing)
 
   return OptISTA(A, AᴴA, vec(reg)[1], x, x₀, y, z, zᵒˡᵈ, res, rT(ρ),rT(θ),rT(θ),rT(θn),rT(0),rT(1),rT(1),
-    iterations,rT(relTol),normalizeReg,regFac,one(rT),rT(Inf),verbose)
+    iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose)
 end
 
 """
@@ -122,7 +121,7 @@ function init!(solver::OptISTA{rT,vecT,matA,matAHA}, b::vecT
   solver.θn = (1 + sqrt(1 + 8 * solver.θn^2)) / 2
 
   # normalization of regularization parameters
-  solver.regFac = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
+  solver.reg = normalize(solver, solver.normalizeReg, vec(solver.reg), solver.A, solver.x₀)[1]
 end
 
 """
@@ -185,7 +184,7 @@ function iterate(solver::OptISTA, iteration::Int=0)
   solver.verbose && println("Iteration $iteration; rel. residual = $(solver.rel_res_norm)")
 
   # proximal map
-  prox!(solver.reg, solver.y; factor = solver.regFac*solver.ρ*solver.γ)
+  prox!(solver.reg, solver.y, solver.ρ * solver.γ * λ(solver.reg))
 
   # inertia steps
   # z = x + (y - yᵒˡᵈ) / γ

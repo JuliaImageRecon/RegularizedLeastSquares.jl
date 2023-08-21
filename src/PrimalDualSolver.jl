@@ -1,8 +1,8 @@
 export primaldualsolver
 
-mutable struct PrimalDualSolver{T,S,R<:AbstractRegularization} <: AbstractLinearSolver
+mutable struct PrimalDualSolver{T,S} <: AbstractLinearSolver
     S::Matrix{T}
-    reg::Vector{R}
+    reg::Vector{<:AbstractRegularization}
     gradientOp::S
     u::Vector{T}
     c::Vector{T}
@@ -18,7 +18,6 @@ mutable struct PrimalDualSolver{T,S,R<:AbstractRegularization} <: AbstractLinear
     iterations::Int64
     shape::NTuple{2,Int64}
     normalizeReg::AbstractRegularizationNormalization
-    regFac::Float64
 end
 
 function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = L1Regularization(λ)
@@ -59,10 +58,10 @@ function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = L1Regularizati
   y2 = zeros(T,size(gradientOp*c,1))
 
   # normalization parameters
-  regFac = normalize(PrimalDualSolver, normalizeReg, reg, S, nothing)
+  reg = normalize(PrimalDualSolver, normalizeReg, vec(reg), S, nothing)
 
   return PrimalDualSolver(S,vec(reg),gradientOp,u,c,cO,y1,y2,T(σ),T(τ),T(ϵ),T(PrimalDualGap),enforceReal,enforcePositive,iterations,shape,
-  normalizeReg, regFac)
+  normalizeReg)
 end
 
 function init!(solver::PrimalDualSolver; S::Matrix{T}=solver.S, u::Vector{T}=T[], c::Vector{T}=T[],
@@ -81,7 +80,7 @@ function init!(solver::PrimalDualSolver; S::Matrix{T}=solver.S, u::Vector{T}=T[]
   solver.y1[:] .= zero(T)
   solver.y2[:] .= zero(T)
 
-  solver.regFac = normalize(solver, solver.normalizeReg, solver.reg, S, u)
+  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, S, u)
 end
 
 function solve(solver::PrimalDualSolver, u::Vector{T}; S::Matrix{T}=solver.S, startVector::Vector{T}=eltype(S)[]
@@ -119,10 +118,10 @@ function iterate(solver::PrimalDualSolver, iteration::Int=0)
       solver.c += - solver.τ*(adjoint(solver.S)*solver.y1 + adjoint(solver.gradientOp)*solver.y2)
   end
 
-  applyConstraints(solver.c, nothing, solver.enforceReal, solver.enforcePositive)
+  applyConstraints(solver.c, nothing, solver.enforceReal, solver.enforcePositive) # todo remove constraints
 
   # updating convergence measure
-  for i=1:length(solver.reg)
+  for i=1:length(solver.reg) # todo how to handle projection reg
     solver.PrimalDualGap = abs((1/2)*norm(solver.S*solver.c-solver.u)^2 + solver.reg[1].λ*norm(solver.c,1) + (1/2)*norm(solver.y1,2)^2 + dot(solver.y1,solver.u))
   end
 
