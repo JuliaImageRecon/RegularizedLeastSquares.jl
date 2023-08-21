@@ -17,7 +17,6 @@ group-soft-thresholding for l1/l2-regularization.
 * `λ::Float64`                  - regularization paramter
 * `slices::Int64=1`             - number of elements per group
 """
-proxL21!(x, λ; kargs...) = prox!(L21Regularization, x, λ; kargs...)
 function prox!(::Type{<:L21Regularization}, x::Vector{Tc},λ::T; slices::Int64=1, kargs...) where {T, Tc <: Union{T, Complex{T}}}
   return proxL21!(x, λ, slices)
 end
@@ -34,7 +33,6 @@ end
 return the value of the L21-regularization term.
 Arguments are the same as in `proxL21!`
 """
-normL21(x, λ; kargs...) = norm(L21Regularization, x, λ; kargs...)
 function norm(::Type{<:L21Regularization}, x::Vector{Tc}, λ::T; slices::Int64=1, kargs...) where {T, Tc <: Union{T, Complex{T}}}
   sliceLength = div(length(x),slices)
   groupNorm = [norm(x[i:sliceLength:end]) for i=1:sliceLength]

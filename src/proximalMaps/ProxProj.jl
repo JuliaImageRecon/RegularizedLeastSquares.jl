@@ -11,7 +11,6 @@ ProjectionRegularization(λ; projFunc::Function=x->x, kargs...) = ProjectionRegu
 
 applies the projection given by `projFunc`.
 """
-proxProj!(x, λ; kargs...) = prox!(ProjectionRegularization, x, λ; kargs...)
 function prox!(::Type{<:ProjectionRegularization}, x::Vector{Tc}, λ::T; projFunc=x->x, kargs...) where {T, Tc <: Union{T, Complex{T}}}
   x[:] = projFunc(x)
 end
@@ -21,7 +20,6 @@ end
 
 evaluate indicator function of set to be projected onto.
 """
-normProj(x, λ=0.0; kargs...) = norm(ProjectionRegularization, x, λ; kargs...)
 function norm(::Type{<:ProjectionRegularization}, x::Vector{Tc}, λ::T=0.0; projFunc=x->x, kargs...) where {T, Tc <: Union{T, Complex{T}}}
   y = copy(x)
   y[:] = proxProj!(y,λ,projFunc=projFunc)

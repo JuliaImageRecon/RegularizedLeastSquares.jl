@@ -10,8 +10,7 @@ end
 
 proximal map for Tikhonov regularization.
 """
-proxL2!(x, λ; kargs...) = prox!(L2Regularization, x, λ; kargs...)
-function prox!(::Type{<:L2Regularization}, x::AbstractArray{Tc}, λ::T; kargs...) where {T, Tc <: Union{T, Complex{T}}}
+function prox!(::Type{<:L2Regularization}, x::T, λ::Float64; kargs...) where T<:AbstractArray
   x[:] .*= 1. / (1. + 2. *λ)#*x
 end
 
@@ -20,5 +19,4 @@ end
 
 returns the value of the L2-regularization term
 """
-normL2(x, λ; kargs...) = norm(L2Regularization, x, λ; kargs...)
-norm(::Type{<:L2Regularization}, x::AbstractArray{Tc}, λ::T; kargs...) where {T, Tc <: Union{T, Complex{T}}} = λ*norm(x,2)^2
+norm(::Type{<:L2Regularization}, x::T, λ::Float64; kargs...) where T<:AbstractArray = λ*norm(x,2)^2

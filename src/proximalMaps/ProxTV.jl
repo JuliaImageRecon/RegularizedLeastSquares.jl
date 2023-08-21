@@ -60,7 +60,6 @@ and Deblurring Problems", IEEE Trans. Image Process. 18(11), 2009
 * `dims`                    - Dimension to perform the TV along. If `Integer`, the Condat algorithm is called, and the FDG algorithm otherwise.
 * `iterationsTV=20`         - number of FGP iterations
 """
-proxTV!(x, λ; kargs...) = prox!(TVRegularization, x, λ; kargs...)
 function prox!(::Type{<:TVRegularization}, x::Vector{Tc}, λ::T; shape, dims=1:length(shape), kwargs...) where {T, Tc <: Union{T, Complex{T}}}# use kwargs for shape and dims
   return proxTV!(x, λ, shape, dims; kwargs...) # define shape and dims w/o kwargs to enable multiple dispatch on dims
 end
@@ -134,7 +133,6 @@ end
 returns the value of the TV-regularization term.
 Arguments are the same as in `proxTV!`
 """
-normTV(x, λ; kargs...) = norm(TVRegularization, x, λ; kargs...)
 function norm(::Type{<:TVRegularization}, x::Vector{Tc},λ::T; shape, dims=1:length(shape)) where {T <: Real, Tc <: Union{T, Complex{T}}}
   ∇ = GradientOp(Tc,shape, dims)
   return λ * norm(∇*x, 1)
