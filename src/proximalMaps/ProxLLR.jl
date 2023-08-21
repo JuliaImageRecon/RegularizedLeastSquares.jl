@@ -22,7 +22,7 @@ proximal map for LLR regularization using singular-value-thresholding
 * `blockSize::Tuple{Int}=[2;2]` - size of patches to perform singular value thresholding on
 * `randshift::Bool=true`        - randomly shifts the patches to ensure translation invariance
 """
-function prox!(::Type{<:LLRRegularization},
+function prox!(::LLRRegularization,
     x::Vector{Tc},
     λ::T;
     shape::NTuple{N,TI},
@@ -91,7 +91,7 @@ end
 returns the value of the LLR-regularization term.
 Arguments are the same is in `proxLLR!`
 """
-function norm(::Type{<:LLRRegularization},
+function norm(::LLRRegularization,
     x::Vector{Tc},
     λ::T;
     shape::NTuple{N,TI},
