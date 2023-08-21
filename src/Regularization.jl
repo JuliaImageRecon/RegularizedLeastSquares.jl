@@ -5,15 +5,20 @@ abstract type AbstractParameterizedRegularization{T} <: AbstractRegularization e
 prox!(reg::AbstractParameterizedRegularization, x::AbstractArray) = prox!(reg, x, λ(reg))
 norm(reg::AbstractParameterizedRegularization, x::AbstractArray) = norm(reg, x, λ(reg))
 λ(reg::AbstractParameterizedRegularization) = reg.λ
+# Conversion
+prox!(reg, x::AbstractArray{Complex{T}}, λ) where {T} = prox!(reg, x, convert(T, λ))
+norm(reg, x::AbstractArray{Complex{T}}, λ) where {T} = norm(reg, x, convert(T, λ))
+prox!(reg, x::AbstractArray{T}, λ) where {T} = prox!(reg, x, convert(T, λ))
+norm(reg, x::AbstractArray{T}, λ) where {T} = norm(reg, x, convert(T, λ))
 
-@generated function prox!(reg::T, x, λ) where {T<:AbstractParameterizedRegularization}
-  kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in filter(x-> x != :λ, fieldnames(T))]
-  return Expr(:call, :prox!, Expr(:parameters, kwargs...), T, :x, :λ)
+@generated function prox!(reg::R, x::AbstractArray{Tc}, λ::T) where {R<:AbstractParameterizedRegularization, T, Tc<: Union{T, Complex{T}}}
+  kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in filter(x-> x != :λ, fieldnames(R))]
+  return Expr(:call, :prox!, Expr(:parameters, kwargs...), R, :x, :λ)
 end
 
-@generated function norm(reg::T, x, λ) where {T<:AbstractParameterizedRegularization}
-  kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in filter(x-> x != :λ, fieldnames(T))]
-  return Expr(:call, :norm, Expr(:parameters, kwargs...), T, :x, :λ)
+@generated function norm(reg::R, x::AbstractArray{Tc}, λ::T) where {R<:AbstractParameterizedRegularization, T, Tc<: Union{T, Complex{T}}}
+  kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in filter(x-> x != :λ, fieldnames(R))]
+  return Expr(:call, :norm, Expr(:parameters, kwargs...), R, :x, :λ)
 end
 
 abstract type AbstractProjectionRegularization <: AbstractRegularization end

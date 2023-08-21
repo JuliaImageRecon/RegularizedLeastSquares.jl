@@ -28,7 +28,7 @@ returns the value of the L1-regularization term.
 Arguments are the same as in `proxL1!`
 """
 normL1(x, λ; kargs...) = norm(L1Regularization, x, λ; kargs...)
-function norm(::Type{<:L1Regularization}, x::T, λ::Float64; kargs...) where T<:AbstractArray
+function norm(::Type{<:L1Regularization}, x::AbstractArray{Tc}, λ::T; kargs...) where {T, Tc <: Union{T, Complex{T}}}
   l1Norm = λ*norm(x,1)
   return l1Norm
 end

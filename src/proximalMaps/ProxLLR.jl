@@ -24,12 +24,12 @@ proximal map for LLR regularization using singular-value-thresholding
 """
 proxLLR!(x, λ; kargs...) = prox!(LLRRegularization, x, λ; kargs...)
 function prox!(::Type{<:LLRRegularization},
-    x::Vector{T},
-    λ;
+    x::Vector{Tc},
+    λ::T;
     shape::NTuple{N,TI},
     blockSize::NTuple{N,TI} = ntuple(_ -> 2, N),
     randshift::Bool = true,
-) where {T,N,TI<:Integer}
+) where {T, Tc <: Union{T, Complex{T}},N,TI<:Integer}
 
     x = reshape(x, tuple(shape..., length(x) ÷ prod(shape)))
 
@@ -94,14 +94,14 @@ Arguments are the same is in `proxLLR!`
 """
 normLLR(x, λ; kargs...) = norm(LLRRegularization, x, λ; kargs...)
 function norm(::Type{<:LLRRegularization},
-    x::Vector{T},
-    λ::Float64;
+    x::Vector{Tc},
+    λ::T;
     shape::NTuple{N,TI},
     L = 1,
     blockSize::NTuple{N,TI} = ntuple(_ -> 2, N),
     randshift::Bool = true,
     kargs...,
-) where {N,T,TI<:Integer}
+) where {N,T, Tc <: Union{T, Complex{T}},TI<:Integer}
 
     Nvoxel = prod(shape)
     K = floor(Int, length(x) / (Nvoxel * L))
