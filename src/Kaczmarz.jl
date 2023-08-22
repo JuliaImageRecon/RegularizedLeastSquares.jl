@@ -58,7 +58,7 @@ function Kaczmarz(S; b=nothing, reg = L2Regularization(0.0)
 
   T = real(eltype(S))
 
-  if !(reg isa L2Regularization || (reg isa Vector && reg[1] isa L2Regularization))
+  if !((reg isa Vector && sink(reg[1]) isa L2Regularization) || sink(reg) isa L2Regularization)
     error("Kaczmarz only supports L2 regularizer as first regularization term")
   end
   reg = vec(reg)
