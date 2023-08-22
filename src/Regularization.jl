@@ -1,7 +1,8 @@
-export Regularization, AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, lambdList, prox! #, norm
+export Regularization, AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, lambdList, prox!, sink, λ
 
 abstract type AbstractRegularization end
 abstract type AbstractParameterizedRegularization{T} <: AbstractRegularization end
+sink(reg::AbstractRegularization) = reg
 prox!(reg::AbstractParameterizedRegularization, x::AbstractArray) = prox!(reg, x, λ(reg))
 norm(reg::AbstractParameterizedRegularization, x::AbstractArray) = norm(reg, x, λ(reg))
 λ(reg::AbstractParameterizedRegularization) = reg.λ
@@ -31,10 +32,11 @@ struct MeasurementBasedNormalization <: AbstractRegularizationNormalization end
 struct SystemMatrixBasedNormalization <: AbstractRegularizationNormalization end
 # TODO weighted systemmatrix, maybe weighted measurementbased?
 
-struct NormalizedRegularization{TF, T, R<:AbstractParameterizedRegularization{T}} <: AbstractParameterizedRegularization{TF}
+struct NormalizedRegularization{TF, R<:AbstractRegularization} <: AbstractParameterizedRegularization{TF}
   reg::R
   factor::TF
 end
+sink(reg::NormalizedRegularization) = sink(reg.reg)
 λ(reg::NormalizedRegularization) = λ(reg.reg) * reg.factor
 prox!(reg::NormalizedRegularization, x::AbstractArray, λ) = prox!(reg.reg, x, λ)
 norm(reg::NormalizedRegularization, x::AbstractArray, λ) = norm(reg.reg, x, λ)
@@ -70,6 +72,13 @@ normalize(reg::R, ::Nothing) where {R<:AbstractRegularization} = reg
 normalize(reg::AbstractProjectionRegularization, factor::Number) = reg
 normalize(reg::NormalizedRegularization, factor::Number) = NormalizedRegularization(reg.reg, factor) # Update normalization
 normalize(reg::AbstractParameterizedRegularization, factor::Number) = NormalizedRegularization(reg, factor)
+function normalize(reg::AbstractRegularization, factor::Number)
+  if sink(reg) isa AbstractParameterizedRegularization
+    return NormalizedRegularization(reg, factor)
+  end
+  return reg
+end
+
 
 normalize(solver::AbstractLinearSolver, norm, regs, A, b) = normalize(typeof(solver), norm, regs, A, b)
 normalize(solver::Type{T}, norm::AbstractRegularizationNormalization, regs, A, b) where T<:AbstractLinearSolver = normalize(norm, regs, A, b)

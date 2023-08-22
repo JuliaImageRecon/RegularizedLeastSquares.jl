@@ -1,15 +1,17 @@
 export SparseRegularization
 
-struct SparseRegularization{T, R<:AbstractRegularization} <: AbstractRegularization
+struct SparseRegularization{R<:AbstractRegularization, S <: Trafo} <: AbstractRegularization
   reg::R
-  sparseTrafo::Trafo
+  sparseTrafo::S
 end
+sink(reg::SparseRegularization) = sink(reg.reg)
 λ(reg::SparseRegularization) = λ(reg.reg)
 
 function prox!(reg::SparseRegularization, x::AbstractArray)
 	z = reg.sparseTrafo * x
   result = prox!(reg.reg, z)
-	return adjoint(reg.sparseTrafo) * result
+	x[:] = adjoint(reg.sparseTrafo) * result
+  return x
 end
 function norm(reg::SparseRegularization, x::AbstractArray)
   z = reg.sparseTrafo * x 

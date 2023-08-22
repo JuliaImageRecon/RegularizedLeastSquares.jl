@@ -11,6 +11,7 @@ end
 function prox!(::PositiveRegularization, x::Vector{T}) where T
   enfReal!(x)
   enfPos!(x)
+  return x
 end
 
 """

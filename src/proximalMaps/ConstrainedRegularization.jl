@@ -1,15 +1,17 @@
 export ConstrainedRegularization
 
-struct ConstrainedRegularization{T, R<:AbstractRegularization} <: AbstractRegularization
-  constraintMask::Vector{Bool}
+struct ConstrainedRegularization{R<:AbstractRegularization} <: AbstractRegularization
   reg::R
+  constraintMask::Vector{Bool}
 end
 λ(reg::ConstrainedRegularization) = λ(reg.reg)
+sink(reg::ConstrainedRegularization) = sink(reg.reg)
+
 
 function prox!(reg::ConstrainedRegularization, x::AbstractArray)
 	z = view(x, findall(reg.constraintMask))
-  result = prox!(reg.reg, z)
-	return result
+  prox!(reg.reg, z)
+	return x
 end
 function norm(reg::ConstrainedRegularization, x::AbstractArray)
   z = view(x, findall(reg.constraintMask))

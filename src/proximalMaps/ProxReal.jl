@@ -10,6 +10,7 @@ end
 """
 function prox!(::RealRegularization, x::Vector{T}) where T
   enfReal!(x)
+  return x
 end
 
 """
