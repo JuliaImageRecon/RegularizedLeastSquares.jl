@@ -8,7 +8,7 @@ end
 
     enforce positivity and realness of solution `x`.
 """
-function prox!(::RealRegularization, x::Vector{T}; kargs...) where T
+function prox!(::RealRegularization, x::Vector{T}) where T
   enfReal!(x)
 end
 
@@ -16,9 +16,9 @@ end
     returns the value of the characteristic function of real, Real numbers.
     normReal(x) = (isreal(x)&&x>0) ? 0 : Inf
 """
-function norm(::RealRegularization, x::Vector{T};kargs...) where T
+function norm(reg::RealRegularization, x::Vector{T}) where T
   y = copy(x)
-  proxReal!(y)
+  prox!(reg, y)
   if y != x
     return Inf
   end

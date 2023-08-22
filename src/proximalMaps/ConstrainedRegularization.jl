@@ -6,13 +6,13 @@ struct ConstrainedRegularization{T, R<:AbstractRegularization} <: AbstractRegula
 end
 λ(reg::ConstrainedRegularization) = λ(reg.reg)
 
-function prox!(reg::ConstrainedRegularization, x::AbstractArray; kwargs...)
+function prox!(reg::ConstrainedRegularization, x::AbstractArray)
 	z = view(x, findall(reg.constraintMask))
-  result = prox!(reg.reg, z; kwargs...)
+  result = prox!(reg.reg, z)
 	return result
 end
-function norm(reg::ConstrainedRegularization, x::AbstractArray; kwargs...)
+function norm(reg::ConstrainedRegularization, x::AbstractArray)
   z = view(x, findall(reg.constraintMask))
-  result = norm(reg.reg, z; kwargs...)
+  result = norm(reg.reg, z)
   return result
 end

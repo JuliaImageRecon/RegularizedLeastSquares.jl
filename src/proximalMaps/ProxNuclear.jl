@@ -16,9 +16,9 @@ applies singular value soft-thresholding - i.e. the proximal map for the nuclear
 * `λ::Float64`           - regularization paramter
 * `svtShape::NTuple=[]`  - size of the underlying matrix
 """
-function prox!(::NuclearRegularization, x::Vector{Tc}, λ::T; svtShape::NTuple,kargs...) where {T, Tc <: Union{T, Complex{T}}}
-  U,S,V = svd(reshape(x, svtShape))
-  proxL1!(S,λ)
+function prox!(reg::NuclearRegularization, x::Vector{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
+  U,S,V = svd(reshape(x, reg.svtShape))
+  prox!(L1Regularization, S, λ)
   x[:] = vec(U*Matrix(Diagonal(S))*V')
 end
 
@@ -28,7 +28,7 @@ end
 returns the value of the nuclear norm regularization term.
 Arguments are the same as in `proxNuclear!`
 """
-function norm(::NuclearRegularization, x::Vector{Tc}, λ::T; svtShape::NTuple,kargs...) where {T, Tc <: Union{T, Complex{T}}}
-  U,S,V = svd( reshape(x, svtShape) )
+function norm(reg::NuclearRegularization, x::Vector{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
+  U,S,V = svd( reshape(x, reg.svtShape) )
   return λ*norm(S,1)
 end

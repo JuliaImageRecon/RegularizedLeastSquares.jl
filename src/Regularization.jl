@@ -1,4 +1,4 @@
-export Regularization, AbstractRegularization, lambdList, prox! #, norm
+export Regularization, AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, lambdList, prox! #, norm
 
 abstract type AbstractRegularization end
 abstract type AbstractParameterizedRegularization{T} <: AbstractRegularization end
@@ -6,25 +6,23 @@ prox!(reg::AbstractParameterizedRegularization, x::AbstractArray) = prox!(reg, x
 norm(reg::AbstractParameterizedRegularization, x::AbstractArray) = norm(reg, x, λ(reg))
 λ(reg::AbstractParameterizedRegularization) = reg.λ
 # Conversion
-prox!(reg, x::AbstractArray{Complex{T}}, λ) where {T} = prox!(reg, x, convert(T, λ))
-norm(reg, x::AbstractArray{Complex{T}}, λ) where {T} = norm(reg, x, convert(T, λ))
-prox!(reg, x::AbstractArray{T}, λ) where {T} = prox!(reg, x, convert(T, λ))
-norm(reg, x::AbstractArray{T}, λ) where {T} = norm(reg, x, convert(T, λ))
+prox!(reg::AbstractParameterizedRegularization, x::AbstractArray{Tc}, λ) where {T, Tc<:Union{T, Complex{T}}} = prox!(reg, x, convert(T, λ))
+norm(reg::AbstractParameterizedRegularization, x::AbstractArray{Tc}, λ) where {T, Tc<:Union{T, Complex{T}}} = norm(reg, x, convert(T, λ))
 
-@generated function prox!(reg::R, x::AbstractArray{Tc}, λ::T) where {R<:AbstractParameterizedRegularization, T, Tc<: Union{T, Complex{T}}}
-  kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in filter(x-> x != :λ, fieldnames(R))]
-  return Expr(:call, :prox!, Expr(:parameters, kwargs...), reg, :x, :λ)
-end
+prox!(str::AbstractString, x, λ; kwargs...) = prox!(Regularization(str, λ; kwargs...), x, λ)
+norm(str::AbstractString, x, λ; kwargs...) = norm(Regularization(str, λ; kwargs...), x, λ)
+prox!(regType::Type{<:AbstractParameterizedRegularization}, x, λ; kwargs...) = prox!(regType(λ; kwargs...), x, λ)
+norm(regType::Type{<:AbstractParameterizedRegularization}, x, λ; kwargs...) = norm(regType(λ; kwargs...), x, λ)
 
-@generated function norm(reg::R, x::AbstractArray{Tc}, λ::T) where {R<:AbstractParameterizedRegularization, T, Tc<: Union{T, Complex{T}}}
-  kwargs = [Expr(:kw, :($field), :(reg.$field)) for field in filter(x-> x != :λ, fieldnames(R))]
-  return Expr(:call, :norm, Expr(:parameters, kwargs...), reg, :x, :λ)
-end
+
 
 abstract type AbstractProjectionRegularization <: AbstractRegularization end
 prox!(::R, x::AbstractArray) where {R<:AbstractProjectionRegularization} = prox!(R, x)
 norm(::R, x::AbstractArray) where {R<:AbstractProjectionRegularization} = norm(R, x)
 λ(::AbstractProjectionRegularization) = nothing
+
+prox!(regType::Type{<:AbstractProjectionRegularization}, x; kwargs...) = prox!(regType(;kwargs...), x)
+norm(regType::Type{<:AbstractProjectionRegularization}, x; kwargs...) = norm(regType(;kwargs...), x)
 
 export AbstractRegularizationNormalization, NoNormalization, MeasurementBasedNormalization, SystemMatrixBasedNormalization
 abstract type AbstractRegularizationNormalization end
@@ -38,8 +36,8 @@ struct NormalizedRegularization{TF, T, R<:AbstractParameterizedRegularization{T}
   factor::TF
 end
 λ(reg::NormalizedRegularization) = λ(reg.reg) * reg.factor
-prox!(reg::NormalizedRegularization, x, λ) = prox!(reg.reg, x, λ)
-norm(reg::NormalizedRegularization, x, λ) = norm(reg.reg, x, λ)
+prox!(reg::NormalizedRegularization, x::AbstractArray, λ) = prox!(reg.reg, x, λ)
+norm(reg::NormalizedRegularization, x::AbstractArray, λ) = norm(reg.reg, x, λ)
 
 function normalize(::MeasurementBasedNormalization, A, b::AbstractArray)
   return norm(b, 1)/length(b)
@@ -107,7 +105,7 @@ Base.vec(reg::Vector{AbstractRegularization}) = reg
 Returns a list of all available Regularizations
 """
 function RegularizationList()
-  Any["L2", "L1", "L21", "TV", "LLR", "Positive", "Proj", "Nuclear"]
+  Any["L2", "L1", "L21", "TV", "LLR", "Positive", "Real", "Proj", "Nuclear"]
 end
 
 """

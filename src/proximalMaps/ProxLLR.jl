@@ -6,9 +6,10 @@ struct LLRRegularization{T, N, TI} <: AbstractParameterizedRegularization{T} whe
   shape::NTuple{N,TI}
   blockSize::NTuple{N,TI}
   randshift::Bool
+  L::Int64
 end
-LLRRegularization(λ;  shape::NTuple{N,TI}, blockSize::NTuple{N,TI} = ntuple(_ -> 2, N), randshift::Bool = true, kargs...) where {N,TI<:Integer} =
- LLRRegularization(λ, shape, blockSize, randshift)
+LLRRegularization(λ;  shape::NTuple{N,TI}, blockSize::NTuple{N,TI} = ntuple(_ -> 2, N), randshift::Bool = true, L::Int64 = 1, kargs...) where {N,TI<:Integer} =
+ LLRRegularization(λ, shape, blockSize, randshift, L)
 
 """
     proxLLR!(x::Vector{T}, λ=1e-6; kargs...) where T
@@ -22,14 +23,10 @@ proximal map for LLR regularization using singular-value-thresholding
 * `blockSize::Tuple{Int}=[2;2]` - size of patches to perform singular value thresholding on
 * `randshift::Bool=true`        - randomly shifts the patches to ensure translation invariance
 """
-function prox!(::LLRRegularization,
-    x::Vector{Tc},
-    λ::T;
-    shape::NTuple{N,TI},
-    blockSize::NTuple{N,TI} = ntuple(_ -> 2, N),
-    randshift::Bool = true,
-) where {T, Tc <: Union{T, Complex{T}},N,TI<:Integer}
-
+function prox!(reg::LLRRegularization{TR, N, TI}, x::AbstractArray{Tc}, λ::T) where {TR, N, TI, T, Tc <: Union{T, Complex{T}}}
+    shape = reg.shape
+    blockSize = reg.blockSize
+    randshift = reg.randshift
     x = reshape(x, tuple(shape..., length(x) ÷ prod(shape)))
 
     block_idx = CartesianIndices(blockSize)
@@ -46,7 +43,7 @@ function prox!(::LLRRegularization,
     ext = mod.(shape, blockSize)
     pad = mod.(blockSize .- ext, blockSize)
     if any(pad .!= 0)
-        xp = zeros(T, (shape .+ pad)..., K)
+        xp = zeros(Tc, (shape .+ pad)..., K)
         xp[CartesianIndices(x)] .= xs
     else
         xp = xs
@@ -55,7 +52,7 @@ function prox!(::LLRRegularization,
     bthreads = BLAS.get_num_threads()
     try
         BLAS.set_num_threads(1)
-        xᴸᴸᴿ = [Array{T}(undef, prod(blockSize), K) for _ = 1:Threads.nthreads()]
+        xᴸᴸᴿ = [Array{Tc}(undef, prod(blockSize), K) for _ = 1:Threads.nthreads()]
         let xp = xp # Avoid boxing error
             @floop for i ∈ CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
                 @views xᴸᴸᴿ[Threads.threadid()] .= reshape(xp[i.+block_idx, :], :, K)
@@ -64,7 +61,7 @@ function prox!(::LLRRegularization,
                     xp[i.+block_idx, :] .= 0
                 else # threshold singular values
                     SVDec = svd!(xᴸᴸᴿ[Threads.threadid()])
-                    proxL1!(SVDec.S, λ)
+                    prox!(L1Regularization, SVDec.S, λ)
                     xp[i.+block_idx, :] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
                 end
             end
@@ -91,16 +88,11 @@ end
 returns the value of the LLR-regularization term.
 Arguments are the same is in `proxLLR!`
 """
-function norm(::LLRRegularization,
-    x::Vector{Tc},
-    λ::T;
-    shape::NTuple{N,TI},
-    L = 1,
-    blockSize::NTuple{N,TI} = ntuple(_ -> 2, N),
-    randshift::Bool = true,
-    kargs...,
-) where {N,T, Tc <: Union{T, Complex{T}},TI<:Integer}
-
+function norm(reg::LLRRegularization, x::Vector{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
+    shape = reg.shape
+    blockSize = reg.blockSize
+    randshift = reg.randshift
+    L = reg.L
     Nvoxel = prod(shape)
     K = floor(Int, length(x) / (Nvoxel * L))
     normᴸᴸᴿ = 0.0
@@ -110,7 +102,6 @@ function norm(::LLRRegularization,
             shape;
             blockSize = blockSize,
             randshift = randshift,
-            kargs...,
         )
     end
 
@@ -207,7 +198,7 @@ function proxLLROverlapping!(
                     xs[i.+block_idx, :] .= 0
                 else # threshold singular values
                     SVDec = svd!(xᴸᴸᴿ[Threads.threadid()])
-                    proxL1!(SVDec.S, λ)
+                    prox!(L1Regularization, SVDec.S, λ)
                     xs[i.+block_idx, :] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
                 end
             end
