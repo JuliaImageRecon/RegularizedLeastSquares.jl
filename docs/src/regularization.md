@@ -29,7 +29,7 @@ So far, the following common regularizers are implemented:
  * Positivity constrained ("Positive")
  * Projection onto a convex set ("Proj")
 
-To build any of the implemted regularizers, one can use the methods `Regularization(name::String, λ::AbstractFloat; kargs...)` with the corresponding name (in brackets in the list above). For example, an $l_1$-regularizer can be build with
+To build any of the implemented regularizers, one can use the methods `Regularization(name::String, λ::AbstractFloat; kargs...)` with the corresponding name (in brackets in the list above). For example, an $l_1$-regularizer can be build with
 ```julia
 shape = (256,256) # size of the underlying Array
 λ = 1.e-3         # regularization parameter
