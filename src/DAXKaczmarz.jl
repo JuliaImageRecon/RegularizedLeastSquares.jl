@@ -71,7 +71,7 @@ function DaxKaczmarz(S, b=nothing; λ::Real=0.0
     push!(reg, RealRegularization())
   end
   if !isempty(reg) && !isnothing(sparseTrafo)
-    reg[1] = SparseRegularization(sparseTrafo, reg[1])
+    reg = map(r -> SparseRegularization(r, sparseTrafo), reg)
   end
   return DaxKaczmarz(S,u,reg, Float64(λ), denom,rowindex,sumrowweights,zk,bk,xl,yl,εw,τl,αl
                   ,T.(weights) ,iterations,iterationsInner)

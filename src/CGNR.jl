@@ -161,7 +161,7 @@ function iterate(solver::CGNR, iteration::Int=0)
 
     λ_ = λ(solver.reg[1])
     if λ_ > 0
-      solver.αl = solver.ζl/(normvl+solver.regFac*λ_*norm(solver.pl)^2)
+      solver.αl = solver.ζl/(normvl+λ_*norm(solver.pl)^2)
     else
       solver.αl = solver.ζl/normvl
     end

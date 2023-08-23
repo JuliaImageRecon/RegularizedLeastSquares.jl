@@ -18,3 +18,15 @@ function norm(reg::SparseRegularization, x::AbstractArray)
   result = norm(reg.reg, z)
   return result
 end
+
+function prox!(reg::SparseRegularization, x::AbstractArray, λ)
+	z = reg.sparseTrafo * x
+  result = prox!(reg.reg, z, λ)
+	x[:] = adjoint(reg.sparseTrafo) * result
+  return x
+end
+function norm(reg::SparseRegularization, x::AbstractArray, λ)
+  z = reg.sparseTrafo * x 
+  result = norm(reg.reg, z, λ)
+  return result
+end
