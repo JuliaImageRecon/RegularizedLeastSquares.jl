@@ -14,7 +14,7 @@ using LinearOperators: opEye
 using ProgressMeter
 using StatsBase
 using FastClosures
-using LinearOperators
+using LinearOperatorCollection
 
 export AbstractLinearSolver, createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
 
@@ -25,8 +25,6 @@ const Trafo = Any # Union{AbstractMatrix, AbstractLinearOperator, Nothing}
 
 # Fallback function
 setlambda(S::AbstractMatrix, λ::Real) = nothing
-
-include("linearOperators/GradientOp.jl")
 
 include("Regularization.jl")
 include("proximalMaps/ProxL1.jl")

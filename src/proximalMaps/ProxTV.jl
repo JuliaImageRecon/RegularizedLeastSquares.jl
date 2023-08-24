@@ -22,7 +22,7 @@ function TVParams(shape, T::Type=Float64; dims=1:length(shape))
 end
 
 function TVParams(x::AbstractVector{Tc}; shape, dims=1:length(shape)) where {Tc}
-  ∇ = GradientOp(Tc,shape, dims)
+  ∇ = GradientOp(Tc; shape, dims)
 
   # allocate storage
   xTmp = similar(x)
@@ -136,6 +136,6 @@ returns the value of the TV-regularization term.
 Arguments are the same as in `proxTV!`
 """
 function norm(reg::TVRegularization, x::Vector{Tc},λ::T) where {T <: Real, Tc <: Union{T, Complex{T}}}
-  ∇ = GradientOp(Tc,reg.shape, reg.dims)
+  ∇ = GradientOp(Tc; shape=reg.shape, dims=reg.dims)
   return λ * norm(∇*x, 1)
 end
