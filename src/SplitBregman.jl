@@ -1,6 +1,6 @@
 export SplitBregman
 
-mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT} <: AbstractLinearSolver
+mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT,rT} <: AbstractLinearSolver
   # oerators and regularization
   A::matT
   reg::Vector{<:AbstractRegularization}
@@ -30,10 +30,10 @@ mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT} <: AbstractLinearS
   eps_pri::rvecT
   eps_dt::vecT
   # eps_dual::Float64
-  σᵃᵇˢ::Float64
-  absTol::Float64
-  relTol::Float64
-  tolInner::Float64
+  σᵃᵇˢ::rT
+  absTol::rT
+  relTol::rT
+  tolInner::rT
   #counter for internal iterations
   iter_cnt::Int64
   normalizeReg::AbstractRegularizationNormalization
