@@ -43,7 +43,6 @@ include("proximalMaps/SparseRegularization.jl")
 
 include("Utils.jl")
 include("Kaczmarz.jl")
-include("KaczmarzUpdated.jl")
 include("DAXKaczmarz.jl")
 include("DAXConstrained.jl")
 include("CGNR.jl")
@@ -65,7 +64,7 @@ function linearSolverList()
 end
 
 function linearSolverListReal()
-  Any["kaczmarzUpdated","kaczmarz","cgnr","daxkaczmarz","daxconstrained","primaldualsolver"] # These are those passing the tests
+  Any["kaczmarz", "cgnr", "daxkaczmarz", "daxconstrained", "primaldualsolver"] # These are those passing the tests
     #, "fusedlasso"]
 end
 

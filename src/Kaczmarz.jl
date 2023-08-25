@@ -14,6 +14,9 @@ mutable struct Kaczmarz{matT,T,U} <: AbstractLinearSolver
   τl::T
   αl::T
   weights::Vector{U}
+  randomized::Bool
+  subMatrixSize::Int64
+  probabilities::Weights{U, U, Vector{U}}
   shuffleRows::Bool
   seed::Int64
   iterations::Int64
@@ -27,6 +30,8 @@ end
               , sparseTrafo=nothing
               , enforceReal::Bool=false
               , enforcePositive::Bool=false
+              , randomized::Bool=false
+              , subMatrixFraction::Float64=0.1
               , shuffleRows::Bool=false
               , seed::Int=1234
               , iterations::Int64=10
@@ -39,16 +44,20 @@ creates a Kaczmarz object
 * `b=nothing`                                     - measurement
 * (`λ::Real=0.0`)                                 - regularization parameter
 * (`reg=Regularization("L2", λ)`)                 - Regularization object
-* (` weights::Vector{R}=ones(Float64,size(S,1))`) - weights for the data term
+* (`weights::Vector{R}=ones(Float64,size(S,1))`) - weights for the data term
 * (`sparseTrafo=nothing`)                         - sparsifying transformation
 * (`enforceReal::Bool=false`)                     - constrain the solution to be real
 * (`enforcePositive::Bool=false`)                 - constrain the solution to have positive real part
+* (`randomized::Bool=false`)                      - randomize Kacmarz algorithm
+* (`subMatrixFraction::Float64=0.1`)              - fraction of rows used in randomized Kaczmarz algorithm  
 * (`shuffleRows::Bool=false`)                     - randomize Kacmarz algorithm
 * (`seed::Int=1234`)                              - seed for randomized algorithm
 * (iterations::Int64=10)                          - number of iterations
 """
 function Kaczmarz(S; b=nothing, reg = L2Regularization(0.0)
               , weights=nothing
+              , randomized::Bool=false
+              , subMatrixFraction::Float64=0.15
               , shuffleRows::Bool=false
               , seed::Int=1234
               , iterations::Int64=10
@@ -77,9 +86,12 @@ function Kaczmarz(S; b=nothing, reg = L2Regularization(0.0)
 
   # setup denom and rowindex
   denom, rowindex = initkaczmarz(S, λ(reg[1]), w)
-  rowIndexCycle=collect(1:length(rowindex))
+  rowIndexCycle = collect(1:length(rowindex))
+  probabilities = rowProbabilities(S, rowindex)
 
   M,N = size(S)
+  subMatrixSize = round(Int, subMatrixFraction*M)
+
   if b != nothing
     u = b
   else
@@ -91,9 +103,9 @@ function Kaczmarz(S; b=nothing, reg = L2Regularization(0.0)
   τl = zero(eltype(S))
   αl = zero(eltype(S))
 
-  return Kaczmarz(S,u,reg,denom,rowindex,rowIndexCycle,cl,vl,εw,τl,αl
-                  ,T.(w),shuffleRows
-                  ,Int64(seed),iterations, regMatrix, 
+  return Kaczmarz(S, u, reg, denom, rowindex, rowIndexCycle, cl, vl, εw, τl, αl,
+                  T.(w), randomized, subMatrixSize, probabilities, shuffleRows,
+                  Int64(seed), iterations, regMatrix, 
                   normalizeReg)
 end
 
@@ -121,8 +133,10 @@ function init!(solver::Kaczmarz
     solver.rowIndexCycle = collect(1:length(solver.rowindex))
   end
 
-  if shuffleRows
+  if shuffleRows || solver.randomized
     Random.seed!(solver.seed)
+  end
+  if shuffleRows
     shuffle!(solver.rowIndexCycle)
   end
   solver.u[:] .= u
@@ -189,7 +203,13 @@ end
 function iterate(solver::Kaczmarz, iteration::Int=0)
   if done(solver,iteration) return nothing end
 
-  for i in solver.rowIndexCycle
+  if solver.randomized
+    usedIndices = Int.(StatsBase.sample!(Random.GLOBAL_RNG, solver.rowIndexCycle, solver.probabilities, zeros(solver.subMatrixSize), replace=false))
+  else   
+    usedIndices = solver.rowIndexCycle
+  end
+
+  for i in usedIndices
     j = solver.rowindex[i]
     solver.τl = dot_with_matrix_row(solver.S,solver.cl,j)
     solver.αl = solver.denom[i]*(solver.u[j]-solver.τl-solver.ɛw[i]*solver.vl[j])
@@ -208,12 +228,29 @@ end
 
 @inline done(solver::Kaczmarz,iteration::Int) = iteration>=solver.iterations
 
+
+"""
+This function calculates the probabilities of the rows of the system matrix 
+"""
+
+function rowProbabilities(S::AbstractMatrix, rowindex)
+  M,N = size(S)
+  normS = norm(S) 
+  p = zeros(length(rowindex))
+  for i=1:length(rowindex)
+    j = rowindex[i]
+    p[i] = (norm(S[j,:]))^2 / (normS)^2
+  end
+
+  return weights(p)   
+end
+
 ### initkaczmarz ###
 
 """
     initkaczmarz(S::AbstractMatrix,λ,weights::Vector)
 
-This funtion saves the denominators to compute αl in denom and the rowindices,
+This function saves the denominators to compute αl in denom and the rowindices,
 which lead to an update of cl in rowindex.
 """
 function initkaczmarz(S::AbstractMatrix,λ,weights::Vector)
@@ -236,7 +273,7 @@ end
 """
     kaczmarz_update!(A::DenseMatrix{T}, x::Vector, k::Integer, beta) where T
 
-This funtion updates x during the kaczmarz algorithm for dense matrices.
+This function updates x during the kaczmarz algorithm for dense matrices.
 """
 function kaczmarz_update!(A::DenseMatrix{T}, x::Vector, k::Integer, beta) where T
   @simd for n=1:size(A,2)
@@ -248,7 +285,7 @@ end
     kaczmarz_update!(B::Transpose{T,S}, x::Vector,
                      k::Integer, beta) where {T,S<:DenseMatrix}
 
-This funtion updates x during the kaczmarz algorithm for dense matrices.
+This function updates x during the kaczmarz algorithm for dense matrices.
 """
 function kaczmarz_update!(B::Transpose{T,S}, x::Vector,
 			  k::Integer, beta) where {T,S<:DenseMatrix}
@@ -318,7 +355,7 @@ for (T,W, WS,shufflevectorMask,vσ) in [(Float32,:WF32,:WF32S,:shufflevectorMask
 end
 
 #=
-@doc "This funtion updates x during the kaczmarz algorithm for dense matrices." ->
+@doc "This function updates x during the kaczmarz algorithm for dense matrices." ->
 function kaczmarz_update!{T}(A::Matrix{T}, x::Vector{T}, k::Integer, beta::T)
   BLAS.axpy!(length(x), beta, pointer(A,sub2ind(size(A),1,k)), 1, pointer(x), 1)
 end
