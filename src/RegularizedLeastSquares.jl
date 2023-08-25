@@ -47,7 +47,6 @@ include("DAXKaczmarz.jl")
 include("DAXConstrained.jl")
 include("CGNR.jl")
 include("Direct.jl")
-include("FusedLasso.jl")
 include("FISTA.jl")
 include("OptISTA.jl")
 include("POGM.jl")
@@ -60,12 +59,10 @@ Return a list of all available linear solvers
 """
 function linearSolverList()
   Any["kaczmarz","cgnr"] # These are those passing the tests
-    #, "fusedlasso"]
 end
 
 function linearSolverListReal()
   Any["kaczmarz", "cgnr", "daxkaczmarz", "daxconstrained", "primaldualsolver"] # These are those passing the tests
-    #, "fusedlasso"]
 end
 
 
@@ -83,7 +80,6 @@ Function returns choosen solver.
 * `"daxkaczmarz"`     - Dax algorithm (with Kaczmarz) for unconstrained problems
 * `"daxconstrained"`  - Dax algorithm for constrained problems
 * `"pseudoinverse"`   - approximates a solution using the More-Penrose pseudo inverse
-* `"fusedlasso"`      - solver for the Fused-Lasso problem
 * `"fista"`           - Fast Iterative Shrinkage Thresholding Algorithm
 * `"optista"`         - "Optimal" ISTA
 * `"pogm"`            - Proximal Optimal Gradient Method
@@ -115,8 +111,6 @@ function createLinearSolver(solver::AbstractString, A, x=zeros(eltype(A),size(A,
     return createLinearSolver(DaxConstrained, A; kargs...)
   elseif solver == "pseudoinverse"
     return createLinearSolver(PseudoInverse, A; kargs...)
-  elseif solver == "fusedlasso"
-    return createLinearSolver(FusedLasso, A; kargs...)
   elseif solver == "fista"
     return createLinearSolver(FISTA, A, x; kargs...)
   elseif solver == "optista"
