@@ -196,7 +196,7 @@ function lentcensormin!(x::Vector{T},y::Vector{T}) where {T<:Real}
   end
 end
 
-"""This funtion saves the denominators to compute αl in denom and the rowindices,
+"""This function saves the denominators to compute αl in denom and the rowindices,
   which lead to an update of cl in rowindex."""
 function initkaczmarzconstraineddax(S::AbstractMatrix,ɛ::Number,weights::Vector)
   length(weights)==size(S,1) ? nothing : error("number of weights must equal number of equations")
@@ -214,7 +214,7 @@ function initkaczmarzconstraineddax(S::AbstractMatrix,ɛ::Number,weights::Vector
 end
 
 """
-This funtion saves the denominators to compute αl in denom and the rowindices,
+This function saves the denominators to compute αl in denom and the rowindices,
 which lead to an update of cl in rowindex.
 """
 function initkaczmarzconstraineddaxfft(S::AbstractMatrix,ɛ::Number,weights::Vector)

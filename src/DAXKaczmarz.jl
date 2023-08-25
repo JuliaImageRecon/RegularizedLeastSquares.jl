@@ -20,8 +20,8 @@ mutable struct DaxKaczmarz{matT,T,U} <: AbstractLinearSolver
   iterationsInner::Int64
 end
 
-"""This function solves a unconstrained linear least squaares problem using an algorithm proposed in [1] combined with a randomized version of kaczmarz [2].
-Returns an approximate solution to the linear leaast squares problem Sᵀx = u.
+"""This function solves a unconstrained linear least squares problem using an algorithm proposed in [1] combined with a randomized version of kaczmarz [2].
+Returns an approximate solution to the linear least squares problem Sᵀx = u.
 
 [1] Dax, A. On Row Relaxation Methods for Large Constrained Least Squares Problems. SIAM J. Sci. Comput. 14, 570–584 (1993).
 [2] Strohmer, T. & Vershynin, R. A Randomized Kaczmarz Algorithm with Exponential Convergence. J. Fourier Anal. Appl. 15, 262–278 (2008).
@@ -162,7 +162,7 @@ end
 
 @inline done(solver::DaxKaczmarz,iteration::Int) = iteration>=solver.iterations
 
-"""This funtion saves the denominators to compute αl in denom and the rowindices,
+"""This function saves the denominators to compute αl in denom and the rowindices,
   which lead to an update of cl in rowindex.
 """
 function initkaczmarzdax(S::AbstractMatrix, ɛ, weights::Vector)
