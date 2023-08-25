@@ -12,7 +12,7 @@ Random.seed!(12345)
         S = createLinearSolver(
             solver,
             A,
-            iterations = 100,
+            iterations = 200,
             solverInfo = solverInfo,
             shape = (2, 1),
         )
@@ -54,7 +54,7 @@ end
     b = b[idx]
     F = F[idx, :]
 
-    for solver in ["pogm", "optista", "fista", "admm"]
+    for solver in [POGM, OptISTA, FISTA, ADMM]
         reg = Regularization("L1", 1e-3)
         solverInfo = SolverInfo(ComplexF64)
         S = createLinearSolver(
@@ -70,7 +70,7 @@ end
         @test x ≈ x_approx rtol = 0.1
 
         #additionally test the gradient restarting scheme
-        if solver == "pogm" || solver == "fista"
+        if solver == POGM || solver == FISTA
             S = createLinearSolver(
                 solver,
                 F;
@@ -103,7 +103,7 @@ end
     end
 
     # test ADMM with option vary_ρ
-    solver = "admm"
+    solver = ADMM
     reg = Regularization("L1", 1.e-3)
     solverInfo = SolverInfo(ComplexF64)
     S = createLinearSolver(
@@ -153,7 +153,7 @@ end
     @test x ≈ x_approx rtol = 0.1
 
     ##
-    solver = "splitBregman"
+    solver = SplitBregman
     reg = Regularization("L1", 1.e-3)
     solverInfo = SolverInfo(ComplexF64)
     S = createLinearSolver(
@@ -186,7 +186,7 @@ end
     @test x ≈ x_approx rtol = 0.1
 
     ##
-    solver = "primaldualsolver"
+    solver = PrimalDualSolver
     reg = [Regularization("L1", 1.e-4), Regularization("TV", 1.e-4, shape = (0,0))]
     solverInfo = SolverInfo(Float64)
     FR = [real.(F ./ norm(F)); imag.(F ./ norm(F))]

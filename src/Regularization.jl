@@ -184,4 +184,4 @@ function Regularization(names::Vector{String},
   return reg
 end
 
-norm0(x::Array{T}, λ::T; sparseTrafo::Trafo=nothing, kargs...) where T = 0.0
+norm0(x::Array{T}, λ::T; sparseTrafo=nothing, kargs...) where T = 0.0

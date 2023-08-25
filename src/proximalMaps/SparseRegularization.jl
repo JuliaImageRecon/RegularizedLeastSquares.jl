@@ -1,6 +1,6 @@
 export SparseRegularization
 
-struct SparseRegularization{R<:AbstractRegularization, S <: Trafo} <: AbstractRegularization
+struct SparseRegularization{R<:AbstractRegularization, S} <: AbstractRegularization
   reg::R
   sparseTrafo::S
 end

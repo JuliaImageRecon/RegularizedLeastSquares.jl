@@ -1,4 +1,4 @@
-export primaldualsolver
+export PrimalDualSolver
 
 mutable struct PrimalDualSolver{T,S} <: AbstractLinearSolver
     S::Matrix{T}
@@ -35,7 +35,7 @@ function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = L1Regularizati
   M,N = size(S)
 
   if shape == (0,0)
-    shape = (Int(sqrt(N)),Int(sqrt(N)))
+    shape = (Int(sqrt(N)),Int(sqrt(N))) # This guessing works only in special cases
   else
     shape = shape
   end

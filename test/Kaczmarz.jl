@@ -39,8 +39,8 @@ end
 
   regMatrix = rand(2) # Tikhonov matrix
 
-  solver = "kaczmarz"
-  S = createLinearSolver(solver, A, iterations=100, regMatrix=regMatrix)
+  solver = Kaczmarz
+  S = createLinearSolver(solver, A, iterations=200, regMatrix=regMatrix)
   x_approx = solve(S,b)
   #@info "Testing solver $solver ...: $x  == $x_approx"
   @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
@@ -76,7 +76,7 @@ end
   x = rand(N)+im*rand(N);
   b = A*x;
 
-  solver = "kaczmarz"
+  solver = Kaczmarz
   S = createLinearSolver(solver, A, iterations=200)
   x_approx = solve(S,b)
   @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
