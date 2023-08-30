@@ -59,8 +59,8 @@ creates an `ADMM` object for the system matrix `A`.
 * (`relTol::Real=eps()`)     - rel tolerance for stopping criterion
 * (`tolInner::Real=1.e-5`)   - rel tolerance for CG stopping criterion
 """
-function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); reg=L1Regularization(λ[1])
-            , λ=[0.0]
+function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); λ=[0.0]
+            , reg=L1Regularization(λ[1])
             , regTrafo=nothing
             , AᴴA::opT=nothing
             , precon=Identity()

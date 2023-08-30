@@ -39,12 +39,11 @@ end
 
   regMatrix = rand(2) # Tikhonov matrix
 
-  solver = "kaczmarz"
-  S = createLinearSolver(solver, A, iterations=100, regMatrix=regMatrix)
+  solver = Kaczmarz
+  S = createLinearSolver(solver, A, iterations=200, regMatrix=regMatrix)
   x_approx = solve(S,b)
-  @info "Testing solver $solver ...: $x  == $x_approx"
+  #@info "Testing solver $solver ...: $x  == $x_approx"
   @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
-
 
   ## Test spatial regularization
   M = 12; N = 8;
@@ -68,3 +67,27 @@ end
   #@info "Testing solver $solver ...: $x_matrix  == $x_approx"
   @test norm(x_approx - x_matrix) / norm(x_approx) ≈ 0 atol=0.1
 end
+
+
+# Test Kaczmarz parameters 
+@testset "Kaczmarz parameters" begin
+  M = 12; N = 8;
+  A = rand(M,N)+im*rand(M,N);
+  x = rand(N)+im*rand(N);
+  b = A*x;
+
+  solver = Kaczmarz
+  S = createLinearSolver(solver, A, iterations=200)
+  x_approx = solve(S,b)
+  @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
+
+  S = createLinearSolver(solver, A, iterations=200, shuffleRows=true)
+  x_approx = solve(S,b)
+  @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
+
+  S = createLinearSolver(solver, A, iterations=2000, randomized=true, rowFraction=0.1)
+  x_approx = solve(S,b)
+  @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
+end
+
+

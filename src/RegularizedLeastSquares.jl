@@ -14,19 +14,15 @@ using LinearOperators: opEye
 using ProgressMeter
 using StatsBase
 using FastClosures
-using LinearOperators
+using LinearOperatorCollection
+using InteractiveUtils
 
 export AbstractLinearSolver, createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
 
 abstract type AbstractLinearSolver end
-# The following is just for documentation purposes. To allow for different operator
-# libraries we allow the Trafo to be of type Any.
-const Trafo = Any # Union{AbstractMatrix, AbstractLinearOperator, Nothing}
 
 # Fallback function
 setlambda(S::AbstractMatrix, λ::Real) = nothing
-
-include("linearOperators/GradientOp.jl")
 
 include("Regularization.jl")
 include("proximalMaps/ProxL1.jl")
@@ -45,12 +41,10 @@ include("proximalMaps/TransformedRegularization.jl")
 
 include("Utils.jl")
 include("Kaczmarz.jl")
-include("KaczmarzUpdated.jl")
 include("DAXKaczmarz.jl")
 include("DAXConstrained.jl")
 include("CGNR.jl")
 include("Direct.jl")
-include("FusedLasso.jl")
 include("FISTA.jl")
 include("OptISTA.jl")
 include("POGM.jl")
@@ -62,81 +56,22 @@ include("PrimalDualSolver.jl")
 Return a list of all available linear solvers
 """
 function linearSolverList()
-  Any["kaczmarz","cgnr"] # These are those passing the tests
-    #, "fusedlasso"]
+  filter(s -> s ∉ [DaxKaczmarz, DaxConstrained, PrimalDualSolver], linearSolverListReal())
 end
 
 function linearSolverListReal()
-  Any["kaczmarzUpdated","kaczmarz","cgnr","daxkaczmarz","daxconstrained","primaldualsolver"] # These are those passing the tests
-    #, "fusedlasso"]
+  subtypes(AbstractLinearSolver)
 end
 
 
 """
-    createLinearSolver(solver::AbstractString, A; log::Bool=false, kargs...)
+    createLinearSolver(solver::AbstractLinearSolver, A; log::Bool=false, kargs...)
 
-This method creates a solver. The supported solvers are methods typically used in MPI/MRI.
-All solvers return an approximate solution to STx = u.
-Function returns choosen solver.
+This method creates a solver. The supported solvers are methods typically used for solving
+regularized linear systems. All solvers return an approximate solution to Ax = b.
 
-# solvers:
-* `"kaczmarz"`        - kaczmarz method (the default)
-* `"cgnr`             - CGNR
-* `"direct"`          - A direct solver using the backslash operator
-* `"daxkaczmarz"`     - Dax algorithm (with Kaczmarz) for unconstrained problems
-* `"daxconstrained"`  - Dax algorithm for constrained problems
-* `"pseudoinverse"`   - approximates a solution using the More-Penrose pseudo inverse
-* `"fusedlasso"`      - solver for the Fused-Lasso problem
-* `"fista"`           - Fast Iterative Shrinkage Thresholding Algorithm
-* `"optista"`         - "Optimal" ISTA
-* `"pogm"`            - Proximal Optimal Gradient Method
-* `"admm"`            - Alternating Direcion of Multipliers Method
-* `"splitBregman"`    - Split Bregman method for constrained & regularized inverse problems
-* `"primaldualsolver"`- First order primal dual method
+TODO: give a hint what solvers are available
 """
-function createLinearSolver(solver::AbstractString, A, x=zeros(eltype(A),size(A,2));regName = nothing, λ = nothing, kargs...)
-
-  # Resolve regNames if reg does not exist
-  # Checks if reg exists in such a way that doesnt overwrite default reg values for Solvers
-  kwargs = values(kargs)
-  if !isnothing(regName) && !isnothing(λ) && !haskey(kwargs, :reg)
-    reg = Regularization(regName, λ; kargs...)
-    kargs = (kargs..., λ = λ, reg = reg)
-  end
-
-  if solver == "kaczmarz"
-    return createLinearSolver(Kaczmarz, A; kargs...)
-  elseif solver == "kaczmarzUpdated"
-    return createLinearSolver(KaczmarzUpdated, A; kargs...)
-  elseif solver == "cgnr"
-    return createLinearSolver(CGNR, A, x; kargs...)
-  elseif solver == "direct"
-    return createLinearSolver(DirectSolver, A; kargs...)
-  elseif solver == "daxkaczmarz"
-    return createLinearSolver(DaxKaczmarz, A; kargs...)
-  elseif solver == "daxconstrained"
-    return createLinearSolver(DaxConstrained, A; kargs...)
-  elseif solver == "pseudoinverse"
-    return createLinearSolver(PseudoInverse, A; kargs...)
-  elseif solver == "fusedlasso"
-    return createLinearSolver(FusedLasso, A; kargs...)
-  elseif solver == "fista"
-    return createLinearSolver(FISTA, A, x; kargs...)
-  elseif solver == "optista"
-    return createLinearSolver(OptISTA, A, x; kargs...)
-  elseif solver == "pogm"
-    return createLinearSolver(POGM, A, x; kargs...)
-  elseif solver == "admm"
-    return createLinearSolver(ADMM, A, x; kargs...)
-  elseif solver == "splitBregman"
-    return createLinearSolver(SplitBregman, A, x; kargs...)
-  elseif solver == "primaldualsolver"
-    return createLinearSolver(PrimalDualSolver, A; kargs...)
-  else
-    error("Solver $solver not found.")
-  end
-end
-
 function createLinearSolver(solver::Type{T}, A; log::Bool=false, kargs...) where {T<:AbstractLinearSolver}
   log ? solverInfo = SolverInfo(;kargs...) : solverInfo=nothing
   return solver(A; kargs...)
