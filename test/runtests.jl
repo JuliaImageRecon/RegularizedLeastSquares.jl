@@ -3,6 +3,6 @@ using RegularizedLeastSquares, LinearAlgebra
 using Random, Test
 using FFTW
 
-include("Kaczmarz.jl")
+include("testKaczmarz.jl")
 include("testProxMaps.jl")
 include("testSolvers.jl")

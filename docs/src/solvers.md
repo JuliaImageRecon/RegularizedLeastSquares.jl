@@ -2,7 +2,7 @@
 
 ## Implemented Solvers
 So far, RegularizedLeastSquares.jl provides implementations for the following solvers:
-* Kaczmarz algorithm ("kaczmarz")
+* Kaczmarz algorithm ("Kaczmarz")
 * CGNR ("cgnr")
 * Dax algorithm (with Kaczmarz) for unconstrained problems ("daxkaczmarz")
 * Dax algorithm for constrained problems ("daxconstrained")

@@ -55,7 +55,7 @@ end
     F = F[idx, :]
 
     for solver in [POGM, OptISTA, FISTA, ADMM]
-        reg = Regularization("L1", 1e-3)
+        reg = L1Regularization(1e-3)
         solverInfo = SolverInfo(ComplexF64)
         S = createLinearSolver(
             solver,
@@ -86,7 +86,7 @@ end
         end
 
         # test invariance to the maximum eigenvalue
-        reg = Regularization("L1", reg.λ * length(b) / norm(b, 1))
+        reg = L1Regularization(reg.λ * length(b) / norm(b, 1))
         scale_F = 1e3
         S = createLinearSolver(
             solver,
@@ -104,7 +104,7 @@ end
 
     # test ADMM with option vary_ρ
     solver = ADMM
-    reg = Regularization("L1", 1.e-3)
+    reg = L1Regularization(1.e-3)
     solverInfo = SolverInfo(ComplexF64)
     S = createLinearSolver(
         solver,
@@ -154,7 +154,7 @@ end
 
     ##
     solver = SplitBregman
-    reg = Regularization("L1", 1.e-3)
+    reg = L1Regularization(1.e-3)
     solverInfo = SolverInfo(ComplexF64)
     S = createLinearSolver(
         solver,
@@ -170,7 +170,7 @@ end
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol = 0.1
 
-    reg = Regularization("L1", reg.λ * length(b) / norm(b, 1))
+    reg = L1Regularization(reg.λ * length(b) / norm(b, 1))
     S = createLinearSolver(
         solver,
         F;
@@ -187,7 +187,7 @@ end
 
     ##
     solver = PrimalDualSolver
-    reg = [Regularization("L1", 1.e-4), Regularization("TV", 1.e-4, shape = (0,0))]
+    reg = [L1Regularization(1.e-4), TVRegularization(1.e-4, shape = (0,0))]
     solverInfo = SolverInfo(Float64)
     FR = [real.(F ./ norm(F)); imag.(F ./ norm(F))]
     bR = [real.(b ./ norm(F)); imag.(b ./ norm(F))]

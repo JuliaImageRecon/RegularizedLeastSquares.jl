@@ -16,7 +16,7 @@ mutable struct Kaczmarz{matT,T,U} <: AbstractLinearSolver
   weights::Vector{U}
   randomized::Bool
   subMatrixSize::Int64
-  probabilities::Weights{U, U, Vector{U}}
+  probabilities::Vector{U}
   shuffleRows::Bool
   seed::Int64
   iterations::Int64
@@ -87,7 +87,7 @@ function Kaczmarz(S; b=nothing, reg = L2Regularization(0.0)
   # setup denom and rowindex
   denom, rowindex = initkaczmarz(S, λ(reg[1]), w)
   rowIndexCycle = collect(1:length(rowindex))
-  probabilities = rowProbabilities(S, rowindex)
+  probabilities = T.(rowProbabilities(S, rowindex))
 
   M,N = size(S)
   subMatrixSize = round(Int, subMatrixFraction*M)
@@ -204,7 +204,7 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
   if done(solver,iteration) return nothing end
 
   if solver.randomized
-    usedIndices = Int.(StatsBase.sample!(Random.GLOBAL_RNG, solver.rowIndexCycle, solver.probabilities, zeros(solver.subMatrixSize), replace=false))
+    usedIndices = Int.(StatsBase.sample!(Random.GLOBAL_RNG, solver.rowIndexCycle, weights(solver.probabilities), zeros(solver.subMatrixSize), replace=false))
   else   
     usedIndices = solver.rowIndexCycle
   end
@@ -242,7 +242,7 @@ function rowProbabilities(S::AbstractMatrix, rowindex)
     p[i] = (norm(S[j,:]))^2 / (normS)^2
   end
 
-  return weights(p)   
+  return p   
 end
 
 ### initkaczmarz ###
