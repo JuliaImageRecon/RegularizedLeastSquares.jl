@@ -1,6 +1,6 @@
 export SplitBregman
 
-mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT,rT} <: AbstractLinearSolver
+mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT,rT} <: AbstractPrimalDualSolver
   # oerators and regularization
   A::matT
   reg::Vector{<:AbstractRegularization}

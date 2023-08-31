@@ -1,6 +1,6 @@
 export DaxConstrained
 
-mutable struct DaxConstrained{matT,T,Tsparse,U} <: AbstractLinearSolver
+mutable struct DaxConstrained{matT,T,Tsparse,U} <: AbstractRowActionSolver
   S::matT
   u::Vector{T}
   λ::Float64

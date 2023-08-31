@@ -1,6 +1,6 @@
 export DaxKaczmarz
 
-mutable struct DaxKaczmarz{matT,T,U} <: AbstractLinearSolver
+mutable struct DaxKaczmarz{matT,T,U} <: AbstractRowActionSolver
   S::matT
   u::Vector{T}
   reg::Vector{<:AbstractRegularization}

@@ -21,6 +21,21 @@ export AbstractLinearSolver, createLinearSolver, init, deinit, solve, linearSolv
 
 abstract type AbstractLinearSolver end
 
+export AbstractRowActionSolver
+abstract type AbstractRowActionSolver <: AbstractLinearSolver end
+
+export AbstractDirectSolver
+abstract type AbstractDirectSolver <: AbstractLinearSolver end
+
+export AbstractPrimalDualSolver
+abstract type AbstractPrimalDualSolver <: AbstractLinearSolver end
+
+export AbstractProximalGradientSolver
+abstract type AbstractProximalGradientSolver <: AbstractLinearSolver end
+
+export AbstractKrylovSolver
+abstract type AbstractKrylovSolver <: AbstractLinearSolver end
+
 # Fallback function
 setlambda(S::AbstractMatrix, λ::Real) = nothing
 

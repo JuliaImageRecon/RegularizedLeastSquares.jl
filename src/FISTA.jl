@@ -1,6 +1,6 @@
 export fista, FISTA
 
-mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractLinearSolver
+mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractProximalGradientSolver
   A::matA
   AᴴA::matAHA
   reg::AbstractRegularization

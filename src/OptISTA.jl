@@ -1,6 +1,6 @@
 export optista, OptISTA
 
-mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractLinearSolver
+mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractProximalGradientSolver
   A::matA
   AᴴA::matAHA
   reg::AbstractRegularization

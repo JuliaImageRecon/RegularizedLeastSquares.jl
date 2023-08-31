@@ -1,6 +1,6 @@
 export PrimalDualSolver
 
-mutable struct PrimalDualSolver{T,S} <: AbstractLinearSolver
+mutable struct PrimalDualSolver{T,S} <: AbstractPrimalDualSolver
     S::Matrix{T}
     reg::Vector{<:AbstractRegularization}
     gradientOp::S

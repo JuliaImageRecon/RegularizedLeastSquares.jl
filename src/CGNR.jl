@@ -1,6 +1,6 @@
 export cgnr, CGNR
 
-mutable struct CGNR{matT,opT,vecT,T} <: AbstractLinearSolver
+mutable struct CGNR{matT,opT,vecT,T} <: AbstractKrylovSolver
   A::matT
   AᴴA::opT
   reg::Vector{<:AbstractRegularization}
