@@ -3,7 +3,7 @@ export pseudoinverse, directSolver, PseudoInverse, DirectSolver
 
 ### Direct Solver ###
 
-mutable struct DirectSolver <: AbstractDirectSolver
+mutable struct DirectSolver # <: AbstractDirectSolver
   A
   params
 end
@@ -46,7 +46,7 @@ end
 
 ###  Pseudoinverse ###
 
-mutable struct PseudoInverse <: AbstractDirectSolver
+mutable struct PseudoInverse # <: AbstractDirectSolver
   A
   params
 end

@@ -75,7 +75,7 @@ function linearSolverList()
 end
 
 function linearSolverListReal()
-  subtypes(AbstractLinearSolver)
+  union(subtypes.(subtypes(AbstractLinearSolver))...) # For deeper nested type extend this to loop for types with isabstracttype == true
 end
 
 
