@@ -53,6 +53,7 @@ include("proximalMaps/ProxTVCondat.jl")
 include("proximalMaps/ProxNuclear.jl")
 include("proximalMaps/ScaledRegularization.jl")
 include("proximalMaps/TransformedRegularization.jl")
+include("proximalMaps/MaskedRegularization.jl")
 
 include("Utils.jl")
 include("Kaczmarz.jl")
@@ -78,6 +79,22 @@ function linearSolverListReal()
   union(subtypes.(subtypes(AbstractLinearSolver))...) # For deeper nested type extend this to loop for types with isabstracttype == true
 end
 
+export isapplicable
+isapplicable(solver::AbstractLinearSolver, reg) = isapplicable(typeof(solver), reg)
+isapplicable(x, reg::AbstractRegularization) = isapplicable(x, [reg])
+isapplicable(::Type{T}, reg::Vector{<:AbstractRegularization}) where T <: AbstractLinearSolver = false
+
+function isapplicable(::Type{T}, reg::Vector{<:AbstractRegularization}) where T <: AbstractRowActionSolver
+
+end
+
+function isapplicable(::Type{T}, reg::Vector{<:AbstractRegularization}) where T <: AbstractPrimalDualSolver
+  
+end
+
+function isapplicable(::Type{T}, reg::Vector{<:AbstractRegularization}) where T <: AbstractProximalGradientSolver
+  
+end
 
 """
     createLinearSolver(solver::AbstractLinearSolver, A; log::Bool=false, kargs...)

@@ -1,8 +1,9 @@
-export Regularization, AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, lambdList, prox!, sink, λ
+export Regularization, AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, lambdList, prox!, sink, sinktype, λ, findsink
 
 abstract type AbstractRegularization end
 abstract type AbstractParameterizedRegularization{T} <: AbstractRegularization end
 sink(reg::AbstractRegularization) = reg
+sinktype(reg::AbstractRegularization) = typeof(sink(reg))
 prox!(reg::AbstractParameterizedRegularization, x::AbstractArray) = prox!(reg, x, λ(reg))
 norm(reg::AbstractParameterizedRegularization, x::AbstractArray) = norm(reg, x, λ(reg))
 λ(reg::AbstractParameterizedRegularization) = reg.λ
@@ -85,6 +86,18 @@ normalize(solver::Type{T}, norm::AbstractRegularizationNormalization, regs, A, b
 # System matrix based normalization is already done in constructor, can just return regs
 normalize(solver::AbstractLinearSolver, norm::SystemMatrixBasedNormalization, regs, A, b) = regs
 
+function findsink(::Type{S}, reg::Vector{<:AbstractRegularization}) where S <: AbstractRegularization
+  all = findall(x -> sinktype(x) <: S, reg)
+  if isempty(all)
+    return nothing
+  elseif length(all) == 1
+    idx = first(all)
+    return (idx, reg[idx])
+  else
+    error("Cannot unambigiously retrieve reg term of type $S, found $(length(all)) instances")
+  end
+end
+
 Base.vec(reg::AbstractRegularization) = AbstractRegularization[reg]
 Base.vec(reg::Vector{AbstractRegularization}) = reg
 
@@ -94,7 +107,7 @@ Base.vec(reg::Vector{AbstractRegularization}) = reg
 Returns a list of all available Regularizations
 """
 function RegularizationList()
-  return subtypes(RegularizationList)
+  return subtypes(RegularizationList) # TODO loop over abstract types and push! to list
 end
 
 norm0(x::Array{T}, λ::T; sparseTrafo=nothing, kargs...) where T = 0.0
