@@ -85,26 +85,6 @@ normalize(solver::Type{T}, norm::AbstractRegularizationNormalization, regs, A, b
 # System matrix based normalization is already done in constructor, can just return regs
 normalize(solver::AbstractLinearSolver, norm::SystemMatrixBasedNormalization, regs, A, b) = regs
 
-"""
-Type describing custom regularizers
-
-# Fields
-* `prox!::Function`           - proximal map for the regularizer
-* `norm::Function`            - (semi-)norm for the regularizer
-* `λ::AbstractFloat`                - regularization paramter
-* `params::Dict{Symbol,Any}`  - additional parameters
-"""
-mutable struct CustomRegularization{T} <: AbstractParameterizedRegularization{T}
-  prox!::Function
-  norm::Function
-  λ::T
-  params::Dict{Symbol,Any}  # @TODO in die funcs
-end
-
-prox!(reg::CustomRegularization, x) = reg.prox!(x, reg.λ; reg.params...)
-norm(reg::CustomRegularization, x) = reg.norm(x, reg.λ; reg.params...)
-Regularization(prox!::Function = x->x, norm::Function = norm0, λ::AbstractFloat=0.0, params=Dict{Symbol,Any}()) = CustomRegularization(prox!, norm, λ, params)
-
 Base.vec(reg::AbstractRegularization) = AbstractRegularization[reg]
 Base.vec(reg::Vector{AbstractRegularization}) = reg
 
