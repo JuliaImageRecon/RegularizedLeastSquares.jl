@@ -45,7 +45,7 @@ norm(reg::NormalizedRegularization, x::AbstractArray, λ) = norm(reg.reg, x, λ)
 function normalize(::MeasurementBasedNormalization, A, b::AbstractArray)
   return norm(b, 1)/length(b)
 end
-normalize(::MeasurementBasedNormalization, A, b::Nothing) = normalize(NoNormalization(), A, b)
+normalize(::MeasurementBasedNormalization, A, b::Nothing) = one(real(eltype(A)))
 function normalize(::SystemMatrixBasedNormalization, A::AbstractArray{T}, b) where {T}
   M = size(A, 1)
   N = size(A, 2)
