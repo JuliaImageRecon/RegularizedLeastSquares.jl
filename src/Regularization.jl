@@ -1,4 +1,4 @@
-export Regularization, AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, lambdList, prox!, sink, sinktype, λ, findsink
+export Regularization, AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, lambdList, prox!, sink, sinktype, λ, findsink, findsinks
 
 abstract type AbstractRegularization end
 abstract type AbstractParameterizedRegularization{T} <: AbstractRegularization end
@@ -91,12 +91,14 @@ function findsink(::Type{S}, reg::Vector{<:AbstractRegularization}) where S <: A
   if isempty(all)
     return nothing
   elseif length(all) == 1
-    idx = first(all)
-    return (idx, reg[idx])
+    return first(all)
   else
     error("Cannot unambigiously retrieve reg term of type $S, found $(length(all)) instances")
   end
 end
+
+findsinks(::Type{S}, reg::Vector{<:AbstractRegularization}) where S <: AbstractRegularization = findall(x -> sinktype(x) <: S, reg)
+
 
 Base.vec(reg::AbstractRegularization) = AbstractRegularization[reg]
 Base.vec(reg::Vector{AbstractRegularization}) = reg
