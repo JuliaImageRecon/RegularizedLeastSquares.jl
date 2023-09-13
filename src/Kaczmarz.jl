@@ -78,9 +78,10 @@ function Kaczmarz(S; b=nothing, reg::Vector{<:AbstractRegularization} = [L2Regul
   reg = normalize(Kaczmarz, normalizeReg, reg, S, nothing)
   idx = findsink(L2Regularization, reg)
   if isnothing(idx)
-    error("Kaczmarz requires a L2 regularization term")
+    L2 = L2Regularization(zero(T))
+  else
+    L2 = reg[idx]
   end
-  L2 = reg[idx]
   deleteat!(reg, idx)
 
   indices = findsinks(AbstractProjectionRegularization, reg)
