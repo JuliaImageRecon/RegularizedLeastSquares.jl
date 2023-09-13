@@ -1,9 +1,10 @@
 export cgnr, CGNR
 
-mutable struct CGNR{matT,opT,vecT,T} <: AbstractKrylovSolver
+mutable struct CGNR{matT,opT,vecT,T, R, RN} <: AbstractKrylovSolver
   A::matT
   AᴴA::opT
-  reg::Vector{<:AbstractRegularization}
+  L2::R
+  reg::Vector{RN}
   cl::vecT
   rl::vecT
   zl::vecT
@@ -37,17 +38,13 @@ creates an `CGNR` object for the system matrix `A`.
 * (iterations::Int64=10)            - number of iterations
 * (`relTol::Float64=eps()`)         - rel tolerance for stopping criterion
 """
-function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); λ::Real=0.0, reg::Vector{R} = [L2Regularization(λ)]
+function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); reg::Vector{R} = [L2Regularization(zero(real(eltype(A))))]
               , weights::vecT=similar(x,0)
               , AᴴA::opT=nothing
               , iterations::Int64=10
               , relTol::Float64=eps()
               , normalizeReg::AbstractRegularizationNormalization=NoNormalization()
               , kargs...) where {opT,vecT<:AbstractVector,R<:AbstractRegularization}
-
-  if !(reg isa L2Regularization || (reg isa Vector && reg[1] isa L2Regularization))
-    error("CGNR only supports L2 regularizer as first regularization term")
-  end
             
   if AᴴA == nothing
     AᴴA = A'*A
@@ -65,11 +62,26 @@ function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); λ::Real=0.0, reg::Vector{R
   βl = zero(T)        #temporary scalar
   ζl = zero(T)        #temporary scalar
 
-  # normalization parameters
+  # Prepare regularization terms
   reg = normalize(CGNR, normalizeReg, reg, A, nothing)
+  idx = findsink(L2Regularization, reg)
+  if isnothing(idx)
+    L2 = L2Regularization(zero(typeof(real(T))))
+  else
+    L2 = reg[idx]
+  end
+  deleteat!(reg, idx)
+
+  indices = findsinks(AbstractProjectionRegularization, reg)
+  other = [reg[i] for i in indices]
+  deleteat!(reg, indices)
+  if length(reg) > 0
+    error("CGNR does not allow for more additional regularization terms, found $(length(reg))")
+  end
+
 
   return CGNR(A, AᴴA,
-             reg,cl,rl,zl,pl,vl,xl,αl,βl,ζl,
+             L2,other,cl,rl,zl,pl,vl,xl,αl,βl,ζl,
              weights,iterations,relTol,0.0,normalizeReg)
 end
 
@@ -109,6 +121,7 @@ function init!(solver::CGNR, u::vecT
   copyto!(solver.pl,solver.zl)
 
   # normalization of regularization parameters
+  solver.L2 = normalize(solver, solver.normalizeReg, solver.L2, solver.A, u)
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, u)
 end
 
@@ -148,7 +161,7 @@ performs one CGNR iteration.
 """
 function iterate(solver::CGNR, iteration::Int=0) 
     if done(solver,iteration)
-      for r in solver.reg[2:end]
+      for r in solver.reg
         prox!(r, solver.cl)
       end
       return nothing
@@ -159,7 +172,7 @@ function iterate(solver::CGNR, iteration::Int=0)
     solver.ζl= norm(solver.zl)^2
     normvl = dot(solver.pl,solver.vl) 
 
-    λ_ = λ(solver.reg[1])
+    λ_ = λ(solver.L2)
     if λ_ > 0
       solver.αl = solver.ζl/(normvl+λ_*norm(solver.pl)^2)
     else
