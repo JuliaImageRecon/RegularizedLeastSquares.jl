@@ -17,7 +17,7 @@ using FastClosures
 using LinearOperatorCollection
 using InteractiveUtils
 
-export AbstractLinearSolver, createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
+export AbstractLinearSolver, createLinearSolver, init, deinit, solve, linearSolverList, linearSolverListReal, applicableSolverList
 
 abstract type AbstractLinearSolver end
 
@@ -80,21 +80,37 @@ function linearSolverListReal()
 end
 
 export isapplicable
-isapplicable(solver::AbstractLinearSolver, reg) = isapplicable(typeof(solver), reg)
+isapplicable(solver::AbstractLinearSolver, args...) = isapplicable(typeof(solver), args...)
 isapplicable(x, reg::AbstractRegularization) = isapplicable(x, [reg])
 isapplicable(::Type{T}, reg::Vector{<:AbstractRegularization}) where T <: AbstractLinearSolver = false
 
 function isapplicable(::Type{T}, reg::Vector{<:AbstractRegularization}) where T <: AbstractRowActionSolver
-
+  applicable = true
+  applicable &= length(findsinks(AbstractParameterizedRegularization, reg)) <= 2
+  applicable &= length(findsinks(L2Regularization, reg)) == 1
+  return applicable
 end
 
 function isapplicable(::Type{T}, reg::Vector{<:AbstractRegularization}) where T <: AbstractPrimalDualSolver
-  
+  # TODO
+  return true
 end
 
 function isapplicable(::Type{T}, reg::Vector{<:AbstractRegularization}) where T <: AbstractProximalGradientSolver
-  
+  applicable = true
+  applicable &= length(findsinks(AbstractParameterizedRegularization, reg)) == 1
+  return applicable
 end
+
+function isapplicable(::Type{T}, A, x) where T <: AbstractLinearSolver
+  # TODO
+  applicable = true
+  return applicable
+end
+
+isapplicable(::Type{T}, A, x, reg) where T <: AbstractLinearSolver = isapplicable(T, A, x) && isapplicable(T, reg)
+
+applicableSolverList(args...) = filter(solver -> isapplicable(solver, args...), linearSolverListReal())
 
 """
     createLinearSolver(solver::AbstractLinearSolver, A; log::Bool=false, kargs...)
