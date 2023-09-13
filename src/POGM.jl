@@ -1,9 +1,10 @@
 export pogm, POGM
 
-mutable struct POGM{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractProximalGradientSolver
+mutable struct POGM{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA, R, RN} <: AbstractProximalGradientSolver
   A::matA
   AᴴA::matAHA
-  reg::AbstractRegularization
+  reg::R
+  proj::Vector{RN}
   x::vecT
   x₀::vecT
   xᵒˡᵈ::vecT
@@ -92,8 +93,14 @@ function POGM(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1
   end
   
   reg = normalize(POGM, normalizeReg, vec(reg), A, nothing)
+  indices = findsinks(AbstractProjectionRegularization, reg)
+  other = [reg[i] for i in indices]
+  deleteat!(reg, indices)
+  if length(reg) != 1
+    error("POGM does not allow for more additional regularization terms, found $(length(reg))")
+  end
 
-  return POGM(A, AᴴA, vec(reg)[1], x, x₀, xᵒˡᵈ, y, z, w, res, rT(ρ),rT(t),rT(t),rT(0),rT(1),rT(1),rT(1),rT(1),rT(σ_fac),
+  return POGM(A, AᴴA, reg[1], other, x, x₀, xᵒˡᵈ, y, z, w, res, rT(ρ),rT(t),rT(t),rT(0),rT(1),rT(1),rT(1),rT(1),rT(σ_fac),
     iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose,restart)
 end
 
@@ -129,7 +136,8 @@ function init!(solver::POGM{rT,vecT,matA,matAHA}, b::vecT
   solver.tᵒˡᵈ = t
   solver.σ = 1
   # normalization of regularization parameters
-  solver.reg = normalize(solver, solver.normalizeReg, vec(solver.reg), solver.A, solver.x₀)[1]
+  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
+  solver.proj = normalize(solver, solver.normalizeReg, solver.proj, solver.A, solver.x₀)
 end
 
 """

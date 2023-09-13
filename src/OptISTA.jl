@@ -1,9 +1,10 @@
 export optista, OptISTA
 
-mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractProximalGradientSolver
+mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA, R, RN} <: AbstractProximalGradientSolver
   A::matA
   AᴴA::matAHA
-  reg::AbstractRegularization
+  reg::R
+  proj::Vector{RN}
   x::vecT
   x₀::vecT
   y::vecT
@@ -81,9 +82,16 @@ function OptISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg
   end
   θn = (1 + sqrt(1 + 8 * θn^2)) / 2
 
+  # Prepare regularization terms
   reg = normalize(OptISTA, normalizeReg, vec(reg), A, nothing)
+  indices = findsinks(AbstractProjectionRegularization, reg)
+  other = [reg[i] for i in indices]
+  deleteat!(reg, indices)
+  if length(reg) != 1
+    error("OptISTA does not allow for more additional regularization terms, found $(length(reg))")
+  end
 
-  return OptISTA(A, AᴴA, vec(reg)[1], x, x₀, y, z, zᵒˡᵈ, res, rT(ρ),rT(θ),rT(θ),rT(θn),rT(0),rT(1),rT(1),
+  return OptISTA(A, AᴴA, reg[1], other, x, x₀, y, z, zᵒˡᵈ, res, rT(ρ),rT(θ),rT(θ),rT(θn),rT(0),rT(1),rT(1),
     iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose)
 end
 
@@ -121,7 +129,8 @@ function init!(solver::OptISTA{rT,vecT,matA,matAHA}, b::vecT
   solver.θn = (1 + sqrt(1 + 8 * solver.θn^2)) / 2
 
   # normalization of regularization parameters
-  solver.reg = normalize(solver, solver.normalizeReg, vec(solver.reg), solver.A, solver.x₀)[1]
+  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
+  solver.proj = normalize(solver, solver.normalizeReg, solver.proj, solver.A, solver.x₀)
 end
 
 """

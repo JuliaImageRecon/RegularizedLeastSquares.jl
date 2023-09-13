@@ -1,9 +1,10 @@
 export fista, FISTA
 
-mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractProximalGradientSolver
+mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA, R, RN} <: AbstractProximalGradientSolver
   A::matA
   AᴴA::matAHA
-  reg::AbstractRegularization
+  reg::R
+  proj::Vector{RN}
   x::vecT
   x₀::vecT
   xᵒˡᵈ::vecT
@@ -42,7 +43,6 @@ creates a `FISTA` object for the system matrix `A`.
 """
 function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1Regularization(0)
               , AᴴA=A'*A
-              , λ=0
               , ρ=0.95
               , normalize_ρ=true
               , t=1
@@ -64,10 +64,17 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L
     ρ /= abs(power_iterations(AᴴA))
   end
 
-  # normalization parameters
+  # Prepare regularization terms
   reg = normalize(FISTA, normalizeReg, vec(reg), A, nothing)
+  indices = findsinks(AbstractProjectionRegularization, reg)
+  other = [reg[i] for i in indices]
+  deleteat!(reg, indices)
+  if length(reg) != 1
+    error("FISTA does not allow for more additional regularization terms, found $(length(reg))")
+  end
 
-  return FISTA(A, AᴴA, reg[1], x, x₀, xᵒˡᵈ, res, rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose,restart)
+
+  return FISTA(A, AᴴA, reg[1], other, x, x₀, xᵒˡᵈ, res, rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose,restart)
 end
 
 """
@@ -97,6 +104,7 @@ function init!(solver::FISTA{rT,vecT,matA,matAHA}, b::vecT
   solver.tᵒˡᵈ = t
   # normalization of regularization parameters
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
+  solver.proj = normalize(solver, solver.normalizeReg, solver.proj, solver.A, solver.x₀)
 end
 
 """
