@@ -5,7 +5,7 @@ struct MaskedRegularization{R<:AbstractRegularization} <: AbstractRegularization
   constraintMask::Vector{Bool}
 end
 λ(reg::MaskedRegularization) = λ(reg.reg)
-sink(reg::MaskedRegularization) = sink(reg.reg)
+nested(reg::MaskedRegularization) = reg.reg
 
 
 function prox!(reg::MaskedRegularization, x::AbstractArray)

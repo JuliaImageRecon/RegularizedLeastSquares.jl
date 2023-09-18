@@ -4,7 +4,7 @@ struct TransformedRegularization{R<:AbstractRegularization, TR} <: AbstractRegul
   reg::R
   trafo::TR
 end
-sink(reg::TransformedRegularization) = sink(reg.reg)
+nested(reg::TransformedRegularization) = reg.reg
 λ(reg::TransformedRegularization) = λ(reg.reg)
 
 function prox!(reg::TransformedRegularization, x::AbstractArray)

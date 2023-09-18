@@ -1,8 +1,11 @@
-export Regularization, AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, lambdList, prox!, sink, sinktype, λ, findsink, findsinks
+export Regularization, AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, lambdList, prox!, nested, sink, sinktype, λ, findsink, findsinks
 
 abstract type AbstractRegularization end
 abstract type AbstractParameterizedRegularization{T} <: AbstractRegularization end
-sink(reg::AbstractRegularization) = reg
+nested(::AbstractRegularization) = nothing
+iterate(reg::AbstractRegularization, state = reg) = isnothing(state) ? nothing : (state, nested(state))
+Base.IteratorSize(::AbstractRegularization) = Base.SizeUnknown()
+sink(reg::AbstractRegularization) = last(collect(reg))
 sinktype(reg::AbstractRegularization) = typeof(sink(reg))
 prox!(reg::AbstractParameterizedRegularization, x::AbstractArray) = prox!(reg, x, λ(reg))
 norm(reg::AbstractParameterizedRegularization, x::AbstractArray) = norm(reg, x, λ(reg))
@@ -37,7 +40,7 @@ struct NormalizedRegularization{TF, R<:AbstractRegularization} <: AbstractParame
   reg::R
   factor::TF
 end
-sink(reg::NormalizedRegularization) = sink(reg.reg)
+nested(reg::NormalizedRegularization) = reg.reg
 λ(reg::NormalizedRegularization) = λ(reg.reg) * reg.factor
 prox!(reg::NormalizedRegularization, x::AbstractArray, λ) = prox!(reg.reg, x, λ)
 norm(reg::NormalizedRegularization, x::AbstractArray, λ) = norm(reg.reg, x, λ)
@@ -86,6 +89,11 @@ normalize(solver::Type{T}, norm::AbstractRegularizationNormalization, regs, A, b
 # System matrix based normalization is already done in constructor, can just return regs
 normalize(solver::AbstractLinearSolver, norm::SystemMatrixBasedNormalization, regs, A, b) = regs
 
+function findfirst(::Type{S}, reg::AbstractRegularization) where S <: AbstractRegularization 
+  regs = collect(reg)
+  idx = findfirst(x->x isa S, regs)
+  isnothing(idx) ? nothing : regs[idx]
+end
 function findsink(::Type{S}, reg::Vector{<:AbstractRegularization}) where S <: AbstractRegularization
   all = findall(x -> sinktype(x) <: S, reg)
   if isempty(all)
