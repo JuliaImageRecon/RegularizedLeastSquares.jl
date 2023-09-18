@@ -1,10 +1,9 @@
 export admm, ADMM
 
-mutable struct ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT} <: AbstractPrimalDualSolver where {vecT <: AbstractVector{Union{rT, Complex{rT}}}, rvecT <: AbstractVector{rT}}
+mutable struct ADMM{rT,matT,opT,R,vecT,rvecT,preconT} <: AbstractPrimalDualSolver where {vecT <: AbstractVector{Union{rT, Complex{rT}}}, rvecT <: AbstractVector{rT}}
   # operators and regularization
   A::matT
-  reg::Vector{<:AbstractRegularization}
-  regTrafo::Vector{ropT}
+  reg::Vector{R}
   # fields and operators for x update
   AᴴA::opT
   β::vecT
@@ -59,9 +58,8 @@ creates an `ADMM` object for the system matrix `A`.
 * (`relTol::Real=eps()`)     - rel tolerance for stopping criterion
 * (`tolInner::Real=1.e-5`)   - rel tolerance for CG stopping criterion
 """
-function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); λ=[0.0]
-            , reg=L1Regularization(λ[1])
-            , regTrafo=nothing
+function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2));
+              reg=[L1Regularization(zero(eltype(A)))]
             , AᴴA::opT=nothing
             , precon=Identity()
             , ρ=1e-1
@@ -73,7 +71,7 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); λ=[0.0]
             , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
             , vary_ρ::Symbol=:none
             , verbose::Bool=false
-            , kargs...) where {T,matT,opT}
+            , kargs...) where {T,matT,opT, }
   # TODO: The constructor is not type stable
 
   # unify Floating types
@@ -82,21 +80,28 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); λ=[0.0]
   else
     ρ_vec = real(T).(ρ)
   end
-  λ = real(T).(λ)
   absTol = real(T)(absTol)
   relTol = real(T)(relTol)
   tolInner = real(T)(tolInner)
 
   reg = vec(reg) # using a custom method of vec(.)
 
-  if regTrafo == nothing
-    regTrafo = [opEye(eltype(x),size(A,2)) for _=1:length(reg)]
+  regs = AbstractRegularization[]
+  for (i, r) in enumerate(reg)
+    trafoReg = findfirst(ConstraintTransformedRegularization, r)
+    if isnothing(trafoReg) 
+      regTrafo = opEye(eltype(x),size(A,2))
+      push!(regs, ConstraintTransformedRegularization(r, regTrafo))
+    else
+      push!(regs, r)
+    end
   end
+  reg = identity.(regs)
 
   xᵒˡᵈ = similar(x)
 
   # fields for primal & dual variables
-  z = [similar(x, size(regTrafo[i],1)) for i=1:length(reg)]
+  z = [similar(x, size(A,2)) for i=1:length(reg)]
   zᵒˡᵈ = [similar(z[i]) for i=1:length(reg)]
   u = [similar(z[i]) for i=1:length(reg)]
   uᵒˡᵈ = [similar(u[i]) for i=1:length(reg)]
@@ -122,7 +127,7 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2)); λ=[0.0]
   # normalization parameters
   reg = normalize(ADMM, normalizeReg, reg, A, nothing)
 
-  return ADMM(A,reg,regTrafo,AᴴA,β,β_y,x,xᵒˡᵈ,z,zᵒˡᵈ,u,uᵒˡᵈ,precon,ρ_vec,iterations
+  return ADMM(A,reg,AᴴA,β,β_y,x,xᵒˡᵈ,z,zᵒˡᵈ,u,uᵒˡᵈ,precon,ρ_vec,iterations
               ,iterationsInner,statevars, rᵏ,sᵏ,ɛᵖʳⁱ,ɛᵈᵘᵃ,zero(real(T)),Δ,absTol,relTol,tolInner
               ,normalizeReg, vary_ρ, verbose)
 end
@@ -136,11 +141,11 @@ end
 
 (re-) initializes the ADMM iterator
 """
-function init!(solver::ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT}, b::vecT
+function init!(solver::ADMM{rT,matT,opT,R,vecT,rvecT,preconT}, b::vecT
               ; A::matT=solver.A
               , AᴴA::opT=solver.AᴴA
               , x::vecT=similar(b,0)
-              , kargs...) where {rT,matT,opT,ropT,vecT,rvecT,preconT}
+              , kargs...) where {rT,matT,opT,R,vecT,rvecT,preconT}
 
   # operators
   if A != solver.A
@@ -156,8 +161,9 @@ function init!(solver::ADMM{rT,matT,opT,ropT,vecT,rvecT,preconT}, b::vecT
  end
 
   # primal and dual variables
-  for i=1:length(solver.reg)
-    solver.z[i] .= solver.regTrafo[i]*solver.x
+  for (i, reg) in enumerate(solver.reg)
+    regTrafo = transform(findfirst(ConstraintTransformedRegularization, reg))
+    solver.z[i] .= regTrafo*solver.x
     solver.u[i] .= 0
   end
 
@@ -220,37 +226,39 @@ function iterate(solver::ADMM, iteration::Integer=0)
   if done(solver, iteration) return nothing end
   solver.verbose && println("Outer ADMM Iteration #$iteration")
 
+  regTrafos = map(reg -> transform(findfirst(ConstraintTransformedRegularization, reg)), solver.reg)
+
   # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 Σ_i||Φi*x+ui-zi||²
   # <=> (A'A+ρ Σ_i Φi'Φi)*x = A'b+ρΣ_i Φi'(zi-ui)
   solver.β .= solver.β_y
   AᴴA = solver.AᴴA
-  for i=1:length(solver.reg)
-    solver.β[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*(solver.z[i].-solver.u[i])
-    AᴴA += solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
+  for (i, reg) in enumerate(solver.reg)
+    solver.β[:] .+= solver.ρ[i]*adjoint(i)*(solver.z[i].-solver.u[i])
+    AᴴA += solver.ρ[i] * adjoint(regTrafos[i]) * regTrafos[i]
   end
   solver.verbose && println("conjugated gradients: ")
   solver.xᵒˡᵈ .= solver.x
   cg!(solver.x, AᴴA, solver.β, Pl=solver.precon
       , maxiter=solver.iterationsInner, reltol=solver.tolInner, statevars=solver.cgStateVars, verbose = solver.verbose)
 
-  for i=1:length(solver.reg)
+  for (i, reg) in enumerate(solver.reg)
     # 2. update z using the proximal map of 1/ρ*g(x)
     solver.zᵒˡᵈ[i] .= solver.z[i]
-    solver.z[i] .= solver.regTrafo[i]*solver.x .+ solver.u[i]
+    solver.z[i] .= regTrafos[i]*solver.x .+ solver.u[i]
     if solver.ρ[i] != 0
-      prox!(solver.reg[i], solver.z[i], λ(solver.reg[i])/solver.ρ[i])
+      prox!(reg, solver.z[i], λ(reg)/solver.ρ[i])
     end
 
     # 3. update u
     solver.uᵒˡᵈ[i] .= solver.u[i]
-    solver.u[i] .+= solver.regTrafo[i]*solver.x .- solver.z[i]
+    solver.u[i] .+= regTrafos[i]*solver.x .- solver.z[i]
 
     # update convergence measures (one for each constraint)
-    solver.rᵏ[i] = norm(solver.regTrafo[i]*solver.x-solver.z[i])  # primal residual (x-z)
-    solver.sᵏ[i] = norm(solver.ρ[i] * adjoint(solver.regTrafo[i]) * (solver.z[i] .- solver.zᵒˡᵈ[i])) # dual residual (concerning f(x))
+    solver.rᵏ[i] = norm(regTrafos[i]*solver.x-solver.z[i])  # primal residual (x-z)
+    solver.sᵏ[i] = norm(solver.ρ[i] * adjoint(regTrafos[i]) * (solver.z[i] .- solver.zᵒˡᵈ[i])) # dual residual (concerning f(x))
 
-    solver.ɛᵖʳⁱ[i] = max(norm(solver.regTrafo[i]*solver.x), norm(solver.z[i]))
-    solver.ɛᵈᵘᵃ[i] = norm(solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.u[i])
+    solver.ɛᵖʳⁱ[i] = max(norm(regTrafos[i]*solver.x), norm(solver.z[i]))
+    solver.ɛᵈᵘᵃ[i] = norm(solver.ρ[i] * adjoint(regTrafos[i]) * solver.u[i])
 
     Δᵒˡᵈ = solver.Δ[i]
     solver.Δ[i] = norm(solver.x    .- solver.xᵒˡᵈ   ) +

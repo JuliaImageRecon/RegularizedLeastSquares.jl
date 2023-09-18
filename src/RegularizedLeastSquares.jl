@@ -54,6 +54,7 @@ include("proximalMaps/ProxNuclear.jl")
 include("proximalMaps/ScaledRegularization.jl")
 include("proximalMaps/TransformedRegularization.jl")
 include("proximalMaps/MaskedRegularization.jl")
+include("proximalMaps/ConstraintTransformedRegularization.jl")
 
 include("Utils.jl")
 include("Kaczmarz.jl")
