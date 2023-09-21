@@ -1,16 +1,21 @@
-abstract type AbstractScaledRegularization{T} <: AbstractParameterizedRegularization{T} end
+abstract type AbstractScaledRegularization{T, S<:AbstractParameterizedRegularization{T}} <: AbstractNestedRegularization{S} end
+factor(::R) where R <: AbstractScaledRegularization = error("Scaled regularization term $R must implement factor")
+λ(reg::AbstractScaledRegularization) = λ(nested(reg)) * factor(reg)
+
+prox!(reg::AbstractScaledRegularization, x, λ) = prox!(nested(reg), x, λ)
+norm(reg::AbstractScaledRegularization, x, λ) = norm(nested(reg), x, λ)
 
 export FixedScaledRegularization
-struct FixedScaledRegularization{T, R<:AbstractParameterizedRegularization{T}} <: AbstractScaledRegularization{T}
+struct FixedScaledRegularization{T, S, R} <: AbstractScaledRegularization{T, S}
   reg::R
   factor::T
+  FixedScaledRegularization(reg::R, factor) where {T, R <: AbstractParameterizedRegularization{T}} = new{T, R, R}(reg, factor)
+  FixedScaledRegularization(reg::R, factor) where {T, RN <: AbstractParameterizedRegularization{T}, R<:AbstractNestedRegularization{RN}} = new{T, RN, R}(reg, factor)
 end
 nested(reg::FixedScaledRegularization) = reg.reg
-λ(reg::FixedScaledRegularization) = λ(reg.reg) * reg.factor
-prox!(reg::FixedScaledRegularization, x, λ) = prox!(reg.reg, x, λ)
-norm(reg::FixedScaledRegularization, x, λ) = norm(reg.reg, x, λ)
+factor(reg::FixedScaledRegularization) = reg.factor
 
-
+#=
 export AutoScaledRegularization
 mutable struct AutoScaledRegularization{T, R<:AbstractParameterizedRegularization{T}} <: AbstractScaledRegularization{T}
   reg::R
@@ -28,4 +33,4 @@ end
 function norm(reg::AutoScaledRegularization, x, λ)
   isnothing(reg.factor) && initFactor!(reg, x) 
   return norm(reg.reg, x, λ * reg.factor)
-end
+end=#

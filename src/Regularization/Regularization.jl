@@ -1,12 +1,14 @@
 export Regularization, AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, lambdList, prox!, nested, sink, sinktype, λ, findsink, findsinks
 
 abstract type AbstractRegularization end
-abstract type AbstractParameterizedRegularization{T} <: AbstractRegularization end
 nested(::AbstractRegularization) = nothing
 iterate(reg::AbstractRegularization, state = reg) = isnothing(state) ? nothing : (state, nested(state))
 Base.IteratorSize(::AbstractRegularization) = Base.SizeUnknown()
-sink(reg::AbstractRegularization) = last(collect(reg))
+sink(reg::AbstractRegularization) = reg
 sinktype(reg::AbstractRegularization) = typeof(sink(reg))
+
+
+abstract type AbstractParameterizedRegularization{T} <: AbstractRegularization end
 prox!(reg::AbstractParameterizedRegularization, x::AbstractArray) = prox!(reg, x, λ(reg))
 norm(reg::AbstractParameterizedRegularization, x::AbstractArray) = norm(reg, x, λ(reg))
 λ(reg::AbstractParameterizedRegularization) = reg.λ
@@ -14,8 +16,6 @@ norm(reg::AbstractParameterizedRegularization, x::AbstractArray) = norm(reg, x, 
 prox!(reg::AbstractParameterizedRegularization, x::AbstractArray{Tc}, λ) where {T, Tc<:Union{T, Complex{T}}} = prox!(reg, x, convert(T, λ))
 norm(reg::AbstractParameterizedRegularization, x::AbstractArray{Tc}, λ) where {T, Tc<:Union{T, Complex{T}}} = norm(reg, x, convert(T, λ))
 
-prox!(str::AbstractString, x, λ; kwargs...) = prox!(Regularization(str, λ; kwargs...), x, λ)
-norm(str::AbstractString, x, λ; kwargs...) = norm(Regularization(str, λ; kwargs...), x, λ)
 prox!(regType::Type{<:AbstractParameterizedRegularization}, x, λ; kwargs...) = prox!(regType(λ; kwargs...), x, λ)
 norm(regType::Type{<:AbstractParameterizedRegularization}, x, λ; kwargs...) = norm(regType(λ; kwargs...), x, λ)
 
@@ -27,8 +27,9 @@ norm(::R, x::AbstractArray) where {R<:AbstractProjectionRegularization} = norm(R
 prox!(regType::Type{<:AbstractProjectionRegularization}, x; kwargs...) = prox!(regType(;kwargs...), x)
 norm(regType::Type{<:AbstractProjectionRegularization}, x; kwargs...) = norm(regType(;kwargs...), x)
 
-include("NormalizedRegularization.jl")
+include("NestedRegularization.jl")
 include("ScaledRegularization.jl")
+include("NormalizedRegularization.jl")
 include("TransformedRegularization.jl")
 include("MaskedRegularization.jl")
 include("ConstraintTransformedRegularization.jl")

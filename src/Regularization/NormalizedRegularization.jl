@@ -5,14 +5,14 @@ struct MeasurementBasedNormalization <: AbstractRegularizationNormalization end
 struct SystemMatrixBasedNormalization <: AbstractRegularizationNormalization end
 # TODO weighted systemmatrix, maybe weighted measurementbased?
 
-struct NormalizedRegularization{TF, R<:AbstractRegularization} <: AbstractParameterizedRegularization{TF}
+struct NormalizedRegularization{T, S, R} <: AbstractScaledRegularization{T, S}
   reg::R
-  factor::TF
+  factor::T
+  NormalizedRegularization(reg::R, factor) where {T, R <: AbstractParameterizedRegularization{T}} = new{T, R, R}(reg, factor)
+  NormalizedRegularization(reg::R, factor) where {T, RN <: AbstractParameterizedRegularization{T}, R<:AbstractNestedRegularization{RN}} = new{T, RN, R}(reg, factor)
 end
 nested(reg::NormalizedRegularization) = reg.reg
-λ(reg::NormalizedRegularization) = λ(reg.reg) * reg.factor
-prox!(reg::NormalizedRegularization, x::AbstractArray, λ) = prox!(reg.reg, x, λ)
-norm(reg::NormalizedRegularization, x::AbstractArray, λ) = norm(reg.reg, x, λ)
+factor(reg::NormalizedRegularization) = reg.factor
 
 function normalize(::MeasurementBasedNormalization, A, b::AbstractArray)
   return norm(b, 1)/length(b)
