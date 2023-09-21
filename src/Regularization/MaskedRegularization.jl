@@ -1,20 +1,21 @@
 export MaskedRegularization
 
-struct MaskedRegularization{R<:AbstractRegularization} <: AbstractRegularization
+struct MaskedRegularization{S, R<:AbstractRegularization} <: AbstractNestedRegularization{S}
   reg::R
   constraintMask::Vector{Bool}
+  MaskedRegularization(reg::AbstractRegularization, constraintMask) = new{R, R}(reg, constraintMask)
+  MaskedRegularization(reg::R, constraintMask) where {S, R<:AbstractNestedRegularization{S}} = new{S,R}(reg, constraintMask)
 end
-λ(reg::MaskedRegularization) = λ(reg.reg)
 nested(reg::MaskedRegularization) = reg.reg
 
 
-function prox!(reg::MaskedRegularization, x::AbstractArray)
+function prox!(reg::MaskedRegularization, x::AbstractArray, args...)
 	z = view(x, findall(reg.constraintMask))
-  prox!(reg.reg, z)
+  prox!(reg.reg, z, args...)
 	return x
 end
-function norm(reg::MaskedRegularization, x::AbstractArray)
+function norm(reg::MaskedRegularization, x::AbstractArray, args...)
   z = view(x, findall(reg.constraintMask))
-  result = norm(reg.reg, z)
+  result = norm(reg.reg, z, args...)
   return result
 end

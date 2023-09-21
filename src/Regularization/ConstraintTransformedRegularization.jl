@@ -1,12 +1,10 @@
 export ConstraintTransformedRegularization, transform
 
-struct ConstraintTransformedRegularization{R<:AbstractRegularization, TR} <: AbstractRegularization
+struct ConstraintTransformedRegularization{S, R<:AbstractRegularization, TR} <: AbstractNestedRegularization{S}
   reg::R
   trafo::TR
+  ConstraintTransformedRegularization(reg::AbstractRegularization, trafo::TR) where TR = new{R, R, TR}(reg, trafo)
+  ConstraintTransformedRegularization(reg::R, trafo::TR) where {S, R<:AbstractNestedRegularization{S}, TR} = new{S,R, TR}(reg, trafo)
 end
 nested(reg::ConstraintTransformedRegularization) = reg.reg
-λ(reg::ConstraintTransformedRegularization) = λ(reg.reg)
 transform(reg::ConstraintTransformedRegularization) = reg.trafo
-
-prox!(reg::ConstraintTransformedRegularization, x::AbstractArray, λ) = prox!(reg.reg, x, λ)
-norm(reg::ConstraintTransformedRegularization, x::AbstractArray, λ) = norm(reg.reg, x, λ)
