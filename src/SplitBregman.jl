@@ -1,9 +1,10 @@
 export SplitBregman
 
-mutable struct SplitBregman{matT,vecT,opT,R,rvecT,preconT,rT} <: AbstractPrimalDualSolver
+mutable struct SplitBregman{matT,vecT,opT,R,ropT,rvecT,preconT,rT} <: AbstractPrimalDualSolver
   # oerators and regularization
   A::matT
   reg::Vector{R}
+  regTrafo::Vector{ropT}
   y::vecT
   # fields and operators for x update
   op::opT
@@ -72,17 +73,18 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing;
                     , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
                     , kargs...) where {matT, vecT<:AbstractVector}
 
-  regs = AbstractRegularization[]
-  for (i, r) in enumerate(reg)
+  regTrafo = []
+  # Retrieve constraint trafos
+  for r in reg
     trafoReg = findfirst(ConstraintTransformedRegularization, r)
     if isnothing(trafoReg) 
-      regTrafo = opEye(eltype(x),size(A,2))
-      push!(regs, ConstraintTransformedRegularization(r, regTrafo))
+      push!(regTrafo, opEye(eltype(x),size(A,2)))
     else
-      push!(regs, r)
+      push!(regTrafo, trafoReg)
     end
   end
-  reg = identity.(regs)
+  regTrafo = identity.(regTrafo)
+
 
 
   if b==nothing
@@ -93,9 +95,8 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing;
 
   # operator and fields for the update of x
   op = A'*A
-  for (i, reg) in enumerate(reg)
-    regTrafo = transform(findfirst(ConstraintTransformedRegularization, reg))
-    op += ρ[i]*adjoint(regTrafo)*regTrafo
+  for i=1:length(vec(reg))
+    op += ρ[i]*adjoint(regTrafo[i])*regTrafo[i]
   end
   β = similar(x)
   β_yj = similar(x)
@@ -130,7 +131,7 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing;
   # normalization parameters
   reg = normalize(SplitBregman, normalizeReg, vec(reg), A, nothing)
 
-  return SplitBregman(A,reg,y,op,β,β_yj,y_j,u,v,vᵒˡᵈ,b,precon,ρ_vec
+  return SplitBregman(A,reg,regTrafo,y,op,β,β_yj,y_j,u,v,vᵒˡᵈ,b,precon,ρ_vec
               ,iterations,iterationsInner,iterationsCG,statevars, rk,sk
               ,eps_pri,eps_dt,0.0,absTol,relTol,tolInner,iter_cnt,normalizeReg)
 end
@@ -143,18 +144,17 @@ end
 
 (re-) initializes the SplitBregman iterator
 """
-function init!(solver::SplitBregman{matT,vecT,opT,ropT,rvecT,preconT}, b::vecT
+function init!(solver::SplitBregman{matT,vecT,opT,R,ropT,rvecT,preconT}, b::vecT
               ; A::matT=solver.A
               , u::vecT=similar(b,0)
-              , kargs...) where {matT,vecT,opT,ropT,rvecT,preconT}
+              , kargs...) where {matT,vecT,opT,R,ropT,rvecT,preconT}
 
   # operators
   if A != solver.A
     solver.A = A
     solver.op = A'*A
-    for (i, reg) in enumerate(solver.reg)
-      regTrafo = transform(findfirst(ConstraintTransformedRegularization, reg))
-      solver.op += ρ[i]*adjoint(regTrafo)*regTrafo
+    for i=1:length(vec(reg))
+      solver.op += ρ[i]*adjoint(regTrafo[i])*regTrafo[i]
     end
   end
   solver.y = b
@@ -171,9 +171,8 @@ function init!(solver::SplitBregman{matT,vecT,opT,ropT,rvecT,preconT}, b::vecT
   end
 
   # primal and dual variables
-  for (i, reg) in enumerate(solver.reg)
-    regTrafo = transform(findfirst(ConstraintTransformedRegularization, reg))
-    solver.v[i][:] .= regTrafo*solver.u
+  for i=1:length(solver.reg)
+    solver.v[i][:] .= solver.regTrafo[i]*solver.u
     solver.vᵒˡᵈ[i][:] .= 0
     solver.b[i][:] .= 0
   end
@@ -255,45 +254,43 @@ The Split Bregman Method for l1 Regularized Problems
   * (`tolInner::Float64=1.e-3`)   - relative tolerance for CG
   * (`solverInfo = nothing`)      - `solverInfo` object used to store convergence metrics
 """
-function iterate(solver::SplitBregman{matT,vecT,opT,rvecT,preconT}, iteration::Int=1) where {matT,vecT,opT,rvecT,preconT}
+function iterate(solver::SplitBregman{matT, vecT, opT, R, ropT, rvecT, preconT, rT}, iteration::Int=1) where {matT, vecT, opT, R, ropT, rvecT, preconT, rT}
   if done(solver, iteration) return nothing end
-
-  regTrafos = map(reg -> transform(findfirst(ConstraintTransformedRegularization, reg)), solver.reg)
 
   # update u
   solver.β[:] .= solver.β_yj
   for i=1:length(solver.reg)
-    solver.β[:] .+= solver.ρ[i]*adjoint(regTrafos[i])*(solver.v[i].-solver.b[i])
+    solver.β[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*(solver.v[i].-solver.b[i])
   end
   cg!(solver.u,solver.op,solver.β,Pl=solver.precon,maxiter=solver.iterationsCG,reltol=solver.tolInner)
 
   #  proximal map for regularization terms
-  for (i, reg) in enumerate(solver.reg)
+  for i=1:length(solver.reg)
     copyto!(solver.vᵒˡᵈ[i], solver.v[i])
-    solver.v[i][:] .= regTrafos[i]*solver.u .+ solver.b[i]
+    solver.v[i][:] .= solver.regTrafo[i]*solver.u .+ solver.b[i]
     if solver.ρ[i] != 0
-      prox!(reg, solver.v[i], λ(reg)/solver.ρ[i])
+      prox!(solver.reg[i], solver.v[i], λ(solver.reg[i])/solver.ρ[i])
     end
   end
 
   # update b
   for i=1:length(solver.reg)
-    solver.b[i] .+= regTrafos[i]*solver.u .- solver.v[i]
+    solver.b[i] .+= solver.regTrafo[i]*solver.u .- solver.v[i]
   end
 
   # update convergence criteria
   # primal residuals norms (one for each constraint)
   for i=1:length(solver.reg)
-    solver.rk[i] = norm(regTrafos[i]*solver.u-solver.v[i])
-    solver.eps_pri[i] = solver.σᵃᵇˢ + solver.relTol*max( norm(regTrafos[i]*solver.u), norm(solver.v[i]) )
+    solver.rk[i] = norm(solver.regTrafo[i]*solver.u-solver.v[i])
+    solver.eps_pri[i] = solver.σᵃᵇˢ + solver.relTol*max( norm(solver.regTrafo[i]*solver.u), norm(solver.v[i]) )
   end
   # accumulated dual residual
   # effectively this corresponds to combining all constraints into one larger constraint.
   solver.sk[:] .= 0.0
   solver.eps_dt[:] .= 0.0
   for i=1:length(solver.reg)
-    solver.sk[:] .+= solver.ρ[i]*adjoint(regTrafos[i])*(solver.v[i].-solver.vᵒˡᵈ[i])
-    solver.eps_dt[:] .+= solver.ρ[i]*adjoint(regTrafos[i])*solver.b[i]
+    solver.sk[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*(solver.v[i].-solver.vᵒˡᵈ[i])
+    solver.eps_dt[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*solver.b[i]
   end
 
   if update_y(solver,iteration)
@@ -301,7 +298,7 @@ function iterate(solver::SplitBregman{matT,vecT,opT,rvecT,preconT}, iteration::I
     solver.β_yj[:] .= adjoint(solver.A) * solver.y_j
     # reset v and b
     for i=1:length(solver.reg)
-      solver.v[i][:] .= regTrafos[i]*solver.u
+      solver.v[i][:] .= solver.regTrafo[i]*solver.u
       solver.b[i] .= 0
     end
     solver.iter_cnt += 1
