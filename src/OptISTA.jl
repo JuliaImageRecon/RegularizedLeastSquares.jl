@@ -83,13 +83,14 @@ function OptISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg
   θn = (1 + sqrt(1 + 8 * θn^2)) / 2
 
   # Prepare regularization terms
-  reg = normalize(OptISTA, normalizeReg, vec(reg), A, nothing)
+  reg = vec(reg)
   indices = findsinks(AbstractProjectionRegularization, reg)
   other = [reg[i] for i in indices]
   deleteat!(reg, indices)
   if length(reg) != 1
     error("OptISTA does not allow for more additional regularization terms, found $(length(reg))")
   end
+  reg = normalize(OptISTA, normalizeReg, reg, A, nothing)
 
   return OptISTA(A, AᴴA, reg[1], other, x, x₀, y, z, zᵒˡᵈ, res, rT(ρ),rT(θ),rT(θ),rT(θn),rT(0),rT(1),rT(1),
     iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose)
@@ -130,7 +131,6 @@ function init!(solver::OptISTA{rT,vecT,matA,matAHA}, b::vecT
 
   # normalization of regularization parameters
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
-  solver.proj = normalize(solver, solver.normalizeReg, solver.proj, solver.A, solver.x₀)
 end
 
 """

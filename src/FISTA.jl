@@ -65,13 +65,14 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L
   end
 
   # Prepare regularization terms
-  reg = normalize(FISTA, normalizeReg, vec(reg), A, nothing)
+  reg = vec(reg)
   indices = findsinks(AbstractProjectionRegularization, reg)
   other = [reg[i] for i in indices]
   deleteat!(reg, indices)
   if length(reg) != 1
     error("FISTA does not allow for more additional regularization terms, found $(length(reg))")
   end
+  reg = normalize(FISTA, normalizeReg, reg, A, nothing)
 
 
   return FISTA(A, AᴴA, reg[1], other, x, x₀, xᵒˡᵈ, res, rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose,restart)
@@ -104,7 +105,6 @@ function init!(solver::FISTA{rT,vecT,matA,matAHA}, b::vecT
   solver.tᵒˡᵈ = t
   # normalization of regularization parameters
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
-  solver.proj = normalize(solver, solver.normalizeReg, solver.proj, solver.A, solver.x₀)
 end
 
 """
@@ -167,6 +167,10 @@ function iterate(solver::FISTA, iteration::Int=0)
 
   # proximal map
   prox!(solver.reg, solver.x, solver.ρ * λ(solver.reg))
+
+  for proj in solver.proj
+    prox!(proj, solver.x)
+  end
 
   # gradient restart conditions
   if solver.restart == :gradient

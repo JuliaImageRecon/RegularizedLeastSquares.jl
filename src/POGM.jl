@@ -92,13 +92,14 @@ function POGM(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1
     ρ /= abs(power_iterations(AᴴA))
   end
   
-  reg = normalize(POGM, normalizeReg, vec(reg), A, nothing)
+  reg = vec(reg)
   indices = findsinks(AbstractProjectionRegularization, reg)
   other = [reg[i] for i in indices]
   deleteat!(reg, indices)
   if length(reg) != 1
     error("POGM does not allow for more additional regularization terms, found $(length(reg))")
   end
+  reg = normalize(POGM, normalizeReg, reg, A, nothing)
 
   return POGM(A, AᴴA, reg[1], other, x, x₀, xᵒˡᵈ, y, z, w, res, rT(ρ),rT(t),rT(t),rT(0),rT(1),rT(1),rT(1),rT(1),rT(σ_fac),
     iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose,restart)
@@ -137,7 +138,6 @@ function init!(solver::POGM{rT,vecT,matA,matAHA}, b::vecT
   solver.σ = 1
   # normalization of regularization parameters
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
-  solver.proj = normalize(solver, solver.normalizeReg, solver.proj, solver.A, solver.x₀)
 end
 
 """
@@ -216,6 +216,9 @@ function iterate(solver::POGM, iteration::Int=0)
 
   # proximal map
   prox!(solver.reg, solver.x, solver.γ * λ(solver.reg))
+  for proj in solver.proj
+    prox!(proj, solver.x)
+  end
 
   # gradient restart conditions
   if solver.restart == :gradient
