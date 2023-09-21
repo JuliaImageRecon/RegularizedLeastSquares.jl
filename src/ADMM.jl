@@ -1,10 +1,11 @@
 export admm, ADMM
 
-mutable struct ADMM{rT,matT,opT,R,ropT,vecT,rvecT,preconT} <: AbstractPrimalDualSolver where {vecT <: AbstractVector{Union{rT, Complex{rT}}}, rvecT <: AbstractVector{rT}}
+mutable struct ADMM{rT,matT,opT,R,ropT,P,vecT,rvecT,preconT} <: AbstractPrimalDualSolver where {vecT <: AbstractVector{Union{rT, Complex{rT}}}, rvecT <: AbstractVector{rT}}
   # operators and regularization
   A::matT
   reg::Vector{R}
   regTrafo::Vector{ropT}
+  proj::Vector{P}
   # fields and operators for x update
   AᴴA::opT
   β::vecT
@@ -88,6 +89,9 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2));
   reg = vec(reg) # using a custom method of vec(.)
 
   regTrafo = []
+  indices = findsinks(AbstractProjectionRegularization, reg)
+  proj = [reg[i] for i in indices]
+  deleteat!(reg, indices)
   # Retrieve constraint trafos
   for r in reg
     trafoReg = findfirst(ConstraintTransformedRegularization, r)
@@ -128,7 +132,7 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2));
   # normalization parameters
   reg = normalize(ADMM, normalizeReg, reg, A, nothing)
 
-  return ADMM(A,reg, regTrafo,AᴴA,β,β_y,x,xᵒˡᵈ,z,zᵒˡᵈ,u,uᵒˡᵈ,precon,ρ_vec,iterations
+  return ADMM(A,reg,regTrafo,proj,AᴴA,β,β_y,x,xᵒˡᵈ,z,zᵒˡᵈ,u,uᵒˡᵈ,precon,ρ_vec,iterations
               ,iterationsInner,statevars, rᵏ,sᵏ,ɛᵖʳⁱ,ɛᵈᵘᵃ,zero(real(T)),Δ,absTol,relTol,tolInner
               ,normalizeReg, vary_ρ, verbose)
 end
@@ -142,11 +146,11 @@ end
 
 (re-) initializes the ADMM iterator
 """
-function init!(solver::ADMM{rT,matT,opT,R, ropT,vecT,rvecT,preconT}, b::vecT
+function init!(solver::ADMM{rT,matT,opT,R,ropT,P,vecT,rvecT,preconT}, b::vecT
               ; A::matT=solver.A
               , AᴴA::opT=solver.AᴴA
               , x::vecT=similar(b,0)
-              , kargs...) where {rT,matT,opT,R,ropT,vecT,rvecT,preconT}
+              , kargs...) where {rT,matT,opT,R,ropT,P,vecT,rvecT,preconT}
 
   # operators
   if A != solver.A
@@ -202,7 +206,7 @@ solves an inverse problem using ADMM.
 when a `SolverInfo` objects is passed, the primal residuals `solver.rᵏ`
 and the dual residual `norm(solver.sᵏ)` are stored in `solverInfo.convMeas`.
 """
-function solve(solver::ADMM{rT,matT,opT,R,ropT,vecT,rvecT,preconT}, b::vecT; A=solver.A, AᴴA=solver.AᴴA, startVector::vecT=similar(b,0), solverInfo=nothing, kargs...) where {rT,matT,opT,R,ropT,vecT,rvecT,preconT}
+function solve(solver::ADMM{rT,matT,opT,R,ropT,P,vecT,rvecT,preconT}, b::vecT; A=solver.A, AᴴA=solver.AᴴA, startVector::vecT=similar(b,0), solverInfo=nothing, kargs...) where {rT,matT,opT,R,ropT,P,vecT,rvecT,preconT}
   # initialize solver parameters
   init!(solver, b; A=A, AᴴA=AᴴA, x=startVector)
 
@@ -238,6 +242,10 @@ function iterate(solver::ADMM, iteration::Integer=0)
   solver.xᵒˡᵈ .= solver.x
   cg!(solver.x, AᴴA, solver.β, Pl=solver.precon
       , maxiter=solver.iterationsInner, reltol=solver.tolInner, statevars=solver.cgStateVars, verbose = solver.verbose)
+
+  for proj in solver.proj
+    prox!(proj, solver.x)
+  end
 
   for i=1:length(solver.reg)
     # 2. update z using the proximal map of 1/ρ*g(x)

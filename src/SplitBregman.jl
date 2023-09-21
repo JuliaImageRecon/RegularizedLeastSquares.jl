@@ -1,10 +1,11 @@
 export SplitBregman
 
-mutable struct SplitBregman{matT,vecT,opT,R,ropT,rvecT,preconT,rT} <: AbstractPrimalDualSolver
+mutable struct SplitBregman{matT,vecT,opT,R,ropT,P,rvecT,preconT,rT} <: AbstractPrimalDualSolver
   # oerators and regularization
   A::matT
   reg::Vector{R}
   regTrafo::Vector{ropT}
+  proj::Vector{P}
   y::vecT
   # fields and operators for x update
   op::opT
@@ -73,6 +74,10 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing;
                     , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
                     , kargs...) where {matT, vecT<:AbstractVector}
 
+  reg = vec(reg)
+  indices = findsinks(AbstractProjectionRegularization, reg)
+  proj = [reg[i] for i in indices]
+  deleteat!(reg, indices)
   regTrafo = []
   # Retrieve constraint trafos
   for r in reg
@@ -131,7 +136,7 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing;
   # normalization parameters
   reg = normalize(SplitBregman, normalizeReg, vec(reg), A, nothing)
 
-  return SplitBregman(A,reg,regTrafo,y,op,β,β_yj,y_j,u,v,vᵒˡᵈ,b,precon,ρ_vec
+  return SplitBregman(A,reg,regTrafo,proj,y,op,β,β_yj,y_j,u,v,vᵒˡᵈ,b,precon,ρ_vec
               ,iterations,iterationsInner,iterationsCG,statevars, rk,sk
               ,eps_pri,eps_dt,0.0,absTol,relTol,tolInner,iter_cnt,normalizeReg)
 end
@@ -144,10 +149,10 @@ end
 
 (re-) initializes the SplitBregman iterator
 """
-function init!(solver::SplitBregman{matT,vecT,opT,R,ropT,rvecT,preconT}, b::vecT
+function init!(solver::SplitBregman{matT,vecT,opT,R,ropT,P,rvecT,preconT}, b::vecT
               ; A::matT=solver.A
               , u::vecT=similar(b,0)
-              , kargs...) where {matT,vecT,opT,R,ropT,rvecT,preconT}
+              , kargs...) where {matT,vecT,opT,R,ropT,P,rvecT,preconT}
 
   # operators
   if A != solver.A
@@ -263,6 +268,10 @@ function iterate(solver::SplitBregman{matT, vecT, opT, R, ropT, rvecT, preconT, 
     solver.β[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*(solver.v[i].-solver.b[i])
   end
   cg!(solver.u,solver.op,solver.β,Pl=solver.precon,maxiter=solver.iterationsCG,reltol=solver.tolInner)
+  
+  for proj in solver.proj
+    prox!(proj, solver.u)
+  end
 
   #  proximal map for regularization terms
   for i=1:length(solver.reg)

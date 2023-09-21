@@ -2,9 +2,6 @@ abstract type AbstractScaledRegularization{T, S<:AbstractParameterizedRegulariza
 factor(::R) where R <: AbstractScaledRegularization = error("Scaled regularization term $R must implement factor")
 λ(reg::AbstractScaledRegularization) = λ(nested(reg)) * factor(reg)
 
-prox!(reg::AbstractScaledRegularization, x, λ) = prox!(nested(reg), x, λ)
-norm(reg::AbstractScaledRegularization, x, λ) = norm(nested(reg), x, λ)
-
 export FixedScaledRegularization
 struct FixedScaledRegularization{T, S, R} <: AbstractScaledRegularization{T, S}
   reg::R
