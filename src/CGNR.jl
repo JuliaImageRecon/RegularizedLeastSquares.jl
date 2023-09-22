@@ -1,10 +1,9 @@
 export cgnr, CGNR
 
-mutable struct CGNR{matT,opT,vecT,T, R, RN} <: AbstractKrylovSolver
+mutable struct CGNR{matT,opT,vecT,T, R} <: AbstractKrylovSolver
   A::matT
   AᴴA::opT
   L2::R
-  reg::Vector{RN}
   cl::vecT
   rl::vecT
   zl::vecT
@@ -72,16 +71,16 @@ function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); reg::Vector{R} = [L2Regular
   end
   deleteat!(reg, idx)
 
-  indices = findsinks(AbstractProjectionRegularization, reg)
-  other = [reg[i] for i in indices]
-  deleteat!(reg, indices)
+  #indices = findsinks(AbstractProjectionRegularization, reg)
+  #other = [reg[i] for i in indices]
+  #deleteat!(reg, indices)
   if length(reg) > 0
     error("CGNR does not allow for more additional regularization terms, found $(length(reg))")
   end
 
 
   return CGNR(A, AᴴA,
-             L2,other,cl,rl,zl,pl,vl,xl,αl,βl,ζl,
+             L2,cl,rl,zl,pl,vl,xl,αl,βl,ζl,
              weights,iterations,relTol,0.0,normalizeReg)
 end
 
@@ -161,9 +160,9 @@ performs one CGNR iteration.
 """
 function iterate(solver::CGNR, iteration::Int=0) 
     if done(solver,iteration)
-      for r in solver.reg
-        prox!(r, solver.cl)
-      end
+      #for r in solver.reg
+      #  prox!(r, solver.cl)
+      #end
       return nothing
     end
 
