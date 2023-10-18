@@ -72,7 +72,7 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing;
                     , relTol::Float64=eps()
                     , tolInner::Float64=1.e-6
                     , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
-                    , kargs...) where {matT, vecT<:AbstractVector}
+                    , kargs...) where {T, matT, vecT<:AbstractVector{T}}
 
   reg = vec(reg)
   indices = findsinks(AbstractProjectionRegularization, reg)
@@ -90,6 +90,12 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing;
   end
   regTrafo = identity.(regTrafo)
 
+  # make sure that ρ is a vector
+  if typeof(ρ) <: Number
+    ρ_vec = [real(T).(ρ) for i = 1:length(reg)]
+  else
+    ρ_vec = real(T).(ρ)
+  end
 
 
   if b==nothing
@@ -125,13 +131,6 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing;
 
   iter_cnt = 1
 
-  # make sure that ρ is a vector
-  if typeof(ρ) <: Real
-    ρ_vec = similar(x, real(eltype(x)), 1)
-    ρ_vec .= ρ
-  else
-    ρ_vec = typeof(real.(x))(ρ)
-  end
 
   # normalization parameters
   reg = normalize(SplitBregman, normalizeReg, vec(reg), A, nothing)
