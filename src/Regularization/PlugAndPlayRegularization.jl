@@ -21,19 +21,3 @@ function RegularizedLeastSquares.prox!(self::PnPRegularization, x::AbstractArray
 
     x[:] = reshape(out, size(x)...) + imag(x) * 1.0im
 end
-
-# function RegularizedLeastSquares.prox!(self::PnPRegularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
-#     println("x_before", "max=", maximum(real(x)), "; min=", minimum(real(x)), "; mean=", mean(real(x)))
-#     out = copy(x)
-#     out = real.(reshape(out, self.shape...))
-#     min_val = minimum(out)
-#     max_val = maximum(out)
-#     out = (out .- min_val) ./ (max_val - min_val) #.* 0.7 .- 0.2
-#     println("x: ", "max=", maximum(out), "; min=", minimum(out), "; mean=", mean(out))
-#     println("mean(out - self.model(out)) ", mean(out - self.flux_model(out)))
-#     out = out - λ * (out - self.flux_model(out))
-#     # out = min_val .+ ((out .+ 0.2) ./ 0.7 .* (max_val - min_val))
-#     out = min_val .+ (out .* (max_val - min_val))
-#     x[:] = reshape(out, size(x)...) + imag(x) * 1.0im
-#     println("x_after", "max=", maximum(real(x)), "; min=", minimum(real(x)), "; mean=", mean(real(x)))
-#   end
