@@ -39,6 +39,7 @@ abstract type AbstractKrylovSolver <: AbstractLinearSolver end
 # Fallback function
 setlambda(S::AbstractMatrix, λ::Real) = nothing
 
+include("Transforms.jl")
 include("Regularization/Regularization.jl")
 include("proximalMaps/ProximalMaps.jl")
 
@@ -54,6 +55,7 @@ include("POGM.jl")
 include("ADMM.jl")
 include("SplitBregman.jl")
 include("PrimalDualSolver.jl")
+include("MLModels/MLModels.jl")
 
 """
 Return a list of all available linear solvers
