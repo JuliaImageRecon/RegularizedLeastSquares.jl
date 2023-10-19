@@ -17,8 +17,12 @@ LinearOperators = "5c8ed15e-5a4c-59e4-a42b-c7e8811fb125"
 LinearOperatorCollection = "a4a2c56f-fead-462a-a3ab-85921a5f2575"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
-JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 
+[weakdeps]
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+
+[extensions]
+RegularizedLeastSquaresFluxExt = "Flux"
 
 [compat]
 FLoops = "0.2"
@@ -28,7 +32,7 @@ LinearOperators = "2.3.3"
 LinearOperatorCollection = "1.0"
 StatsBase = "0.33, 0.34"
 VectorizationBase = "0.19, 0.21"
-julia = "1.6"
+julia = "1.9"
 FFTW = "1.0"
 FastClosures="0.3.2"
 

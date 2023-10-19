@@ -55,7 +55,6 @@ include("POGM.jl")
 include("ADMM.jl")
 include("SplitBregman.jl")
 include("PrimalDualSolver.jl")
-include("MLModels/MLModels.jl")
 
 """
 Return a list of all available linear solvers
