@@ -20,9 +20,9 @@ function RegularizedLeastSquares.prox!(self::PlugAndPlayRegularization, x::Abstr
 
     tf = self.input_transform(out)
 
-    out = transform(tf, out)
+    out = RegularizedLeastSquares.transform(tf, out)
     out = out - λ * (out - self.model(out))
-    out = inverse_transform(tf, out)
+    out = RegularizedLeastSquares.inverse_transform(tf, out)
 
     x[:] = vec(out)
 end

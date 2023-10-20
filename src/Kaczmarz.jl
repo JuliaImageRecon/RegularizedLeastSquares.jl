@@ -81,8 +81,8 @@ function Kaczmarz(S; b=nothing, reg::Vector{<:AbstractRegularization} = [L2Regul
     L2 = L2Regularization(zero(T))
   else
     L2 = reg[idx]
+    deleteat!(reg, idx)
   end
-  deleteat!(reg, idx)
 
   indices = findsinks(AbstractProjectionRegularization, reg)
   other = AbstractRegularization[reg[i] for i in indices]
