@@ -77,11 +77,6 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2));
   # TODO: The constructor is not type stable
 
   # unify Floating types
-  if typeof(ρ) <: Number
-    ρ_vec = [real(T).(ρ)]
-  else
-    ρ_vec = real(T).(ρ)
-  end
   absTol = real(T)(absTol)
   relTol = real(T)(relTol)
   tolInner = real(T)(tolInner)
@@ -102,6 +97,12 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2));
     end
   end
   regTrafo = identity.(regTrafo)
+  
+  if typeof(ρ) <: Number
+    ρ_vec = [real(T).(ρ) for i = 1:length(reg)]
+  else
+    ρ_vec = real(T).(ρ)
+  end
 
   xᵒˡᵈ = similar(x)
 
