@@ -12,6 +12,17 @@ end
 nested(reg::FixedScaledRegularization) = reg.reg
 factor(reg::FixedScaledRegularization) = reg.factor
 
+export FixedParameterRegularization
+struct FixedParameterRegularization{T, S, R} <: AbstractScaledRegularization{T, S}
+  reg::R
+  FixedParameterRegularization(reg::R) where {T, R <: AbstractParameterizedRegularization{T}} = new{T, R, R}(reg)
+  FixedScaledRegularization(reg::R) where {T, RN <: AbstractParameterizedRegularization{T}, R<:AbstractNestedRegularization{RN}} = new{T, RN, R}(reg)
+end
+factor(reg::FixedParameterRegularization) = 1.0
+nested(reg::FixedParameterRegularization) = reg.reg
+# Drop any incoming λ and subsitute inner
+prox!(reg::FixedParameterRegularization, x, λ) = prox!(reg, x, λ(nested(reg)))
+norm(reg::FixedParameterRegularization, x, λ) = norm(reg, x, λ(nested(reg)))
 
 export AutoScaledRegularization
 mutable struct AutoScaledRegularization{T, S, R} <: AbstractScaledRegularization{T, S}

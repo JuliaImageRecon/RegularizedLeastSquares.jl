@@ -1,4 +1,4 @@
-export AbstractRegularizationNormalization, NoNormalization, MeasurementBasedNormalization, SystemMatrixBasedNormalization
+export AbstractRegularizationNormalization, NoNormalization, MeasurementBasedNormalization, SystemMatrixBasedNormalization, NormalizedRegularization
 abstract type AbstractRegularizationNormalization end
 struct NoNormalization <: AbstractRegularizationNormalization end
 struct MeasurementBasedNormalization <: AbstractRegularizationNormalization end
