@@ -16,13 +16,6 @@ FastClosures = "9aa1b823-49e4-5ca5-8b0f-3971ec8bab6a"
 LinearOperators = "5c8ed15e-5a4c-59e4-a42b-c7e8811fb125"
 LinearOperatorCollection = "a4a2c56f-fead-462a-a3ab-85921a5f2575"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
-Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
-
-[weakdeps]
-Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
-
-[extensions]
-RegularizedLeastSquaresFluxExt = "Flux"
 
 [compat]
 FLoops = "0.2"
