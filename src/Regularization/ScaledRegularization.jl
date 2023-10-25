@@ -21,8 +21,8 @@ end
 factor(reg::FixedParameterRegularization) = 1.0
 nested(reg::FixedParameterRegularization) = reg.reg
 # Drop any incoming λ and subsitute inner
-prox!(reg::FixedParameterRegularization, x, λ) = prox!(reg, x, λ(nested(reg)))
-norm(reg::FixedParameterRegularization, x, λ) = norm(reg, x, λ(nested(reg)))
+prox!(reg::FixedParameterRegularization, x, discard) = prox!(nested(reg), x, λ(nested(reg)))
+norm(reg::FixedParameterRegularization, x, discard) = norm(nested(reg), x, λ(nested(reg)))
 
 export AutoScaledRegularization
 mutable struct AutoScaledRegularization{T, S, R} <: AbstractScaledRegularization{T, S}

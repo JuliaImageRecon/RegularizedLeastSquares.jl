@@ -16,6 +16,12 @@ end
 
 function prox!(self::PlugAndPlayRegularization, x::AbstractArray{T}, λ::T) where {T}
 
+    if λ != self.λ && (λ < 0.0 || λ > 1.0)
+        temp = clamp(λ, zero(T), one(T))
+        @warn "$(typeof(self)) was given λ with value $λ. Valid range is [0, 1]. λ changed to temp"
+        λ = temp
+      end
+
     out = copy(x)
     out = reshape(out, self.shape...)
 
