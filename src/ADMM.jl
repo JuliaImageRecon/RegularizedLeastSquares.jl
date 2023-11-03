@@ -212,11 +212,11 @@ function solve(solver::ADMM{rT,matT,opT,R,ropT,P,vecT,rvecT,preconT}, b::vecT; A
   init!(solver, b; A=A, AᴴA=AᴴA, x=startVector)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.z,solver.rᵏ...,solver.sᵏ...)
+  solverInfo != nothing && storeInfo(solverInfo,solver.x,solver.rᵏ...,solver.sᵏ...)
 
   # perform ADMM iterations
   for (iteration, item) = enumerate(solver)
-    solverInfo != nothing && storeInfo(solverInfo,solver.z,solver.rᵏ...,solver.sᵏ...)
+    solverInfo != nothing && storeInfo(solverInfo,solver.x,solver.rᵏ...,solver.sᵏ...)
   end
 
   return solver.x
