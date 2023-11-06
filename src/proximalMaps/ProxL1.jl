@@ -1,18 +1,19 @@
-export L1Regularization, proxL1!, proxL1, normL1
+export L1Regularization
 
+"""
+    L1Regularization
+
+Regularization term implementing the proximal map for the Lasso problem.
+"""
 struct L1Regularization{T} <: AbstractParameterizedRegularization{T}
   λ::T
   L1Regularization(λ::T; kargs...) where T = new{T}(λ)
 end
 
 """
-    proxL1!(x::Array{T}, λ::Float64; kargs...) where T
+    prox!(reg::L1Regularization, x, λ)
 
 performs soft-thresholding - i.e. proximal map for the Lasso problem.
-
-# Arguments:
-* `x::Array{T}`                 - Vector to apply proximal map to
-* `λ::Float64`                  - regularization paramter
 """
 function prox!(::L1Regularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
   ε = eps(T)
@@ -21,10 +22,9 @@ function prox!(::L1Regularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: 
 end
 
 """
-    normL1(x::Array{T}, λ::Float64; kargs...) where T
+    norm(reg::L1Regularization, x, λ)
 
 returns the value of the L1-regularization term.
-Arguments are the same as in `proxL1!`
 """
 function norm(::L1Regularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
   l1Norm = λ*norm(x,1)

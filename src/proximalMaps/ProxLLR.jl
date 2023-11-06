@@ -1,6 +1,16 @@
-export LLRRegularization, proxLLR!, normLLR, proxLLROverlapping!
+export LLRRegularization
 
+"""
+    LLRRegularization
 
+Regularization term implementing the proximal map for locally low rank (LLR) regularization using singular-value-thresholding.
+
+# Arguments
+* `λ`                  - regularization paramter
+* `shape::Tuple{Int}=[]`        - dimensions of the image
+* `blockSize::Tuple{Int}=[2;2]` - size of patches to perform singular value thresholding on
+* `randshift::Bool=true`        - randomly shifts the patches to ensure translation invariance
+"""
 struct LLRRegularization{T, N, TI} <: AbstractParameterizedRegularization{T} where {N, TI<:Integer}
   λ::T
   shape::NTuple{N,TI}
@@ -12,16 +22,9 @@ LLRRegularization(λ;  shape::NTuple{N,TI}, blockSize::NTuple{N,TI} = ntuple(_ -
  LLRRegularization(λ, shape, blockSize, randshift, L)
 
 """
-    proxLLR!(x::Vector{T}, λ=1e-6; kargs...) where T
+    prox!(reg::LLRRegularization, x, λ)
 
-proximal map for LLR regularization using singular-value-thresholding
-
-# Arguments
-* `x::Vector{T}`                - Vector to apply proximal map to
-* `λ`                           - regularization parameter
-* `shape::Tuple{Int}=[]`        - dimensions of the image
-* `blockSize::Tuple{Int}=[2;2]` - size of patches to perform singular value thresholding on
-* `randshift::Bool=true`        - randomly shifts the patches to ensure translation invariance
+performs the proximal map for LLR regularization using singular-value-thresholding
 """
 function prox!(reg::LLRRegularization{TR, N, TI}, x::AbstractArray{Tc}, λ::T) where {TR, N, TI, T, Tc <: Union{T, Complex{T}}}
     shape = reg.shape
@@ -83,10 +86,9 @@ function prox!(reg::LLRRegularization{TR, N, TI}, x::AbstractArray{Tc}, λ::T) w
 end
 
 """
-    normLLR(x::Vector{T}, λ::Float64; kargs...) where T
+    norm(reg::LLRRegularization, x, λ)
 
 returns the value of the LLR-regularization term.
-Arguments are the same is in `proxLLR!`
 """
 function norm(reg::LLRRegularization, x::Vector{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
     shape = reg.shape

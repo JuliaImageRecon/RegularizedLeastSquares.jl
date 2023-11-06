@@ -1,5 +1,29 @@
-export TVRegularization, proxTV!, normTV
+export TVRegularization
 
+"""
+    TVRegularization
+
+Regularization term implementing the proximal map for TV regularization. Calculated with the Condat algorithm if the TV is calculated only along one dimension and with the Fast Gradient Projection algorithm otherwise.
+
+Reference for the Condat algorithm:
+https://lcondat.github.io/publis/Condat-fast_TV-SPL-2013.pdf
+
+Reference for the FGP algorithm:
+A. Beck and T. Teboulle, "Fast Gradient-Based Algorithms for Constrained
+Total Variation Image Denoising
+and Deblurring Problems", IEEE Trans. Image Process. 18(11), 2009
+
+Reference for the FGP algorithm:
+A. Beck and T. Teboulle, "Fast Gradient-Based Algorithms for Constrained
+Total Variation Image Denoising
+and Deblurring Problems", IEEE Trans. Image Process. 18(11), 2009
+
+# Arguments
+* `λ::T`                    - regularization parameter
+* `shape::NTuple`           - size of the underlying image
+* `dims`                    - Dimension to perform the TV along. If `Integer`, the Condat algorithm is called, and the FDG algorithm otherwise.
+* `iterationsTV=20`         - number of FGP iterations
+"""
 struct TVRegularization{T, N, TI} <: AbstractParameterizedRegularization{T} where {N, TI<:Integer}
   λ::T
   dims
@@ -36,29 +60,9 @@ end
 
 
 """
-  proxTV!(x::Vector{Tc}, λ::T; shape::NTuple{N,Int}, dims, iterationsTV=20, tvpar=TVParams(x; shape=shape, dims=dims))
+  prox!(reg::TVRegularization, x, λ)
 
 Proximal map for TV regularization. Calculated with the Condat algorithm if the TV is calculated only along one dimension and with the Fast Gradient Projection algorithm otherwise.
-
-Reference for the Condat algorithm:
-https://lcondat.github.io/publis/Condat-fast_TV-SPL-2013.pdf
-
-Reference for the FGP algorithm:
-A. Beck and T. Teboulle, "Fast Gradient-Based Algorithms for Constrained
-Total Variation Image Denoising
-and Deblurring Problems", IEEE Trans. Image Process. 18(11), 2009
-
-Reference for the FGP algorithm:
-A. Beck and T. Teboulle, "Fast Gradient-Based Algorithms for Constrained
-Total Variation Image Denoising
-and Deblurring Problems", IEEE Trans. Image Process. 18(11), 2009
-
-# Arguments
-* `x::Array{Tc}`            - Vector to apply proximal map to
-* `λ::T`                    - regularization parameter
-* `shape::NTuple`           - size of the underlying image
-* `dims`                    - Dimension to perform the TV along. If `Integer`, the Condat algorithm is called, and the FDG algorithm otherwise.
-* `iterationsTV=20`         - number of FGP iterations
 """
 prox!(reg::TVRegularization, x::Vector{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}} = proxTV!(x, λ, shape = reg.shape, dims = reg.dims)
 
@@ -130,10 +134,9 @@ function restrictMagnitude!(x)
 end
 
 """
-  normTV(x::Vector{Tc},λ::T; shape, dims=1:length(shape))
+  norm(reg::TVRegularization, x, λ)
 
 returns the value of the TV-regularization term.
-Arguments are the same as in `proxTV!`
 """
 function norm(reg::TVRegularization, x::Vector{Tc},λ::T) where {T <: Real, Tc <: Union{T, Complex{T}}}
   ∇ = GradientOp(Tc; shape=reg.shape, dims=reg.dims)

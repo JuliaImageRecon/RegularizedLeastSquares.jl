@@ -1,21 +1,26 @@
-export L2Regularization, proxL2!, normL2
+export L2Regularization
 
+"""
+    L2Regularization
+
+Regularization term implementing the proximal map for Tikhonov regularization.
+"""
 struct L2Regularization{T} <: AbstractParameterizedRegularization{T}
   λ::T
   L2Regularization(λ::T; kargs...) where T = new{T}(λ)
 end
 
 """
-    proxL2!(x::Vector{T}, λ::Float64; kargs...) where T
+    prox!(reg::L2Regularization, x, λ)
 
-proximal map for Tikhonov regularization.
+performs the proximal map for Tikhonov regularization.
 """
 function prox!(::L2Regularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
   x[:] .*= 1. / (1. + 2. *λ)#*x
 end
 
 """
-    normL2(x::Vector{T}, λ::Float64, kargs...)
+    norm(reg::L2Regularization, x, λ)
 
 returns the value of the L2-regularization term
 """

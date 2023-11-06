@@ -1,4 +1,4 @@
-export proxTVCondat!
+
 
 
 function proxTVCondat!(x::Vector{T}, λ::Float64; shape=[], kargs...) where T

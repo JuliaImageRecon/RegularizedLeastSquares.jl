@@ -1,12 +1,17 @@
-export PositiveRegularization, proxPositive!, normPositive
+export PositiveRegularization
 
+"""
+    PositiveRegularization
+
+Regularization term implementing a projection onto positive and real numbers.
+"""
 struct PositiveRegularization <: AbstractProjectionRegularization
 end
 
 """
-    proxPositive!(x::Vector{T},λ::Float64=1.0;kargs...) where T
+    proxPositive!(reg::PositiveRegularization, x) where T
 
-    enforce positivity and realness of solution `x`.
+enforce positivity and realness of solution `x`.
 """
 function prox!(::PositiveRegularization, x::Vector{T}) where T
   enfReal!(x)
@@ -15,8 +20,9 @@ function prox!(::PositiveRegularization, x::Vector{T}) where T
 end
 
 """
-    returns the value of the characteristic function of real, positive numbers.
-    normPositive(x) = (isreal(x)&&x>0) ? 0 : Inf
+    norm(reg::PositiveRegularization, x)
+
+returns the value of the characteristic function of real, positive numbers.
 """
 function norm(reg::PositiveRegularization, x::Vector{T}) where T
   y = copy(x)
