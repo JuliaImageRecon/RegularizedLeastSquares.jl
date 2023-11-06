@@ -85,13 +85,14 @@ function Kaczmarz(S; b=nothing, reg::Vector{<:AbstractRegularization} = [L2Regul
   deleteat!(reg, idx)
 
   indices = findsinks(AbstractProjectionRegularization, reg)
-  other = [reg[i] for i in indices]
+  other = AbstractRegularization[reg[i] for i in indices]
   deleteat!(reg, indices)
   if length(reg) == 1
     pushfirst!(other, reg[1])
   elseif length(reg) > 1
     error("Kaczmarz does not allow for more than one additional regularization term, found $(length(reg))")
   end
+  other = identity.(other)
 
 
   # make sure weights are not empty
