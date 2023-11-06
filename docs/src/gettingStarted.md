@@ -2,10 +2,10 @@
 
 To get familiar with the different aspects of RegularizedLeastSquares.jl, we will go through a simple example from the field of Compressed Sensing.
 
-In Addtion to RegularizedLeastSquares.jl, we will need the packages Images.jl and Random.jl, as well as PyPlot for visualization.
+In Addtion to RegularizedLeastSquares.jl, we will need the packages LinearOperatorCollection.jl, Images.jl and Random.jl, as well as PyPlot for visualization.
 
 ```julia
-using RegularizedLeastSquares, Images, PyPlot, Random
+using RegularizedLeastSquares, LinearOperatorCollection, Images, PyPlot, Random
 ```
 
 To get started, let us generate a simple phantom
@@ -26,18 +26,20 @@ y = A*vec(I)
 ```
 
 To recover the image, we solve the TV-regularized least squares problem
+```math
 \begin{equation}
   \underset{\mathbf{x}}{argmin} \frac{1}{2}\vert\vert \mathbf{A}\mathbf{x}-\mathbf{y} \vert\vert_2^2 + λTV(\mathbf{x}) .
 \end{equation}
+```
 
 For this purpose we build a TV regularizer with regularization parameter $λ=0.01$
 ```julia
-reg = Regularization("TV", 0.01; shape=(N,N))
+reg = TVRegularization(0.01; shape=(N,N))
 ```
 
 To solve the CS problem, the Alternating Direction Method of Multipliers can be used. Thus, we build the corresponding solver
 ```julia
-solver = createLinearSolver("admm",A; reg=reg, ρ=0.1, iterations=20)
+solver = createLinearSolver(ADMM, A; reg=reg, ρ=0.1, iterations=20)
 ```
 and apply it to our measurement
 ```julia
