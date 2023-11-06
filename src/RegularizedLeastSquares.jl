@@ -1,6 +1,6 @@
 module RegularizedLeastSquares
 
-import Base: length, iterate, findfirst
+import Base: length, iterate, findfirst, copy
 using LinearAlgebra
 import LinearAlgebra.BLAS: gemv, gemv!
 import LinearAlgebra: BlasFloat, normalize!, norm, rmul!, lmul!

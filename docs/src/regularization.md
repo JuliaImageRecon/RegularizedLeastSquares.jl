@@ -39,13 +39,18 @@ This group of regularization terms implement projections, such as a positivity c
 
 ```julia
 positive = PositiveRegularization()
-prox!(positive, [2.0, -0.2]) == [2.0, 0.0]
+prox!(positive, [2.0, -0.2]) == [2.0, 0.0] # true
 ```
 
 ## Nested Regularization Terms
 Nested regularization terms are terms that act as decorators to the core regularization terms. These terms can be nested around other terms and add functionality to a regularization term, such as scaling `λ` based on the provided system matrix or applying a transform, such as the Wavelet, to `x`:
+
 ```julia
 core = L1Regularization(0.8)
 wop = WaveletOp(Float32, shape = (32,32))
 reg = TransformedRegularization(core, wop)
+```
+The type of regularization term a nested term can be wrapped around depends on the concrete type of the nested term. However, they can be nested arbitrarly deep, adding new functionality with each layer. Each nested regularization term can return the term it is wrapped around. Furthermore, all regularization terms implement the iteration interface to iterate over the nesting. The innermost regularization term of a nested term must be a core regularization term and it can be returned by the `sink` function:
+```julia
+sink(reg) == core # true
 ```

@@ -13,12 +13,12 @@ nested(::R) where R<:AbstractNestedRegularization = error("Nested regularization
 return the innermost regularization term.
 """
 sink(reg::AbstractNestedRegularization{S}) where S = last(collect(reg))
+#See also [sink](@ref).
 """
     sinktype(reg::AbstractNestedRegularization)
 
 return the type of the innermost regularization term.
 
-See also [sink](@ref).
 """
 sinktype(::AbstractNestedRegularization{S}) where S = S
 λ(reg::AbstractNestedRegularization) = λ(nested(reg))

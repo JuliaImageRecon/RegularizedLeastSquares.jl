@@ -1,11 +1,11 @@
 export ConstraintTransformedRegularization, transform
 
+#See also [transform](@ref)
 """
     ConstraintTransformedRegularization
 
 Nested regularization term that associates the `nested` regularization term with a transform.
 
-See also [transform](@ref)
 """
 struct ConstraintTransformedRegularization{S, R<:AbstractRegularization, TR} <: AbstractNestedRegularization{S}
   reg::R

@@ -1,44 +1,62 @@
 # API
+This page contains documentation of the public API of the RegularizedLeastSquares. In the Julia
+REPL one can access this documentation by entering the help mode with `?`
 
 ## Solvers
 ```@docs
 RegularizedLeastSquares.linearSolverList
 RegularizedLeastSquares.createLinearSolver
+RegularizedLeastSquares.solve
+RegularizedLeastSquares.SolverInfo
+RegularizedLeastSquares.ADMM
+RegularizedLeastSquares.CGNR
+RegularizedLeastSquares.Kaczmarz
+RegularizedLeastSquares.FISTA
+RegularizedLeastSquares.OptISTA
+RegularizedLeastSquares.POGM
+RegularizedLeastSquares.SplitBregman
 ```
 
 ## Regularization
 ```@docs
-RegularizedLeastSquares.Regularization
-RegularizedLeastSquares.Regularization(name::String, λ::AbstractFloat; kargs...)
-RegularizedLeastSquares.Regularization(names::Vector{String}, λ::Vector{Float64}; kargs...)
-RegularizedLeastSquares.RegularizationList
-RegularizedLeastSquares.normalize!
-RegularizedLeastSquares.proxL1!
-RegularizedLeastSquares.proxL2!
-RegularizedLeastSquares.proxL21!
-RegularizedLeastSquares.proxLLR!
-RegularizedLeastSquares.proxNuclear!
-RegularizedLeastSquares.proxPositive!
-RegularizedLeastSquares.proxProj!
-RegularizedLeastSquares.proxTV!
-RegularizedLeastSquares.normL1
-RegularizedLeastSquares.normL2
-RegularizedLeastSquares.normL21
-RegularizedLeastSquares.normLLR
-RegularizedLeastSquares.normNuclear
-RegularizedLeastSquares.normPositive
-RegularizedLeastSquares.normProj
-RegularizedLeastSquares.normTV
+RegularizedLeastSquares.prox!(::AbstractParameterizedRegularization, ::AbstractArray)
+RegularizedLeastSquares.norm(::AbstractParameterizedRegularization, ::AbstractArray)
+RegularizedLeastSquares.λ(::AbstractParameterizedRegularization)
+RegularizedLeastSquares.prox!(::Type{<:AbstractParameterizedRegularization}, ::Any, ::Any)
+RegularizedLeastSquares.norm(::Type{<:AbstractParameterizedRegularization}, ::Any, ::Any)
 ```
-
-## LinearOperators
+### Parameterized Regularization
 ```@docs
-RegularizedLeastSquares.linearOperator(op::AbstractString, shape)
-RegularizedLeastSquares.linearOperatorList
-RegularizedLeastSquares.DCTOp
-RegularizedLeastSquares.DSTOp
-RegularizedLeastSquares.FFTOp
-RegularizedLeastSquares.SamplingOp
-RegularizedLeastSquares.WaveletOp
-RegularizedLeastSquares.WeightingOp
+RegularizedLeastSquares.L1Regularization
+RegularizedLeastSquares.L2Regularization
+RegularizedLeastSquares.L21Regularization
+RegularizedLeastSquares.LLRRegularization
+RegularizedLeastSquares.NuclearRegularization
+RegularizedLeastSquares.TVRegularization
+```
+### Projection Regularization
+```@docs
+RegularizedLeastSquares.PositiveRegularization
+RegularizedLeastSquares.RealRegularization
+```
+## Nested Regularization
+```@docs
+RegularizedLeastSquares.nested(::AbstractNestedRegularization)
+RegularizedLeastSquares.sink(::AbstractNestedRegularization)
+RegularizedLeastSquares.sinktype(::AbstractNestedRegularization)
+```
+### Scaled Regularization
+```@docs
+RegularizedLeastSquares.AbstractScaledRegularization
+RegularizedLeastSquares.factor
+RegularizedLeastSquares.NormalizedRegularization
+RegularizedLeastSquares.NoNormalization
+RegularizedLeastSquares.MeasurementBasedNormalization
+RegularizedLeastSquares.SystemMatrixBasedNormalization
+```
+### Misc. Nested Regularization
+```@docs
+RegularizedLeastSquares.MaskedRegularization
+RegularizedLeastSquares.TransformedRegularization
+RegularizedLeastSquares.ConstraintTransformedRegularization
 ```

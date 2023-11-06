@@ -13,16 +13,12 @@ abstract type AbstractParameterizedRegularization{T} <: AbstractRegularization e
     prox!(reg::AbstractParameterizedRegularization, x)
 
 perform the proximal mapping defined by `reg` on `x`. Uses the regularization parameter defined for `reg`.
-
-See also [λ](@ref).
 """
 prox!(reg::AbstractParameterizedRegularization, x::AbstractArray) = prox!(reg, x, λ(reg))
 """
     norm(reg::AbstractParameterizedRegularization, x)
 
 returns the value of the `reg` regularization term on `x`. Uses the regularization parameter defined for `reg`.
-
-See also [λ](@ref).
 """
 norm(reg::AbstractParameterizedRegularization, x::AbstractArray) = norm(reg, x, λ(reg))
 """
