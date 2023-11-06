@@ -1,4 +1,4 @@
-export Regularization, AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, lambdList, prox!, nested, sink, sinktype, λ, findsink, findsinks
+export AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, prox!, nested, sink, sinktype, λ, findsink, findsinks
 
 abstract type AbstractRegularization end
 nested(::AbstractRegularization) = nothing
@@ -9,22 +9,59 @@ sinktype(reg::AbstractRegularization) = typeof(sink(reg))
 
 
 abstract type AbstractParameterizedRegularization{T} <: AbstractRegularization end
+"""
+    prox!(reg::AbstractParameterizedRegularization, x)
+
+perform the proximal mapping defined by `reg` on `x`. Uses the regularization parameter defined for `reg`.
+
+See also [λ](@ref).
+"""
 prox!(reg::AbstractParameterizedRegularization, x::AbstractArray) = prox!(reg, x, λ(reg))
+"""
+    norm(reg::AbstractParameterizedRegularization, x)
+
+returns the value of the `reg` regularization term on `x`. Uses the regularization parameter defined for `reg`.
+
+See also [λ](@ref).
+"""
 norm(reg::AbstractParameterizedRegularization, x::AbstractArray) = norm(reg, x, λ(reg))
+"""
+    λ(reg::AbstractParameterizedRegularization)
+
+return the regularization parameter `λ` of `reg`
+"""
 λ(reg::AbstractParameterizedRegularization) = reg.λ
 # Conversion
 prox!(reg::AbstractParameterizedRegularization, x::AbstractArray{Tc}, λ) where {T, Tc<:Union{T, Complex{T}}} = prox!(reg, x, convert(T, λ))
 norm(reg::AbstractParameterizedRegularization, x::AbstractArray{Tc}, λ) where {T, Tc<:Union{T, Complex{T}}} = norm(reg, x, convert(T, λ))
 
+"""
+    prox!(regType::Type{<:AbstractParameterizedRegularization}, x, λ; kwargs...)
+  
+construct a regularization term of type `regType` with given `λ` and `kwargs` and apply its `prox!` on `x`
+"""
 prox!(regType::Type{<:AbstractParameterizedRegularization}, x, λ; kwargs...) = prox!(regType(λ; kwargs...), x, λ)
+"""
+    norm(regType::Type{<:AbstractParameterizedRegularization}, x, λ; kwargs...)
+  
+construct a regularization term of type `regType` with given `λ` and `kwargs` and apply its `norm` on `x`
+"""
 norm(regType::Type{<:AbstractParameterizedRegularization}, x, λ; kwargs...) = norm(regType(λ; kwargs...), x, λ)
 
 abstract type AbstractProjectionRegularization <: AbstractRegularization end
-prox!(::R, x::AbstractArray) where {R<:AbstractProjectionRegularization} = prox!(R, x)
-norm(::R, x::AbstractArray) where {R<:AbstractProjectionRegularization} = norm(R, x)
 λ(::AbstractProjectionRegularization) = nothing
 
+"""
+    prox!(regType::Type{<:AbstractProjectionRegularization}, x; kwargs...)
+  
+construct a regularization term of type `regType` with given `kwargs` and apply its `prox!` on `x`
+"""
 prox!(regType::Type{<:AbstractProjectionRegularization}, x; kwargs...) = prox!(regType(;kwargs...), x)
+"""
+    norm(regType::Type{<:AbstractProjectionRegularization}, x; kwargs...)
+  
+construct a regularization term of type `regType` with given `kwargs` and apply its `norm` on `x`
+"""
 norm(regType::Type{<:AbstractProjectionRegularization}, x; kwargs...) = norm(regType(;kwargs...), x)
 
 include("NestedRegularization.jl")

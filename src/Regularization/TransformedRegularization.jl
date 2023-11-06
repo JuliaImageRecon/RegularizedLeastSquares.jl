@@ -1,5 +1,10 @@
 export TransformedRegularization
 
+"""
+    TransformedRegularization(reg, trafo)
+
+Nested regularization term that applies `prox!` or `norm` on `z = trafo * x` and returns (inplace) the `adjoint(trafo)` of the result. 
+"""
 struct TransformedRegularization{S, R<:AbstractRegularization, TR} <: AbstractNestedRegularization{S}
   reg::R
   trafo::TR

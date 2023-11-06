@@ -1,10 +1,32 @@
-export AbstractRegularizationNormalization, NoNormalization, MeasurementBasedNormalization, SystemMatrixBasedNormalization
+export AbstractRegularizationNormalization, NormalizedRegularization, NoNormalization, MeasurementBasedNormalization, SystemMatrixBasedNormalization
 abstract type AbstractRegularizationNormalization end
+"""
+    NoNormalization
+  
+No normalization to `λ` is applied.
+"""
 struct NoNormalization <: AbstractRegularizationNormalization end
+"""
+    MeasurementBasedNormalization
+
+`λ` is normalized by the 1-norm of `b` divided by its length.
+"""
 struct MeasurementBasedNormalization <: AbstractRegularizationNormalization end
+"""
+    SystemMatrixBasedNormalization
+
+`λ` is normalized by the energy of the system matrix rows.
+"""
 struct SystemMatrixBasedNormalization <: AbstractRegularizationNormalization end
 # TODO weighted systemmatrix, maybe weighted measurementbased?
 
+"""
+    NormalizedRegularization
+
+Nested regularization term that scales `λ` according to normalization scheme. This term is commonly applied by a solver based on a given normalization keyword
+
+See also [NoNormalization](@ref), [MeasurementBasedNormalization](@ref), [SystemMatrixBasedNormalization](@ref).
+"""
 struct NormalizedRegularization{T, S, R} <: AbstractScaledRegularization{T, S}
   reg::R
   factor::T

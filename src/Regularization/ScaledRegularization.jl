@@ -1,5 +1,25 @@
+export AbstractScaledRegularization, factor
+"""
+    AbstractScaledRegularization
+
+Nested regularization term that applies a `factor` to the regularization parameter `λ` of its `nested` term.
+
+See also [factor](@ref), [λ](@ref), [nested](@ref).
+"""
 abstract type AbstractScaledRegularization{T, S<:AbstractParameterizedRegularization{T}} <: AbstractNestedRegularization{S} end
+"""
+    factor(reg::AbstractScaledRegularization)
+
+return the scaling `factor` for `λ`
+"""
 factor(::R) where R <: AbstractScaledRegularization = error("Scaled regularization term $R must implement factor")
+"""
+    λ(reg::AbstractScaledRegularization)
+
+return `λ` of `nested` regularization term scaled by `factor(reg)`.
+
+See also [factor](@ref), [λ](@ref), [nested](@ref).
+"""
 λ(reg::AbstractScaledRegularization) = λ(nested(reg)) * factor(reg)
 
 export FixedScaledRegularization
