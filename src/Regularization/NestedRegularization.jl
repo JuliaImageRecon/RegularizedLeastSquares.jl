@@ -4,7 +4,7 @@ abstract type AbstractNestedRegularization{S} <: AbstractRegularization end
 """
     inner(reg::AbstractNestedRegularization)
 
-return the regularization term that `reg`end is decorating. Nested regularization terms also implement the iteration interface.
+return the `inner` regularization term of `reg`. Nested regularization terms also implement the iteration interface.
 """
 inner(::R) where R<:AbstractNestedRegularization = error("Nested regularization term $R must implement nested")
 """
@@ -13,12 +13,12 @@ inner(::R) where R<:AbstractNestedRegularization = error("Nested regularization 
 return the innermost regularization term.
 """
 sink(reg::AbstractNestedRegularization{S}) where S = last(collect(reg))
-#See also [sink](@ref).
 """
     sinktype(reg::AbstractNestedRegularization)
 
 return the type of the innermost regularization term.
 
+See also [`sink`](@ref).
 """
 sinktype(::AbstractNestedRegularization{S}) where S = S
 λ(reg::AbstractNestedRegularization) = λ(inner(reg))

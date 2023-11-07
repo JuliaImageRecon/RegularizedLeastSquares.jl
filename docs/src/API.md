@@ -41,7 +41,7 @@ RegularizedLeastSquares.RealRegularization
 ```
 ## Nested Regularization
 ```@docs
-RegularizedLeastSquares.nested(::AbstractNestedRegularization)
+RegularizedLeastSquares.inner(::AbstractNestedRegularization)
 RegularizedLeastSquares.sink(::AbstractNestedRegularization)
 RegularizedLeastSquares.sinktype(::AbstractNestedRegularization)
 ```
