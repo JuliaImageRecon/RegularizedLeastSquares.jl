@@ -6,7 +6,7 @@ export MaskedRegularization
 Nested regularization term that only applies `prox!` and `norm` to elements of `x` for which the mask is `true`.
 
 # Examples
-```jldoctest
+```julia
 julia> positive = PositiveRegularization();
 
 julia> masked = MaskedRegularization(reg, [true, false, true, false]);

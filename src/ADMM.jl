@@ -209,7 +209,7 @@ solves an inverse problem using ADMM.
 when a `SolverInfo` objects is passed, the primal residuals `solver.rᵏ`
 and the dual residual `norm(solver.sᵏ)` are stored in `solverInfo.convMeas`.
 """
-function solve(solver::ADMM{rT,matT,opT,R,ropT,P,vecT,rvecT,preconT}, b::vecT; A=solver.A, AᴴA=solver.AᴴA, startVector::vecT=similar(b,0), solverInfo=nothing, kargs...) where {rT,matT,opT,R,ropT,P,vecT,rvecT,preconT}
+function solve(solver::ADMM, b; A=solver.A, AᴴA=solver.AᴴA, startVector=similar(b,0), solverInfo=nothing, kargs...)
   # initialize solver parameters
   init!(solver, b; A=A, AᴴA=AᴴA, x=startVector)
 

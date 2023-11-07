@@ -20,6 +20,14 @@ using InteractiveUtils
 export AbstractLinearSolver, createLinearSolver, init, deinit, solve, linearSolverList, linearSolverListReal, applicableSolverList
 
 abstract type AbstractLinearSolver end
+"""
+    solve(solver::AbstractLinearSolver, b; solverInfo = nothing, kwargs...)
+
+solves an inverse problem using `solver`. When `solverInfo` is passed to the function information about the iteration process is stored.
+
+See also [`SolverInfo`](@ref).
+"""
+solve(solver::AbstractLinearSolver, b; kwargs...) = error("Solver of type $(typeof(solver)) must implement solve")
 
 export AbstractRowActionSolver
 abstract type AbstractRowActionSolver <: AbstractLinearSolver end

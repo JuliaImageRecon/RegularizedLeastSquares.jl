@@ -139,7 +139,7 @@ solves Tikhonov-regularized inverse problem using CGNR.
 
 when a `SolverInfo` objects is passed, the residuals `solver.zl` are stored in `solverInfo.convMeas`.
 """
-function solve(solver::CGNR, u::vecT;  startVector::vecT=similar(u,0), solverInfo=nothing, kargs...) where {vecT}
+function solve(solver::CGNR, u;  startVector=similar(u,0), solverInfo=nothing, kargs...)
   # initialize solver parameters
   init!(solver, u; cl=startVector)
 

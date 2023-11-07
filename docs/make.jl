@@ -10,7 +10,9 @@ makedocs(
         "Getting Started" => "gettingStarted.md",
         "Solvers" => "solvers.md",
         "Regularization" => "regularization.md",
-        "API" => "API.md"
+        "API" => Any["Solvers" => "API/solvers.md",
+        "Regularization Terms" => "API/regularization.md"],
+
     ],
     pagesonly = true,
     checkdocs = :none
