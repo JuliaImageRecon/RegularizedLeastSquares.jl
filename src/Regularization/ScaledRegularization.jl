@@ -33,6 +33,11 @@ nested(reg::FixedScaledRegularization) = reg.reg
 factor(reg::FixedScaledRegularization) = reg.factor
 
 export FixedParameterRegularization
+"""
+    FixedParameterRegularization
+
+Nested regularization term that discards any `λ` passed to it and instead uses `λ` from its inner regularization term. This can be used to selectively disallow normalization. 
+"""
 struct FixedParameterRegularization{T, S, R} <: AbstractScaledRegularization{T, S}
   reg::R
   FixedParameterRegularization(reg::R) where {T, R <: AbstractParameterizedRegularization{T}} = new{T, R, R}(reg)

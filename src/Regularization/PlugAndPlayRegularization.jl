@@ -1,5 +1,11 @@
-# Defined in /ext/RegularizedLeastSquaresFluxExt
+
 export PnPRegularization, PlugAndPlayRegularization
+"""
+        PlugAndPlayRegularization
+
+Regularization term implementing a given plug-and-play proximal mapping.
+The actual regularization term is indirectly defined by the learned proximal mapping and as such there is no `norm` implemented.
+"""
 struct PlugAndPlayRegularization{T, M, I} <: AbstractParameterizedRegularization{T}
     model::M
     λ::T
