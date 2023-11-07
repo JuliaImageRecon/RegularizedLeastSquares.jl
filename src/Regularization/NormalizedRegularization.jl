@@ -33,7 +33,7 @@ struct NormalizedRegularization{T, S, R} <: AbstractScaledRegularization{T, S}
   NormalizedRegularization(reg::R, factor) where {T, R <: AbstractParameterizedRegularization{T}} = new{T, R, R}(reg, factor)
   NormalizedRegularization(reg::R, factor) where {T, RN <: AbstractParameterizedRegularization{T}, R<:AbstractNestedRegularization{RN}} = new{T, RN, R}(reg, factor)
 end
-nested(reg::NormalizedRegularization) = reg.reg
+inner(reg::NormalizedRegularization) = reg.reg
 factor(reg::NormalizedRegularization) = reg.factor
 
 function normalize(::MeasurementBasedNormalization, A, b::AbstractArray)

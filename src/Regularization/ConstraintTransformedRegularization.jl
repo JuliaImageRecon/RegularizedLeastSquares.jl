@@ -16,7 +16,7 @@ end
 """
     transform(reg::ConstraintTransformedRegularization)
 
-return the transform associated with `nested(reg)`.
+return the transform associated with `inner(reg)`.
 """
-nested(reg::ConstraintTransformedRegularization) = reg.reg
+inner(reg::ConstraintTransformedRegularization) = reg.reg
 transform(reg::ConstraintTransformedRegularization) = reg.trafo

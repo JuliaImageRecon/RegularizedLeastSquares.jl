@@ -11,7 +11,7 @@ struct MaskedRegularization{S, R<:AbstractRegularization} <: AbstractNestedRegul
   MaskedRegularization(reg::AbstractRegularization, mask) = new{R, R}(reg, mask)
   MaskedRegularization(reg::R, mask) where {S, R<:AbstractNestedRegularization{S}} = new{S,R}(reg, mask)
 end
-nested(reg::MaskedRegularization) = reg.reg
+inner(reg::MaskedRegularization) = reg.reg
 
 
 function prox!(reg::MaskedRegularization, x::AbstractArray, args...)

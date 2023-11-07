@@ -1,8 +1,8 @@
 export AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, prox!, nested, sink, sinktype, λ, findsink, findsinks
 
 abstract type AbstractRegularization end
-nested(::AbstractRegularization) = nothing
-iterate(reg::AbstractRegularization, state = reg) = isnothing(state) ? nothing : (state, nested(state))
+inner(::AbstractRegularization) = nothing
+iterate(reg::AbstractRegularization, state = reg) = isnothing(state) ? nothing : (state, inner(state))
 Base.IteratorSize(::AbstractRegularization) = Base.SizeUnknown()
 sink(reg::AbstractRegularization) = reg
 sinktype(reg::AbstractRegularization) = typeof(sink(reg))
