@@ -5,19 +5,32 @@ export PnPRegularization, PlugAndPlayRegularization
 
 Regularization term implementing a given plug-and-play proximal mapping.
 The actual regularization term is indirectly defined by the learned proximal mapping and as such there is no `norm` implemented.
+
+# Arguments
+* `λ`                  - regularization paramter
+
+# Keywords
+* `model`       - model applied to the image
+* `shape`       - dimensions of the image
+* `input_transform` - transform of image before `model`
 """
 struct PlugAndPlayRegularization{T, M, I} <: AbstractParameterizedRegularization{T}
     model::M
     λ::T
     shape::Vector{Int}
     input_transform::I
-    PlugAndPlayRegularization(model::M, λ::T, shape; input_transform::I=RegularizedLeastSquares.MinMaxTransform, kargs...) where {T, M, I} = new{T, M, I}(model, λ, shape, input_transform)
+    ignoreIm::Bool
+    PlugAndPlayRegularization(λ::T; model::M, shape, input_transform::I=RegularizedLeastSquares.MinMaxTransform, ignoreIm = false, kargs...) where {T, M, I} = new{T, M, I}(model, λ, shape, input_transform, ignoreIm)
 end
-PlugAndPlayRegularization(model, shape) = PlugAndPlayRegularization(model, Float32(1.0), shape)
+PlugAndPlayRegularization(model, shape; kwargs...) = PlugAndPlayRegularization(one(Float32); kwargs..., model = model, shape = shape)
 
 function prox!(self::PlugAndPlayRegularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: Complex{T}}
     out = real.(x)
-    x[:] = prox!(self, out, λ) + imag(x) * 1.0im
+    if self.ignoreIm
+        x[:] = prox!(self, out, λ) + imag(x) * imag(one(T))
+    else
+        x[:] = prox!(self, real.(x), λ) + prox!(self, imag.(x), λ) * imag(one(T))
+    end
     return x
 end
 
