@@ -66,6 +66,7 @@ include("NormalizedRegularization.jl")
 include("TransformedRegularization.jl")
 include("MaskedRegularization.jl")
 include("ConstraintTransformedRegularization.jl")
+include("PlugAndPlayRegularization.jl")
 
 
 function findfirst(::Type{S}, reg::AbstractRegularization) where S <: AbstractRegularization 

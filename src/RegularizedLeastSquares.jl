@@ -39,6 +39,7 @@ abstract type AbstractKrylovSolver <: AbstractLinearSolver end
 # Fallback function
 setlambda(S::AbstractMatrix, λ::Real) = nothing
 
+include("Transforms.jl")
 include("Regularization/Regularization.jl")
 include("proximalMaps/ProximalMaps.jl")
 
