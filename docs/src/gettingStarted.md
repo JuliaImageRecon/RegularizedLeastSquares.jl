@@ -19,7 +19,7 @@ In this example, we consider an operator which randomly samples half of the pixe
 ```julia
 # sampling operator
 idx = sort( shuffle( collect(1:N^2) )[1:div(N^2,2)] )
-A = SamplingOp(idx,(N,N))
+A = SamplingOp(eltype(I), pattern = idx , shape = (N,N))
 
 # generate undersampled data
 y = A*vec(I)
