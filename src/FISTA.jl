@@ -22,24 +22,26 @@ mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVecto
 end
 
 """
-    FISTA(A, x::vecT=zeros(eltype(A),size(A,2))
-          ; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
+    FISTA(A, x; kwargs...)
 
 creates a `FISTA` object for the system matrix `A`.
 
 # Arguments
 * `A`                       - system matrix
-* `x::vecT`                 - array with the same type and size as the solution
-* (`reg=nothing`)           - regularization object
-* (`regName=["L1"]`)        - name of the Regularization to use (if reg==nothing)
-* (`AᴴA=A'*A`)              - specialized normal operator, default is `A'*A`
-* (`λ=0`)                   - regularization parameter
-* (`ρ=0.95`)                - step size for gradient step
-* (`normalize_ρ=false`)     - normalize step size by the maximum eigenvalue of `AᴴA`
-* (`t=1.0`)                 - parameter for predictor-corrector step
-* (`relTol::Float64=1.e-5`) - tolerance for stopping criterion
-* (`iterations::Int64=50`)  - maximum number of iterations
-* (`restart::Symbol=:none`) - :none, :gradient options for restarting
+* `x::vecT`                 - (optional) array with the same type and size as the solution
+
+# Keywords
+* `reg`          - regularization term vector
+* `normalizeReg`         - regularization normalization scheme
+* `AᴴA=A'*A`              - specialized normal operator, default is `A'*A`
+* `ρ=0.95`                - step size for gradient step
+* `normalize_ρ=false`     - normalize step size by the maximum eigenvalue of `AᴴA`
+* `t=1.0`                 - parameter for predictor-corrector step
+* `relTol::Float64=1.e-5` - tolerance for stopping criterion
+* `iterations::Int64=50`  - maximum number of iterations
+* `restart::Symbol=:none` - :none, :gradient options for restarting
+
+See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
 function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1Regularization(0)
               , AᴴA=A'*A

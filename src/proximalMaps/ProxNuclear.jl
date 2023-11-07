@@ -8,6 +8,8 @@ Regularization term implementing the proximal map for singular value soft-thresh
 
 # Arguments:
 * `λ`           - regularization paramter
+
+# Keywords
 * `svtShape::NTuple`  - size of the underlying matrix
 """
 struct NuclearRegularization{T} <: AbstractParameterizedRegularization{T}

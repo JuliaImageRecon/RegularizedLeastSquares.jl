@@ -20,6 +20,8 @@ and Deblurring Problems", IEEE Trans. Image Process. 18(11), 2009
 
 # Arguments
 * `λ::T`                    - regularization parameter
+
+# Keywords
 * `shape::NTuple`           - size of the underlying image
 * `dims`                    - Dimension to perform the TV along. If `Integer`, the Condat algorithm is called, and the FDG algorithm otherwise.
 * `iterationsTV=20`         - number of FGP iterations

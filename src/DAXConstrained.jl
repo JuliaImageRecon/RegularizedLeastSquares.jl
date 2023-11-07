@@ -33,13 +33,15 @@ Returns an approximate solution to Sᵀx = u s.t. Bx>=0 (each component >=0).
 * `u::Vector{T}`: Righthandside of the linear equation.
 * `B::AbstractMatrix{T}`: Transpose of Basistransformation if solving in dual space.
 
-### Keyword/Optional Arguments
+### Keywords
 
 * `iterations::Int`: Number of Iterations of outer dax scheme.
 * `iterationsInner::Int`: Number of Iterations of inner dax scheme.
 * `λ::Float64`: The regularization parameter ɛ>0 influences the speed of convergence but not the solution.
 * `weights::Bool`: Use weights in vector to weight equations. The larger the weight the more one 'trusts' a sqecific equation.
 * `B`: Basistransformation if solving in dual space.
+
+See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
 function DaxConstrained(S, b=nothing; λ::Real=0.0
               , weights::Vector{R}=ones(Float64,size(S,1))

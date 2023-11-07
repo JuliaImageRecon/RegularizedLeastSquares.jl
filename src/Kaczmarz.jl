@@ -26,36 +26,29 @@ mutable struct Kaczmarz{matT,T,U,R,RN} <: AbstractRowActionSolver
 end
 
 """
-  Kaczmarz(S, b=nothing; λ::Real=0.0, reg = Regularization("L2", λ)
-              , weights::Vector{R}=ones(Float64,size(S,1))
-              , sparseTrafo=nothing
-              , enforceReal::Bool=false
-              , enforcePositive::Bool=false
-              , randomized::Bool=false
-              , subMatrixFraction::Float64=0.1
-              , shuffleRows::Bool=false
-              , seed::Int=1234
-              , iterations::Int64=10
-              , kargs...) where R <: Real
+  Kaczmarz(S, b; kwargs...)
 
 creates a Kaczmarz object
 
 # Arguments
 * `S`                                             - system matrix
 * `b=nothing`                                     - measurement
-* (`λ::Real=0.0`)                                 - regularization parameter
-* (`reg=Regularization("L2", λ)`)                 - Regularization object
-* (`weights::Vector{R}=ones(Float64,size(S,1))`) - weights for the data term
-* (`sparseTrafo=nothing`)                         - sparsifying transformation
-* (`enforceReal::Bool=false`)                     - constrain the solution to be real
-* (`enforcePositive::Bool=false`)                 - constrain the solution to have positive real part
-* (`randomized::Bool=false`)                      - randomize Kacmarz algorithm
-* (`subMatrixFraction::Float64=0.1`)              - fraction of rows used in randomized Kaczmarz algorithm  
-* (`shuffleRows::Bool=false`)                     - randomize Kacmarz algorithm
-* (`seed::Int=1234`)                              - seed for randomized algorithm
-* (iterations::Int64=10)                          - number of iterations
+
+# Keywords
+* `reg`          - regularization term vector
+* `normalizeReg`         - regularization normalization scheme
+* `weights::Vector{R}=ones(Float64,size(S,1))` - weights for the data term
+* `enforceReal::Bool=false`                     - constrain the solution to be real
+* `enforcePositive::Bool=false`                 - constrain the solution to have positive real part
+* `randomized::Bool=false`                  - randomize Kacmarz algorithm
+* `subMatrixFraction::Float64=0.1`              - fraction of rows used in randomized Kaczmarz algorithm  
+* `shuffleRows::Bool=false`               - randomize Kacmarz algorithm
+* `seed::Int=1234`                      - seed for randomized algorithm
+* iterations::Int64=10                          - number of iterations
+
+See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-function Kaczmarz(S; b=nothing, reg::Vector{<:AbstractRegularization} = [L2Regularization(0.0)]
+function Kaczmarz(S, b=zeros(eltype(S), size(S, 1)); reg::Vector{<:AbstractRegularization} = [L2Regularization(0.0)]
               , weights=nothing
               , randomized::Bool=false
               , subMatrixFraction::Float64=0.15
@@ -106,11 +99,7 @@ function Kaczmarz(S; b=nothing, reg::Vector{<:AbstractRegularization} = [L2Regul
   M,N = size(S)
   subMatrixSize = round(Int, subMatrixFraction*M)
 
-  if b != nothing
-    u = b
-  else
-    u = zeros(eltype(S),M)
-  end
+  u = b
   cl = zeros(eltype(S),N)
   vl = zeros(eltype(S),M)
   εw = zeros(eltype(S),length(rowindex))
@@ -130,7 +119,7 @@ end
               , cl::Vector{T}=T[]
               , shuffleRows=solver.shuffleRows) where {T,matT}
 
-(re-) initializes the CGNR iterator
+(re-) initializes the Kacmarz iterator
 """
 function init!(solver::Kaczmarz
               ; S::matT=solver.S

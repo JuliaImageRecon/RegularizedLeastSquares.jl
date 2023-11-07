@@ -4,6 +4,10 @@ export ConstraintTransformedRegularization, transform
     ConstraintTransformedRegularization
 
 Nested regularization term that associates the `nested` regularization term with a transform.
+
+# Arguments
+* `reg` - inner regularization term
+* `trafo` - transform associated with `reg`
 """
 struct ConstraintTransformedRegularization{S, R<:AbstractRegularization, TR} <: AbstractNestedRegularization{S}
   reg::R

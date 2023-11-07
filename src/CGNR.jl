@@ -21,21 +21,23 @@ mutable struct CGNR{matT,opT,vecT,T, R} <: AbstractKrylovSolver
 end
 
 """
-    CGNR(A, x::vecT; λ = 0.0, reg = Regularization("L2", λ), kargs...) where vecT
+    CGNR(A, x; kargs...)
 
 creates an `CGNR` object for the system matrix `A`.
 
 # Arguments
 * `A`                               - system matrix
-* `x::vecT`                         - Array with the same type and size as the solution
-* (`λ=0.0`)                         - Regularization paramter
-* (`reg=Regularization("L2", λ)`)   - Regularization object
-* (weights::vecT=eltype(A)[]) - weights for the data term
-* (sparseTrafo=nothing)             - sparsifying transform
-* (enforceReal::Bool=false)         - constrain the solution to be real
-* (enforcePositive::Bool=false)     - constrain the solution to have positive real part
-* (iterations::Int64=10)            - number of iterations
-* (`relTol::Float64=eps()`)         - rel tolerance for stopping criterion
+* `x::vecT`                         - (optional) array with the same type and size as the solution
+
+# Keywords
+* `reg`   - regularization term vector
+* `normalizeReg`         - regularization normalization scheme
+* `weights::vecT=eltype(A)[]` - weights for the data term
+* `AᴴA=A'*A`              - specialized normal operator, default is `A'*A`
+* `iterations::Int64=10`      - number of iterations
+* `relTol::Float64=eps()`         - rel tolerance for stopping criterion
+
+See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
 function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); reg::Vector{R} = [L2Regularization(zero(real(eltype(A))))]
               , weights::vecT=similar(x,0)

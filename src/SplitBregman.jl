@@ -41,25 +41,27 @@ mutable struct SplitBregman{matT,vecT,opT,R,ropT,P,rvecT,preconT,rT} <: Abstract
 end
 
 """
-    SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2))
-                ; reg=nothing, regName=["L1","TV"], λ=[0.0,0.0], kargs...) where {matT,vecT}
+    SplitBregman(A, x; kwargs...)
 
 creates a `SplitBregman` object for the system matrix `A`.
 
 # Arguments
 * `A::matT`                     - system matrix
 * `x::vecT`                     - Array with the same type and size as the solution
-* (`reg=nothing`)               - Regularization object
-* (`λ=[0.0]`)                   - Regularization paramters
-* (`regTrafo=nothing`)          - transformations applied inside each regularizer
-* (`precon=Identity()`)         - preconditionner for the internal CG algorithm
-* (`ρ=[1.e2]`)                  - weights for condition on regularized variables
-* (`iterations::Int64=10`)      - number of outer iterations
-* (`iterationsInner::Int64=50`) - maximum number of inner iterations
-* (`iterationsCG::Int64=10`)    - maximum number of CG iterations
-* (`absTol::Float64=eps()`)     - abs tolerance for stopping criterion
-* (`relTol::Float64=eps()`)     - rel tolerance for stopping criterion
-* (`tolInner::Float64=1.e-5`)   - tolerance for CG stopping criterion
+
+# Keywords
+* `reg=nothing`          - regularization term vector
+* `normalizeReg`         - regularization normalization scheme
+* `precon=Identity()`         - preconditionner for the internal CG algorithm
+* `ρ=[1.e2]`                  - weights for condition on regularized variables
+* `iterations::Int64=10`      - number of outer iterations
+* `iterationsInner::Int64=50` - maximum number of inner iterations
+* `iterationsCG::Int64=10`    - maximum number of CG iterations
+* `absTol::Float64=eps()`     - abs tolerance for stopping criterion
+* `relTol::Float64=eps()`     - rel tolerance for stopping criterion
+* `tolInner::Float64=1.e-5`   - tolerance for CG stopping criterion
+
+See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
 function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing;
                       reg=[L1Regularization(zero(eltype(A)))]

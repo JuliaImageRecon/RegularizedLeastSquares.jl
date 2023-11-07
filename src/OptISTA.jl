@@ -27,8 +27,7 @@ mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVec
 end
 
 """
-    OptISTA(A, x::vecT=zeros(eltype(A),size(A,2))
-          ; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
+    OptISTA(A, x; kwargs...)
 
 creates a `OptISTA` object for the system matrix `A`.
 OptISTA has a 2x better worst-case bound than FISTA, but actual performance varies by application.
@@ -43,15 +42,18 @@ Reference:
 # Arguments
 * `A`                       - system matrix
 * `x::vecT`                 - array with the same type and size as the solution
-* (`reg=nothing`)           - regularization object
-* (`regName=["L1"]`)        - name of the Regularization to use (if reg==nothing)
-* (`AᴴA=A'*A`)              - specialized normal operator, default is `A'*A`
-* (`λ=0`)                   - regularization parameter
-* (`ρ=0.95`)                - step size for gradient step
-* (`normalize_ρ=false`)     - normalize step size by the maximum eigenvalue of `AᴴA`
-* (`θ=1.0`)                 - parameter for predictor-corrector step
-* (`relTol::Float64=1.e-5`) - tolerance for stopping criterion
-* (`iterations::Int64=50`)  - maximum number of iterations
+
+# Keywords
+* `reg`          - regularization term vector
+* `normalizeReg`         - regularization normalization scheme
+* `AᴴA=A'*A`              - specialized normal operator, default is `A'*A`
+* `ρ=0.95`                - step size for gradient step
+* `normalize_ρ=false`     - normalize step size by the maximum eigenvalue of `AᴴA`
+* `θ=1.0`                 - parameter for predictor-corrector step
+* `relTol::Float64=1.e-5` - tolerance for stopping criterion
+* `iterations::Int64=50`  - maximum number of iterations
+
+See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
 function OptISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1Regularization(zero(T))
               , AᴴA=A'*A

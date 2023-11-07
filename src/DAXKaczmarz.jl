@@ -30,12 +30,14 @@ Returns an approximate solution to the linear least squares problem Sᵀx = u.
 * `S::AbstractMatrix{T}`: Problem Matrix S.
 * `u::Vector{T}`: Righthandside of the linear equation.
 
-### Keyword/Optional Arguments
+### Keywords
 
 * `iterations::Int`: Number of Iterations of outer dax scheme.
 * `iterationsInner::Int`: Number of Iterations of inner dax scheme.
 * `λ::Float64`: The regularization parameter ɛ>0 influences the speed of convergence but not the solution.
 * `weights::Vector{T}`: Use weights in vector to weight equations. The larger the weight the more one 'trusts' a sqecific equation.
+
+See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
 function DaxKaczmarz(S, b=nothing; λ::Real=0.0
               , weights::Vector{R}=ones(Float64,size(S,1))

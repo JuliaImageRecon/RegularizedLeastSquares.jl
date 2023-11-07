@@ -7,6 +7,8 @@ Regularization term implementing the proximal map for locally low rank (LLR) reg
 
 # Arguments
 * `λ`                  - regularization paramter
+
+# Keywords
 * `shape::Tuple{Int}=[]`        - dimensions of the image
 * `blockSize::Tuple{Int}=[2;2]` - size of patches to perform singular value thresholding on
 * `randshift::Bool=true`        - randomly shifts the patches to ensure translation invariance

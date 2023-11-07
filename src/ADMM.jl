@@ -40,25 +40,27 @@ mutable struct ADMM{rT,matT,opT,R,ropT,P,vecT,rvecT,preconT} <: AbstractPrimalDu
 end
 
 """
-    ADMM(A, x::vecT=zeros(eltype(A),size(A,2))
-          ; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
+    ADMM(A, x; kwargs...)
 
 creates an `ADMM` object for the system matrix `A`.
 
 # Arguments
 * `A`                           - system matrix
-* `x::vecT`                     - Array with the same type and size as the solution
-* (`reg=nothing`)               - Regularization object
-* (`λ=[0.0]`)                   - Regularization paramter
-* (`regTrafo=nothing`)          - transformations applied inside each regularizer
-* (`precon=Identity()`)         - preconditionner for the internal CG algorithm
-* (`ρ::Real=1.e-2`)          - penalty of the augmented lagrangian
-* (`adaptRho::Bool=false`)      - adapt rho to balance primal and dual feasibility
-* (`iterations::Int64=50`)      - max number of ADMM iterations
-* (`iterationsInner::Int64=10`) - max number of internal CG iterations
-* (`absTol::Real=eps()`)     - abs tolerance for stopping criterion
-* (`relTol::Real=eps()`)     - rel tolerance for stopping criterion
-* (`tolInner::Real=1.e-5`)   - rel tolerance for CG stopping criterion
+* `x`                     - (optional) array with the same type and size as the solution
+
+# Keywords
+* `reg`          - regularization term vector
+* `normalizeReg`         - regularization normalization scheme
+* `precon=Identity()`        - preconditionner for the internal CG algorithm
+* `ρ::Real=1.e-2`          - penalty of the augmented lagrangian
+* `vary_ρ::Bool=:none`      - vary rho to balance primal and dual feasibility
+* `iterations::Int64=50`      - max number of ADMM iterations
+* `iterationsInner::Int64=10` - max number of internal CG iterations
+* `absTol::Real=eps()`     - abs tolerance for stopping criterion
+* `relTol::Real=eps()`     - rel tolerance for stopping criterion
+* `tolInner::Real=1.e-5`   - rel tolerance for CG stopping criterion
+
+See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
 function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2));
               reg=[L1Regularization(zero(eltype(A)))]

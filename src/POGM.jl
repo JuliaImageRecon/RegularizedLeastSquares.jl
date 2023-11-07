@@ -31,8 +31,7 @@ mutable struct POGM{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector
 end
 
 """
-    POGM(A, x::vecT=zeros(eltype(A),size(A,2))
-          ; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
+    POGM(A, x; kwargs...)
 
 creates a `POGM` object for the system matrix `A`.
 POGM has a 2x better worst-case bound than FISTA, but actual performance varies by application.
@@ -53,17 +52,21 @@ References:
 # Arguments
 * `A`                       - system matrix
 * `x::vecT`                 - array with the same type and size as the solution
-* (`reg=nothing`)           - regularization object
-* (`regName=["L1"]`)        - name of the Regularization to use (if reg==nothing)
-* (`AᴴA=A'*A`)              - specialized normal operator, default is `A'*A`
-* (`λ=0`)                   - regularization parameter
-* (`ρ=0.95`)                - step size for gradient step
-* (`normalize_ρ=false`)     - normalize step size by the maximum eigenvalue of `AᴴA`
-* (`t=1.0`)                 - parameter for predictor-corrector step
-* (`σ_fac=1.0`)             - parameter for decreasing γ-momentum ∈ [0,1]
-* (`relTol::Float64=1.e-5`) - tolerance for stopping criterion
-* (`iterations::Int64=50`)  - maximum number of iterations
-* (`restart::Symbol=:none`) - :none, :gradient options for restarting
+
+# Keywords
+* `reg`          - regularization term vector
+* `normalizeReg`         - regularization normalization scheme
+* `AᴴA=A'*A`              - specialized normal operator, default is `A'*A`
+* `λ=0`                   - regularization parameter
+* `ρ=0.95`                - step size for gradient step
+* `normalize_ρ=false`     - normalize step size by the maximum eigenvalue of `AᴴA`
+* `t=1.0`                 - parameter for predictor-corrector step
+* `σ_fac=1.0`             - parameter for decreasing γ-momentum ∈ [0,1]
+* `relTol::Float64=1.e-5` - tolerance for stopping criterion
+* `iterations::Int64=50`  - maximum number of iterations
+* `restart::Symbol=:none` - :none, :gradient options for restarting
+
+See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
 function POGM(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1Regularization(zero(T))
               , AᴴA=A'*A
