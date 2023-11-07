@@ -18,6 +18,7 @@ PlugAndPlayRegularization(model, shape) = PlugAndPlayRegularization(model, Float
 function prox!(self::PlugAndPlayRegularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: Complex{T}}
     out = real.(x)
     x[:] = prox!(self, out, λ) + imag(x) * 1.0im
+    return x
 end
 
 function prox!(self::PlugAndPlayRegularization, x::AbstractArray{T}, λ::T) where {T}
@@ -38,6 +39,7 @@ function prox!(self::PlugAndPlayRegularization, x::AbstractArray{T}, λ::T) wher
     out = RegularizedLeastSquares.inverse_transform(tf, out)
 
     x[:] = vec(out)
+    return x
 end
 
 PnPRegularization = PlugAndPlayRegularization

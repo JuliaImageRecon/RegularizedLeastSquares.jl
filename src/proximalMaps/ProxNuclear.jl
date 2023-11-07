@@ -25,6 +25,7 @@ function prox!(reg::NuclearRegularization, x::Vector{Tc}, λ::T) where {T, Tc <:
   U,S,V = svd(reshape(x, reg.svtShape))
   prox!(L1Regularization, S, λ)
   x[:] = vec(U*Matrix(Diagonal(S))*V')
+  return x
 end
 
 """

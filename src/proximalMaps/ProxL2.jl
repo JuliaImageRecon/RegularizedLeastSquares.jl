@@ -17,6 +17,7 @@ performs the proximal map for Tikhonov regularization.
 """
 function prox!(::L2Regularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
   x[:] .*= 1. / (1. + 2. *λ)#*x
+  return x
 end
 
 """

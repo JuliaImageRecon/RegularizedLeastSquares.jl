@@ -7,6 +7,7 @@ ProjectionRegularization(; projFunc::Function=x->x, kargs...) = ProjectionRegula
 
 function prox!(reg::ProjectionRegularization, x::Vector{Tc}) where {T, Tc <: Union{T, Complex{T}}}
   x[:] = reg.projFunc(x)
+  return x
 end
 
 function norm(reg::ProjectionRegularization, x::Vector{Tc}) where {T, Tc <: Union{T, Complex{T}}}

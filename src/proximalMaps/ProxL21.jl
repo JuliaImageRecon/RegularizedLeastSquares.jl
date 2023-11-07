@@ -29,6 +29,7 @@ function proxL21!(x::AbstractArray{T}, λ::Float64, slices::Int64) where T
   sliceLength = div(length(x),slices)
   groupNorm = [norm(x[i:sliceLength:end]) for i=1:sliceLength]
   x[:] = [ x[i]*max( (groupNorm[mod1(i,sliceLength)]-λ)/groupNorm[mod1(i,sliceLength)],0 ) for i=1:length(x)]
+  return x
 end
 
 """
