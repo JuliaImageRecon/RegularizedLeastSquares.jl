@@ -54,8 +54,8 @@ jobs:
           julia --project=docs -e '
             using Pkg
             Pkg.develop(PackageSpec(path=pwd()))
-            Pkg.add(LinearOperatorCollection)
-            Pkg.add(Wavelets)
+            Pkg.add("LinearOperatorCollection")
+            Pkg.add("Wavelets")
             Pkg.instantiate()'
       - run: |
           julia --project=docs -e '
