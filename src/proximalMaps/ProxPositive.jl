@@ -13,7 +13,7 @@ end
 
 enforce positivity and realness of solution `x`.
 """
-function prox!(::PositiveRegularization, x::Vector{T}) where T
+function prox!(::PositiveRegularization, x::AbstractArray{T}) where T
   enfReal!(x)
   enfPos!(x)
   return x
@@ -24,7 +24,7 @@ end
 
 returns the value of the characteristic function of real, positive numbers.
 """
-function norm(reg::PositiveRegularization, x::Vector{T}) where T
+function norm(reg::PositiveRegularization, x::AbstractArray{T}) where T
   y = copy(x)
   prox!(reg, y)
   if y != x
