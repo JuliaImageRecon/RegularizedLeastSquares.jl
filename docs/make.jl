@@ -1,4 +1,4 @@
-using Documenter, RegularizedLeastSquares
+using Documenter, RegularizedLeastSquares, LinearOperatorCollection, Wavelets
 
 makedocs(
     format = Documenter.HTML(prettyurls = false),

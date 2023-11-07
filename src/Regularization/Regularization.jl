@@ -1,4 +1,4 @@
-export AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, prox!, nested, sink, sinktype, λ, findsink, findsinks
+export AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, prox!, inner, sink, sinktype, λ, findsink, findsinks
 
 abstract type AbstractRegularization end
 inner(::AbstractRegularization) = nothing
