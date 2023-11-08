@@ -1,9 +1,10 @@
 export fista, FISTA
 
-mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractLinearSolver
+mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA, R, RN} <: AbstractProximalGradientSolver
   A::matA
   AᴴA::matAHA
-  reg::Regularization
+  reg::R
+  proj::Vector{RN}
   x::vecT
   x₀::vecT
   xᵒˡᵈ::vecT
@@ -13,8 +14,7 @@ mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVecto
   tᵒˡᵈ::rT
   iterations::Int64
   relTol::rT
-  normalizeReg::Bool
-  regFac::rT
+  normalizeReg::AbstractRegularizationNormalization
   norm_x₀::rT
   rel_res_norm::rT
   verbose::Bool
@@ -22,42 +22,40 @@ mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVecto
 end
 
 """
-    FISTA(A, x::vecT=zeros(eltype(A),size(A,2))
-          ; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
+    FISTA(A, x; kwargs...)
 
 creates a `FISTA` object for the system matrix `A`.
 
 # Arguments
 * `A`                       - system matrix
-* `x::vecT`                 - array with the same type and size as the solution
-* (`reg=nothing`)           - regularization object
-* (`regName=["L1"]`)        - name of the Regularization to use (if reg==nothing)
-* (`AᴴA=A'*A`)              - specialized normal operator, default is `A'*A`
-* (`λ=0`)                   - regularization parameter
-* (`ρ=0.95`)                - step size for gradient step
-* (`normalize_ρ=false`)     - normalize step size by the maximum eigenvalue of `AᴴA`
-* (`t=1.0`)                 - parameter for predictor-corrector step
-* (`relTol::Float64=1.e-5`) - tolerance for stopping criterion
-* (`iterations::Int64=50`)  - maximum number of iterations
-* (`restart::Symbol=:none`) - :none, :gradient options for restarting
+* `x::vecT`                 - (optional) array with the same type and size as the solution
+
+# Keywords
+* `reg`          - regularization term vector
+* `normalizeReg`         - regularization normalization scheme
+* `AᴴA=A'*A`              - specialized normal operator, default is `A'*A`
+* `ρ=0.95`                - step size for gradient step
+* `normalize_ρ=false`     - normalize step size by the maximum eigenvalue of `AᴴA`
+* `t=1.0`                 - parameter for predictor-corrector step
+* `relTol::Float64=1.e-5` - tolerance for stopping criterion
+* `iterations::Int64=50`  - maximum number of iterations
+* `restart::Symbol=:none` - :none, :gradient options for restarting
+
+See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=nothing, regName=["L1"]
+function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1Regularization(0)
               , AᴴA=A'*A
-              , λ=0
               , ρ=0.95
               , normalize_ρ=true
               , t=1
               , relTol=eps(real(T))
               , iterations=50
-              , normalizeReg=false
+              , normalizeReg=NoNormalization()
               , restart = :none
               , verbose = false
               , kargs...) where {T}
 
   rT = real(T)
-  if reg === nothing
-    reg = Regularization(regName, λ, kargs...)
-  end
 
   x₀   = similar(x)
   xᵒˡᵈ = similar(x)
@@ -68,7 +66,18 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=n
     ρ /= abs(power_iterations(AᴴA))
   end
 
-  return FISTA(A, AᴴA, vec(reg)[1], x, x₀, xᵒˡᵈ, res, rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,one(rT),one(rT),rT(Inf),verbose,restart)
+  # Prepare regularization terms
+  reg = vec(reg)
+  indices = findsinks(AbstractProjectionRegularization, reg)
+  other = [reg[i] for i in indices]
+  deleteat!(reg, indices)
+  if length(reg) != 1
+    error("FISTA does not allow for more additional regularization terms, found $(length(reg))")
+  end
+  reg = normalize(FISTA, normalizeReg, reg, A, nothing)
+
+
+  return FISTA(A, AᴴA, reg[1], other, x, x₀, xᵒˡᵈ, res, rT(ρ),rT(t),rT(t),iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose,restart)
 end
 
 """
@@ -97,24 +106,22 @@ function init!(solver::FISTA{rT,vecT,matA,matAHA}, b::vecT
   solver.t = t
   solver.tᵒˡᵈ = t
   # normalization of regularization parameters
-  if solver.normalizeReg
-    solver.regFac = norm(solver.x₀,1)/length(solver.x₀)
-  else
-    solver.regFac = 1
-  end
+  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
 end
 
 """
-    solve(solver::FISTA, b::Vector)
+    solve(solver::FISTA, b; kwargs...)
 
 solves an inverse problem using FISTA.
 
 # Arguments
 * `solver::FISTA`                     - the solver containing both system matrix and regularizer
 * `b::vecT`                           - data vector
+
+# Keywords
 * `A=solver.A`                        - operator for the data-term of the problem
-* (`startVector::vecT=similar(b,0)`)  - initial guess for the solution
-* (`solverInfo=nothing`)              - solverInfo object
+* `startVector::vecT=similar(b,0)`  - initial guess for the solution
+* `solverInfo=nothing`              - solverInfo object
 
 when a `SolverInfo` objects is passed, the residuals are stored in `solverInfo.convMeas`.
 """
@@ -163,7 +170,11 @@ function iterate(solver::FISTA, iteration::Int=0)
   # solver.x .+= solver.ρ .* solver.x₀
 
   # proximal map
-  solver.reg.prox!(solver.x, solver.regFac*solver.ρ*solver.reg.λ; solver.reg.params...)
+  prox!(solver.reg, solver.x, solver.ρ * λ(solver.reg))
+
+  for proj in solver.proj
+    prox!(proj, solver.x)
+  end
 
   # gradient restart conditions
   if solver.restart == :gradient

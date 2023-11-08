@@ -1,53 +1,46 @@
-export proxL21!, normL21
+export L21Regularization
+
+"""
+    L21Regularization
+
+Regularization term implementing the proximal map for group-soft-thresholding.
+
+# Arguments
+* `λ`                  - regularization paramter
+
+# Keywords
+* `slices=1`           - number of elements per group
+"""
+struct L21Regularization{T} <: AbstractParameterizedRegularization{T}
+  λ::T
+  slices::Int64
+end
+L21Regularization(λ; slices::Int64 = 1, kargs...) = L21Regularization(λ, slices)
 
 
 """
-    proxL21!(x::Vector{T},λ::Float64; sparseTrafo::Trafo=nothing, slices::Int64=1, kargs...)
+    prox!(reg::L21Regularization, x, λ)
 
-group-soft-thresholding for l1/l2-regularization.
-
-# Arguments:
-* `x::Array{T}`                 - Vector to apply proximal map to
-* `λ::Float64`                  - regularization paramter
-* `sparseTrafo::Trafo=nothing`  - sparsifying transform to apply
-* `slices::Int64=1`             - number of elements per group
+performs group-soft-thresholding for l1/l2-regularization.
 """
-function proxL21!(x::Vector{T},λ::Float64; sparseTrafo::Trafo=nothing, slices::Int64=1, kargs...) where T
-  if sparseTrafo != nothing
-    z = sparseTrafo*x
-  else
-    z = x
-  end
-  if λ != 0
-    proxL21!(z, λ, slices)
-  end
-  if sparseTrafo != nothing
-    x[:] = adjoint(sparseTrafo)*z
-  else
-    x[:] = z
-  end
-  return x
+function prox!(reg::L21Regularization, x::AbstractArray{Tc},λ::T) where {T, Tc <: Union{T, Complex{T}}}
+  return proxL21!(x, λ, reg.slices)
 end
 
-function proxL21!(x::Vector{T}, λ::Float64, slices::Int64) where T
+function proxL21!(x::AbstractArray{T}, λ::Float64, slices::Int64) where T
   sliceLength = div(length(x),slices)
   groupNorm = [norm(x[i:sliceLength:end]) for i=1:sliceLength]
   x[:] = [ x[i]*max( (groupNorm[mod1(i,sliceLength)]-λ)/groupNorm[mod1(i,sliceLength)],0 ) for i=1:length(x)]
+  return x
 end
 
 """
-    normL21(x::Vector{T}, λ::Float64; sparseTrafo::Trafo=nothing, slices::Int64=1, kargs...) where T
+    norm(reg::L21Regularization, x, λ)
 
 return the value of the L21-regularization term.
-Arguments are the same as in `proxL21!`
 """
-function normL21(x::Vector{T}, λ::Float64; sparseTrafo::Trafo=nothing, slices::Int64=1, kargs...) where T
-  if sparseTrafo != nothing
-    z = sparseTrafo*x
-  else
-    z = x
-  end
-  sliceLength = div(length(z),slices)
-  groupNorm = [norm(z[i:sliceLength:end]) for i=1:sliceLength]
+function norm(reg::L21Regularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
+  sliceLength = div(length(x),reg.slices)
+  groupNorm = [norm(x[i:sliceLength:end]) for i=1:sliceLength]
   return λ*norm(groupNorm,1)
 end

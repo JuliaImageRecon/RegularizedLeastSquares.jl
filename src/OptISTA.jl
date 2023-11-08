@@ -1,9 +1,10 @@
 export optista, OptISTA
 
-mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractLinearSolver
+mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA, R, RN} <: AbstractProximalGradientSolver
   A::matA
   AᴴA::matAHA
-  reg::Regularization
+  reg::R
+  proj::Vector{RN}
   x::vecT
   x₀::vecT
   y::vecT
@@ -19,16 +20,14 @@ mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVec
   γ::rT
   iterations::Int64
   relTol::rT
-  normalizeReg::Bool
-  regFac::rT
+  normalizeReg::AbstractRegularizationNormalization
   norm_x₀::rT
   rel_res_norm::rT
   verbose::Bool
 end
 
 """
-    OptISTA(A, x::vecT=zeros(eltype(A),size(A,2))
-          ; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
+    OptISTA(A, x; kwargs...)
 
 creates a `OptISTA` object for the system matrix `A`.
 OptISTA has a 2x better worst-case bound than FISTA, but actual performance varies by application.
@@ -43,32 +42,31 @@ Reference:
 # Arguments
 * `A`                       - system matrix
 * `x::vecT`                 - array with the same type and size as the solution
-* (`reg=nothing`)           - regularization object
-* (`regName=["L1"]`)        - name of the Regularization to use (if reg==nothing)
-* (`AᴴA=A'*A`)              - specialized normal operator, default is `A'*A`
-* (`λ=0`)                   - regularization parameter
-* (`ρ=0.95`)                - step size for gradient step
-* (`normalize_ρ=false`)     - normalize step size by the maximum eigenvalue of `AᴴA`
-* (`θ=1.0`)                 - parameter for predictor-corrector step
-* (`relTol::Float64=1.e-5`) - tolerance for stopping criterion
-* (`iterations::Int64=50`)  - maximum number of iterations
+
+# Keywords
+* `reg`          - regularization term vector
+* `normalizeReg`         - regularization normalization scheme
+* `AᴴA=A'*A`              - specialized normal operator, default is `A'*A`
+* `ρ=0.95`                - step size for gradient step
+* `normalize_ρ=false`     - normalize step size by the maximum eigenvalue of `AᴴA`
+* `θ=1.0`                 - parameter for predictor-corrector step
+* `relTol::Float64=1.e-5` - tolerance for stopping criterion
+* `iterations::Int64=50`  - maximum number of iterations
+
+See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-function OptISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=nothing, regName=["L1"]
+function OptISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1Regularization(zero(T))
               , AᴴA=A'*A
-              , λ=0
               , ρ=0.95
               , normalize_ρ=true
               , θ=1
               , relTol=eps(real(T))
               , iterations=50
-              , normalizeReg=false
+              , normalizeReg=NoNormalization()
               , verbose = false
               , kargs...) where {T}
 
   rT = real(T)
-  if reg === nothing
-    reg = Regularization(regName, λ, kargs...)
-  end
 
   x₀ = similar(x)
   y = similar(x)
@@ -86,8 +84,18 @@ function OptISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg
   end
   θn = (1 + sqrt(1 + 8 * θn^2)) / 2
 
-  return OptISTA(A, AᴴA, vec(reg)[1], x, x₀, y, z, zᵒˡᵈ, res, rT(ρ),rT(θ),rT(θ),rT(θn),rT(0),rT(1),rT(1),
-    iterations,rT(relTol),normalizeReg,one(rT),one(rT),rT(Inf),verbose)
+  # Prepare regularization terms
+  reg = vec(reg)
+  indices = findsinks(AbstractProjectionRegularization, reg)
+  other = [reg[i] for i in indices]
+  deleteat!(reg, indices)
+  if length(reg) != 1
+    error("OptISTA does not allow for more additional regularization terms, found $(length(reg))")
+  end
+  reg = normalize(OptISTA, normalizeReg, reg, A, nothing)
+
+  return OptISTA(A, AᴴA, reg[1], other, x, x₀, y, z, zᵒˡᵈ, res, rT(ρ),rT(θ),rT(θ),rT(θn),rT(0),rT(1),rT(1),
+    iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose)
 end
 
 """
@@ -124,24 +132,22 @@ function init!(solver::OptISTA{rT,vecT,matA,matAHA}, b::vecT
   solver.θn = (1 + sqrt(1 + 8 * solver.θn^2)) / 2
 
   # normalization of regularization parameters
-  if solver.normalizeReg
-    solver.regFac = norm(solver.x₀,1)/length(solver.x₀)
-  else
-    solver.regFac = 1
-  end
+  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
 end
 
 """
-    solve(solver::OptISTA, b::Vector)
+    solve(solver::OptISTA, b::Vector; kwargs...)
 
 solves an inverse problem using OptISTA.
 
 # Arguments
 * `solver::OptISTA`                     - the solver containing both system matrix and regularizer
 * `b::vecT`                           - data vector
+
+# Keywords
 * `A=solver.A`                        - operator for the data-term of the problem
-* (`startVector::vecT=similar(b,0)`)  - initial guess for the solution
-* (`solverInfo=nothing`)              - solverInfo object
+* `startVector::vecT=similar(b,0)`  - initial guess for the solution
+* `solverInfo=nothing`              - solverInfo object
 
 when a `SolverInfo` objects is passed, the residuals are stored in `solverInfo.convMeas`.
 """
@@ -191,7 +197,7 @@ function iterate(solver::OptISTA, iteration::Int=0)
   solver.verbose && println("Iteration $iteration; rel. residual = $(solver.rel_res_norm)")
 
   # proximal map
-  solver.reg.prox!(solver.y, solver.regFac*solver.reg.λ*solver.ρ*solver.γ; solver.reg.params...)
+  prox!(solver.reg, solver.y, solver.ρ * solver.γ * λ(solver.reg))
 
   # inertia steps
   # z = x + (y - yᵒˡᵈ) / γ

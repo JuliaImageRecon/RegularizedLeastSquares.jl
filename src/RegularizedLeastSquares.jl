@@ -1,6 +1,6 @@
 module RegularizedLeastSquares
 
-import Base: length, iterate
+import Base: length, iterate, findfirst, copy
 using LinearAlgebra
 import LinearAlgebra.BLAS: gemv, gemv!
 import LinearAlgebra: BlasFloat, normalize!, norm, rmul!, lmul!
@@ -14,40 +14,49 @@ using LinearOperators: opEye
 using ProgressMeter
 using StatsBase
 using FastClosures
-using LinearOperators
+using LinearOperatorCollection
+using InteractiveUtils
 
-export AbstractLinearSolver, createLinearSolver, init, deinit, solve, linearSolverList,linearSolverListReal
+export AbstractLinearSolver, createLinearSolver, init, deinit, solve, linearSolverList, linearSolverListReal, applicableSolverList
 
 abstract type AbstractLinearSolver end
-# The following is just for documentation purposes. To allow for different operator
-# libraries we allow the Trafo to be of type Any.
-const Trafo = Any # Union{AbstractMatrix, AbstractLinearOperator, Nothing}
+"""
+    solve(solver::AbstractLinearSolver, b; solverInfo = nothing, kwargs...)
+
+solves an inverse problem using `solver`. When `solverInfo` is passed to the function information about the iteration process is stored.
+
+See also [`SolverInfo`](@ref).
+"""
+solve(solver::AbstractLinearSolver, b; kwargs...) = error("Solver of type $(typeof(solver)) must implement solve")
+
+export AbstractRowActionSolver
+abstract type AbstractRowActionSolver <: AbstractLinearSolver end
+
+export AbstractDirectSolver
+abstract type AbstractDirectSolver <: AbstractLinearSolver end
+
+export AbstractPrimalDualSolver
+abstract type AbstractPrimalDualSolver <: AbstractLinearSolver end
+
+export AbstractProximalGradientSolver
+abstract type AbstractProximalGradientSolver <: AbstractLinearSolver end
+
+export AbstractKrylovSolver
+abstract type AbstractKrylovSolver <: AbstractLinearSolver end
 
 # Fallback function
 setlambda(S::AbstractMatrix, λ::Real) = nothing
 
-include("linearOperators/GradientOp.jl")
+include("Transforms.jl")
+include("Regularization/Regularization.jl")
+include("proximalMaps/ProximalMaps.jl")
 
-include("proximalMaps/ProxL1.jl")
-include("proximalMaps/ProxL2.jl")
-include("proximalMaps/ProxL21.jl")
-include("proximalMaps/ProxLLR.jl")
-# include("proximalMaps/ProxSLR.jl")
-include("proximalMaps/ProxPositive.jl")
-include("proximalMaps/ProxProj.jl")
-include("proximalMaps/ProxTV.jl")
-include("proximalMaps/ProxTVCondat.jl")
-include("proximalMaps/ProxNuclear.jl")
-
-include("Regularization.jl")
 include("Utils.jl")
 include("Kaczmarz.jl")
-include("KaczmarzUpdated.jl")
 include("DAXKaczmarz.jl")
 include("DAXConstrained.jl")
 include("CGNR.jl")
 include("Direct.jl")
-include("FusedLasso.jl")
 include("FISTA.jl")
 include("OptISTA.jl")
 include("POGM.jl")
@@ -59,75 +68,75 @@ include("PrimalDualSolver.jl")
 Return a list of all available linear solvers
 """
 function linearSolverList()
-  Any["kaczmarz","cgnr"] # These are those passing the tests
-    #, "fusedlasso"]
+  filter(s -> s ∉ [DaxKaczmarz, DaxConstrained, PrimalDualSolver], linearSolverListReal())
 end
 
 function linearSolverListReal()
-  Any["kaczmarzUpdated","kaczmarz","cgnr","daxkaczmarz","daxconstrained","primaldualsolver"] # These are those passing the tests
-    #, "fusedlasso"]
+  union(subtypes.(subtypes(AbstractLinearSolver))...) # For deeper nested type extend this to loop for types with isabstracttype == true
 end
 
+export isapplicable
+isapplicable(solver::AbstractLinearSolver, args...) = isapplicable(typeof(solver), args...)
+isapplicable(x, reg::AbstractRegularization) = isapplicable(x, [reg])
+isapplicable(::Type{T}, reg::Vector{<:AbstractRegularization}) where T <: AbstractLinearSolver = false
+
+function isapplicable(::Type{T}, reg::Vector{<:AbstractRegularization}) where T <: AbstractRowActionSolver
+  applicable = true
+  applicable &= length(findsinks(AbstractParameterizedRegularization, reg)) <= 2
+  applicable &= length(findsinks(L2Regularization, reg)) == 1
+  return applicable
+end
+
+function isapplicable(::Type{T}, reg::Vector{<:AbstractRegularization}) where T <: AbstractPrimalDualSolver
+  # TODO
+  return true
+end
+
+function isapplicable(::Type{T}, reg::Vector{<:AbstractRegularization}) where T <: AbstractProximalGradientSolver
+  applicable = true
+  applicable &= length(findsinks(AbstractParameterizedRegularization, reg)) == 1
+  return applicable
+end
+
+function isapplicable(::Type{T}, A, x) where T <: AbstractLinearSolver
+  # TODO
+  applicable = true
+  return applicable
+end
 
 """
-    createLinearSolver(solver::AbstractString, A; log::Bool=false, kargs...)
+    isapplicable(solverType::Type{<:AbstractLinearSolver}, A, x, reg)
 
-This method creates a solver. The supported solvers are methods typically used in MPI/MRI.
-All solvers return an approximate solution to STx = u.
-Function returns choosen solver.
-
-# solvers:
-* `"kaczmarz"`        - kaczmarz method (the default)
-* `"cgnr`             - CGNR
-* `"direct"`          - A direct solver using the backslash operator
-* `"daxkaczmarz"`     - Dax algorithm (with Kaczmarz) for unconstrained problems
-* `"daxconstrained"`  - Dax algorithm for constrained problems
-* `"pseudoinverse"`   - approximates a solution using the More-Penrose pseudo inverse
-* `"fusedlasso"`      - solver for the Fused-Lasso problem
-* `"fista"`           - Fast Iterative Shrinkage Thresholding Algorithm
-* `"optista"`         - "Optimal" ISTA
-* `"pogm"`            - Proximal Optimal Gradient Method
-* `"admm"`            - Alternating Direcion of Multipliers Method
-* `"splitBregman"`    - Split Bregman method for constrained & regularized inverse problems
-* `"primaldualsolver"`- First order primal dual method
+return `true` if a `solver` of type `solverType` is applicable to system matrix `A`, data `x` and regularization terms `reg`. 
 """
-function createLinearSolver(solver::AbstractString, A, x=zeros(eltype(A),size(A,2));
-                            log::Bool=false, kargs...)
+isapplicable(::Type{T}, A, x, reg) where T <: AbstractLinearSolver = isapplicable(T, A, x) && isapplicable(T, reg)
 
+"""
+    applicable(args...)
+
+list all `solvers` that are applicable to the given arguments. Arguments are the same as for `isapplicable` without the `solver` type.
+
+See also [`isapplicable`](@ref), [`linearSolverList`](@ref).
+"""
+applicableSolverList(args...) = filter(solver -> isapplicable(solver, args...), linearSolverListReal())
+
+"""
+    createLinearSolver(solver::AbstractLinearSolver, A; log::Bool=false, kargs...)
+
+This method creates a solver. The supported solvers are methods typically used for solving
+regularized linear systems. All solvers return an approximate solution to Ax = b.
+
+TODO: give a hint what solvers are available
+"""
+function createLinearSolver(solver::Type{T}, A; log::Bool=false, kargs...) where {T<:AbstractLinearSolver}
   log ? solverInfo = SolverInfo(;kargs...) : solverInfo=nothing
-
-  if solver == "kaczmarz"
-    return Kaczmarz(A; kargs...)
-  elseif solver == "kaczmarzUpdated"
-    return KaczmarzUpdated(A; kargs...)
-  elseif solver == "cgnr"
-    return CGNR(A, x; kargs...)
-  elseif solver == "direct"
-    return DirectSolver(A; kargs...)
-  elseif solver == "daxkaczmarz"
-    return DaxKaczmarz(A; kargs...)
-  elseif solver == "daxconstrained"
-    return DaxConstrained(A; kargs...)
-  elseif solver == "pseudoinverse"
-    return PseudoInverse(A; kargs...)
-  elseif solver == "fusedlasso"
-    return FusedLasso(A; kargs...)
-  elseif solver == "fista"
-    return FISTA(A, x; kargs...)
-  elseif solver == "optista"
-    return OptISTA(A, x; kargs...)
-  elseif solver == "pogm"
-    return POGM(A, x; kargs...)
-  elseif solver == "admm"
-    return ADMM(A, x; kargs...)
-  elseif solver == "splitBregman"
-    return SplitBregman(A, x; kargs...)
-  elseif solver == "primaldualsolver"
-    return PrimalDualSolver(A; kargs...)
-  else
-    error("Solver $solver not found.")
-    return Kaczmarz(A; kargs...)
-  end
+  return solver(A; kargs...)
 end
+
+function createLinearSolver(solver::Type{T}, A, x; log::Bool=false, kargs...) where {T<:AbstractLinearSolver}
+  log ? solverInfo = SolverInfo(;kargs...) : solverInfo=nothing
+  return solver(A, x; kargs...)
+end
+
 
 end

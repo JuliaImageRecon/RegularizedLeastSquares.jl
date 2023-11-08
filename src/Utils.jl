@@ -145,7 +145,7 @@ end
 """
 This function enforces the constraint of a real solution.
 """
-function enfReal!(x::Vector{T}, mask=ones(Bool, length(x))) where {T<:Complex}
+function enfReal!(x::AbstractArray{T}, mask=ones(Bool, length(x))) where {T<:Complex}
   #Returns x as complex vector with imaginary part set to zero
   @simd for i in 1:length(x)
     @inbounds mask[i] && (x[i] = complex(x[i].re))
@@ -155,12 +155,12 @@ end
 """
 This function enforces the constraint of a real solution.
 """
-enfReal!(x::Vector{T}, mask=ones(Bool, length(x))) where {T<:Real} = nothing
+enfReal!(x::AbstractArray{T}, mask=ones(Bool, length(x))) where {T<:Real} = nothing
 
 """
 This function enforces positivity constraints on its input.
 """
-function enfPos!(x::Vector{T}, mask=ones(Bool, length(x))) where {T<:Complex}
+function enfPos!(x::AbstractArray{T}, mask=ones(Bool, length(x))) where {T<:Complex}
   #Return x as complex vector with negative parts projected onto 0
   @simd for i in 1:length(x)
     @inbounds (x[i].re < 0 && mask[i]) && (x[i] = im*x[i].im)
@@ -170,7 +170,7 @@ end
 """
 This function enforces positivity constraints on its input.
 """
-function enfPos!(x::Vector{T}, mask=ones(Bool, length(x))) where {T<:Real}
+function enfPos!(x::AbstractArray{T}, mask=ones(Bool, length(x))) where {T<:Real}
   #Return x as complex vector with negative parts projected onto 0
   @simd for i in 1:length(x)
     @inbounds (x[i] < 0 && mask[i]) && (x[i] = zero(T))

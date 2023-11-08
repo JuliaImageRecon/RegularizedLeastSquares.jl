@@ -12,7 +12,7 @@ Random.seed!(12345)
         S = createLinearSolver(
             solver,
             A,
-            iterations = 100,
+            iterations = 200,
             solverInfo = solverInfo,
             shape = (2, 1),
         )
@@ -54,8 +54,8 @@ end
     b = b[idx]
     F = F[idx, :]
 
-    for solver in ["pogm", "optista", "fista", "admm"]
-        reg = Regularization("L1", 1e-3)
+    for solver in [POGM, OptISTA, FISTA, ADMM]
+        reg = L1Regularization(1e-3)
         solverInfo = SolverInfo(ComplexF64)
         S = createLinearSolver(
             solver,
@@ -63,21 +63,21 @@ end
             reg = reg,
             iterations = 200,
             solverInfo = solverInfo,
-            normalizeReg = false,
+            normalizeReg = NoNormalization(),
         )
         x_approx = solve(S, b)
         @info "Testing solver $solver w/o restart: relative error = $(norm(x - x_approx) / norm(x))"
         @test x ≈ x_approx rtol = 0.1
 
         #additionally test the gradient restarting scheme
-        if solver == "pogm" || solver == "fista"
+        if solver == POGM || solver == FISTA
             S = createLinearSolver(
                 solver,
                 F;
                 reg = reg,
                 iterations = 200,
                 solverInfo = solverInfo,
-                normalizeReg = false,
+                normalizeReg = NoNormalization(),
                 restart = :gradient,
             )
             x_approx = solve(S, b)
@@ -86,7 +86,7 @@ end
         end
 
         # test invariance to the maximum eigenvalue
-        reg.λ *= length(b) / norm(b, 1)
+        reg = L1Regularization(reg.λ * length(b) / norm(b, 1))
         scale_F = 1e3
         S = createLinearSolver(
             solver,
@@ -94,7 +94,7 @@ end
             reg = reg,
             iterations = 200,
             solverInfo = solverInfo,
-            normalizeReg = true,
+            normalizeReg = MeasurementBasedNormalization(),
         )
         x_approx = solve(S, b)
         x_approx .*= scale_F
@@ -103,8 +103,8 @@ end
     end
 
     # test ADMM with option vary_ρ
-    solver = "admm"
-    reg = Regularization("L1", 1.e-3)
+    solver = ADMM
+    reg = L1Regularization(1.e-3)
     solverInfo = SolverInfo(ComplexF64)
     S = createLinearSolver(
         solver,
@@ -112,7 +112,7 @@ end
         reg = reg,
         iterations = 200,
         solverInfo = solverInfo,
-        normalizeReg = false,
+        normalizeReg = NoNormalization(),
         ρ = 1e6,
         vary_ρ = :balance,
         verbose = false,
@@ -127,7 +127,7 @@ end
         reg = reg,
         iterations = 200,
         solverInfo = solverInfo,
-        normalizeReg = false,
+        normalizeReg = NoNormalization(),
         ρ = 1e-6,
         vary_ρ = :balance,
         verbose = false,
@@ -143,7 +143,7 @@ end
         reg = reg,
         iterations = 200,
         solverInfo = solverInfo,
-        normalizeReg = false,
+        normalizeReg = NoNormalization(),
         ρ = 1e-6,
         vary_ρ = :PnP,
         verbose = false,
@@ -153,8 +153,8 @@ end
     @test x ≈ x_approx rtol = 0.1
 
     ##
-    solver = "splitBregman"
-    reg = Regularization("L1", 1.e-3)
+    solver = SplitBregman
+    reg = L1Regularization(1.e-3)
     solverInfo = SolverInfo(ComplexF64)
     S = createLinearSolver(
         solver,
@@ -164,13 +164,13 @@ end
         iterationsInner = 40,
         ρ = 1.0,
         solverInfo = solverInfo,
-        normalizeReg = false,
+        normalizeReg = NoNormalization(),
     )
     x_approx = solve(S, b)
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol = 0.1
 
-    reg.λ *= length(b) / norm(b, 1)
+    reg = L1Regularization(reg.λ * length(b) / norm(b, 1))
     S = createLinearSolver(
         solver,
         F;
@@ -179,15 +179,15 @@ end
         iterationsInner = 40,
         ρ = 1.0,
         solverInfo = solverInfo,
-        normalizeReg = true,
+        normalizeReg = MeasurementBasedNormalization(),
     )
     x_approx = solve(S, b)
     @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol = 0.1
 
     ##
-    solver = "primaldualsolver"
-    reg = [Regularization("L1", 1.e-4), Regularization("TV", 1.e-4)]
+    solver = PrimalDualSolver
+    reg = [L1Regularization(1.e-4), TVRegularization(1.e-4, shape = (0,0))]
     solverInfo = SolverInfo(Float64)
     FR = [real.(F ./ norm(F)); imag.(F ./ norm(F))]
     bR = [real.(b ./ norm(F)); imag.(b ./ norm(F))]
@@ -195,7 +195,6 @@ end
         solver,
         FR;
         reg = reg,
-        regName = ["L1", "TV"],
         iterations = 1000,
         solverInfo = solverInfo,
     )

@@ -1,22 +1,18 @@
-export proxProj!, normProj
+export ProjectionRegularization
 
-"""
-    proxProj!(x::Vector{T}, λ::Float64; projFunc=x->x, kargs...)
+struct ProjectionRegularization <: AbstractProjectionRegularization
+  projFunc::Function
+end
+ProjectionRegularization(; projFunc::Function=x->x, kargs...) = ProjectionRegularization(projFunc)
 
-applies the projection given by `projFunc`.
-"""
-function proxProj!(x::Vector{T}, λ::Float64; projFunc=x->x, kargs...) where T
-  x[:] = projFunc(x)
+function prox!(reg::ProjectionRegularization, x::Vector{Tc}) where {T, Tc <: Union{T, Complex{T}}}
+  x[:] = reg.projFunc(x)
+  return x
 end
 
-"""
-    normProj(x::Vector{T}, λ::Float64=0.0; projFunc=x->x, kargs...) where T
-
-evaluate indicator function of set to be projected onto.
-"""
-function normProj(x::Vector{T}, λ::Float64=0.0; projFunc=x->x, kargs...) where T
+function norm(reg::ProjectionRegularization, x::Vector{Tc}) where {T, Tc <: Union{T, Complex{T}}}
   y = copy(x)
-  y[:] = proxProj!(y,λ,projFunc=projFunc)
+  y[:] = prox!(reg, y)
   if y != x
     return Inf
   end

@@ -1,9 +1,10 @@
 export pogm, POGM
 
-mutable struct POGM{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA} <: AbstractLinearSolver
+mutable struct POGM{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA, R, RN} <: AbstractProximalGradientSolver
   A::matA
   AᴴA::matAHA
-  reg::Regularization
+  reg::R
+  proj::Vector{RN}
   x::vecT
   x₀::vecT
   xᵒˡᵈ::vecT
@@ -22,8 +23,7 @@ mutable struct POGM{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector
   σ_fac::rT
   iterations::Int64
   relTol::rT
-  normalizeReg::Bool
-  regFac::rT
+  normalizeReg::AbstractRegularizationNormalization
   norm_x₀::rT
   rel_res_norm::rT
   verbose::Bool
@@ -31,8 +31,7 @@ mutable struct POGM{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector
 end
 
 """
-    POGM(A, x::vecT=zeros(eltype(A),size(A,2))
-          ; reg=nothing, regName=["L1"], λ=[0.0], kargs...)
+    POGM(A, x; kwargs...)
 
 creates a `POGM` object for the system matrix `A`.
 POGM has a 2x better worst-case bound than FISTA, but actual performance varies by application.
@@ -53,36 +52,36 @@ References:
 # Arguments
 * `A`                       - system matrix
 * `x::vecT`                 - array with the same type and size as the solution
-* (`reg=nothing`)           - regularization object
-* (`regName=["L1"]`)        - name of the Regularization to use (if reg==nothing)
-* (`AᴴA=A'*A`)              - specialized normal operator, default is `A'*A`
-* (`λ=0`)                   - regularization parameter
-* (`ρ=0.95`)                - step size for gradient step
-* (`normalize_ρ=false`)     - normalize step size by the maximum eigenvalue of `AᴴA`
-* (`t=1.0`)                 - parameter for predictor-corrector step
-* (`σ_fac=1.0`)             - parameter for decreasing γ-momentum ∈ [0,1]
-* (`relTol::Float64=1.e-5`) - tolerance for stopping criterion
-* (`iterations::Int64=50`)  - maximum number of iterations
-* (`restart::Symbol=:none`) - :none, :gradient options for restarting
+
+# Keywords
+* `reg`          - regularization term vector
+* `normalizeReg`         - regularization normalization scheme
+* `AᴴA=A'*A`              - specialized normal operator, default is `A'*A`
+* `λ=0`                   - regularization parameter
+* `ρ=0.95`                - step size for gradient step
+* `normalize_ρ=false`     - normalize step size by the maximum eigenvalue of `AᴴA`
+* `t=1.0`                 - parameter for predictor-corrector step
+* `σ_fac=1.0`             - parameter for decreasing γ-momentum ∈ [0,1]
+* `relTol::Float64=1.e-5` - tolerance for stopping criterion
+* `iterations::Int64=50`  - maximum number of iterations
+* `restart::Symbol=:none` - :none, :gradient options for restarting
+
+See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-function POGM(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=nothing, regName=["L1"]
+function POGM(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1Regularization(zero(T))
               , AᴴA=A'*A
-              , λ=0
               , ρ=0.95
               , normalize_ρ=true
               , t=1
               , σ_fac=1.0
               , relTol=eps(real(T))
               , iterations=50
-              , normalizeReg=false
+              , normalizeReg=NoNormalization()
               , restart = :none
               , verbose = false
               , kargs...) where {T}
 
   rT = real(T)
-  if reg === nothing
-    reg = Regularization(regName, λ, kargs...)
-  end
 
   x₀ = similar(x)
   xᵒˡᵈ = similar(x)
@@ -95,9 +94,18 @@ function POGM(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=no
   if normalize_ρ
     ρ /= abs(power_iterations(AᴴA))
   end
+  
+  reg = vec(reg)
+  indices = findsinks(AbstractProjectionRegularization, reg)
+  other = [reg[i] for i in indices]
+  deleteat!(reg, indices)
+  if length(reg) != 1
+    error("POGM does not allow for more additional regularization terms, found $(length(reg))")
+  end
+  reg = normalize(POGM, normalizeReg, reg, A, nothing)
 
-  return POGM(A, AᴴA, vec(reg)[1], x, x₀, xᵒˡᵈ, y, z, w, res, rT(ρ),rT(t),rT(t),rT(0),rT(1),rT(1),rT(1),rT(1),rT(σ_fac),
-    iterations,rT(relTol),normalizeReg,one(rT),one(rT),rT(Inf),verbose,restart)
+  return POGM(A, AᴴA, reg[1], other, x, x₀, xᵒˡᵈ, y, z, w, res, rT(ρ),rT(t),rT(t),rT(0),rT(1),rT(1),rT(1),rT(1),rT(σ_fac),
+    iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose,restart)
 end
 
 """
@@ -132,11 +140,7 @@ function init!(solver::POGM{rT,vecT,matA,matAHA}, b::vecT
   solver.tᵒˡᵈ = t
   solver.σ = 1
   # normalization of regularization parameters
-  if solver.normalizeReg
-    solver.regFac = norm(solver.x₀,1)/length(solver.x₀)
-  else
-    solver.regFac = 1
-  end
+  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
 end
 
 """
@@ -147,9 +151,11 @@ solves an inverse problem using POGM.
 # Arguments
 * `solver::POGM`                     - the solver containing both system matrix and regularizer
 * `b::vecT`                           - data vector
+
+# Keywords
 * `A=solver.A`                        - operator for the data-term of the problem
-* (`startVector::vecT=similar(b,0)`)  - initial guess for the solution
-* (`solverInfo=nothing`)              - solverInfo object
+* `startVector::vecT=similar(b,0)`  - initial guess for the solution
+* `solverInfo=nothing`              - solverInfo object
 
 when a `SolverInfo` objects is passed, the residuals are stored in `solverInfo.convMeas`.
 """
@@ -214,7 +220,10 @@ function iterate(solver::POGM, iteration::Int=0)
   solver.z .= solver.x #store this for next iteration and GR
 
   # proximal map
-  solver.reg.prox!(solver.x, solver.regFac*solver.reg.λ*solver.γ; solver.reg.params...)
+  prox!(solver.reg, solver.x, solver.γ * λ(solver.reg))
+  for proj in solver.proj
+    prox!(proj, solver.x)
+  end
 
   # gradient restart conditions
   if solver.restart == :gradient

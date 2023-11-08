@@ -1,28 +1,41 @@
-export proxNuclear!, normNuclear
+export NuclearRegularization
+
 
 """
-    proxNuclear!(x::Vector{T}, λ::Float64; svtShape::NTuple=[],kargs...)
+    NuclearRegularization
 
-applies singular value soft-thresholding - i.e. the proximal map for the nuclear norm regularization.
+Regularization term implementing the proximal map for singular value soft-thresholding.
 
 # Arguments:
-* `x::Array{T}`          - Vector to apply proximal map to
-* `λ::Float64`           - regularization paramter
-* `svtShape::NTuple=[]`  - size of the underlying matrix
+* `λ`           - regularization paramter
+
+# Keywords
+* `svtShape::NTuple`  - size of the underlying matrix
 """
-function proxNuclear!(x::Vector{T}, λ::Float64; svtShape::NTuple=[],kargs...) where T
-  U,S,V = svd(reshape(x, svtShape))
-  proxL1!(S,λ)
+struct NuclearRegularization{T} <: AbstractParameterizedRegularization{T}
+  λ::T
+  svtShape::NTuple
+end
+NuclearRegularization(λ; svtShape::NTuple=[], kargs...) = NuclearRegularization(λ, svtShape)
+
+"""
+    prox!(reg::NuclearRegularization, x, λ)
+
+performs singular value soft-thresholding - i.e. the proximal map for the nuclear norm regularization.
+"""
+function prox!(reg::NuclearRegularization, x::Vector{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
+  U,S,V = svd(reshape(x, reg.svtShape))
+  prox!(L1Regularization, S, λ)
   x[:] = vec(U*Matrix(Diagonal(S))*V')
+  return x
 end
 
 """
-    normNuclear(x::Vector{T}, λ::Float64; svtShape::NTuple=[],kargs...) where T
+    norm(reg::NuclearRegularization, x, λ)
 
 returns the value of the nuclear norm regularization term.
-Arguments are the same as in `proxNuclear!`
 """
-function normNuclear(x::Vector{T}, λ::Float64; svtShape::NTuple=[],kargs...) where T
-  U,S,V = svd( reshape(x, svtShape) )
+function norm(reg::NuclearRegularization, x::Vector{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
+  U,S,V = svd( reshape(x, reg.svtShape) )
   return λ*norm(S,1)
 end

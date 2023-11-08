@@ -1,8 +1,9 @@
 export DaxKaczmarz
 
-mutable struct DaxKaczmarz{matT,T,U,Tsparse} <: AbstractLinearSolver
+mutable struct DaxKaczmarz{matT,T,U} <: AbstractRowActionSolver
   S::matT
   u::Vector{T}
+  reg::Vector{<:AbstractRegularization}
   λ::Float64
   denom::Vector{U}
   rowindex::Vector{Int64}
@@ -15,15 +16,12 @@ mutable struct DaxKaczmarz{matT,T,U,Tsparse} <: AbstractLinearSolver
   τl::T
   αl::T
   weights::Vector{U}
-  enforceReal::Bool
-  enforcePositive::Bool
-  sparseTrafo::Tsparse
   iterations::Int64
   iterationsInner::Int64
 end
 
-"""This function solves a unconstrained linear least squaares problem using an algorithm proposed in [1] combined with a randomized version of kaczmarz [2].
-Returns an approximate solution to the linear leaast squares problem Sᵀx = u.
+"""This function solves a unconstrained linear least squares problem using an algorithm proposed in [1] combined with a randomized version of kaczmarz [2].
+Returns an approximate solution to the linear least squares problem Sᵀx = u.
 
 [1] Dax, A. On Row Relaxation Methods for Large Constrained Least Squares Problems. SIAM J. Sci. Comput. 14, 570–584 (1993).
 [2] Strohmer, T. & Vershynin, R. A Randomized Kaczmarz Algorithm with Exponential Convergence. J. Fourier Anal. Appl. 15, 262–278 (2008).
@@ -32,12 +30,14 @@ Returns an approximate solution to the linear leaast squares problem Sᵀx = u.
 * `S::AbstractMatrix{T}`: Problem Matrix S.
 * `u::Vector{T}`: Righthandside of the linear equation.
 
-### Keyword/Optional Arguments
+### Keywords
 
 * `iterations::Int`: Number of Iterations of outer dax scheme.
 * `iterationsInner::Int`: Number of Iterations of inner dax scheme.
 * `λ::Float64`: The regularization parameter ɛ>0 influences the speed of convergence but not the solution.
 * `weights::Vector{T}`: Use weights in vector to weight equations. The larger the weight the more one 'trusts' a sqecific equation.
+
+See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
 function DaxKaczmarz(S, b=nothing; λ::Real=0.0
               , weights::Vector{R}=ones(Float64,size(S,1))
@@ -66,9 +66,17 @@ function DaxKaczmarz(S, b=nothing; λ::Real=0.0
   τl = zero(eltype(S))
   αl = zero(eltype(S))
 
-  return DaxKaczmarz(S,u,Float64(λ),denom,rowindex,sumrowweights,zk,bk,xl,yl,εw,τl,αl
-                  ,T.(weights),enforceReal,enforcePositive
-                  ,sparseTrafo,iterations,iterationsInner)
+  reg = AbstractRegularization[]
+  if enforcePositive && enforceReal
+    push!(reg, PositiveRegularization())
+  elseif enforceReal
+    push!(reg, RealRegularization())
+  end
+  if !isempty(reg) && !isnothing(sparseTrafo)
+    reg = map(r -> TransformedRegularization(r, sparseTrafo), reg)
+  end
+  return DaxKaczmarz(S,u,reg, Float64(λ), denom,rowindex,sumrowweights,zk,bk,xl,yl,εw,τl,αl
+                  ,T.(weights) ,iterations,iterationsInner)
 end
 
 function init!(solver::DaxKaczmarz
@@ -126,7 +134,9 @@ end
 
 function iterate(solver::DaxKaczmarz, iteration::Int=0)
   if done(solver,iteration)
-    applyConstraints(solver.zk, solver.sparseTrafo, solver.enforceReal, solver.enforcePositive)
+    for r in solver.reg
+      prox!(r, solver.zk)
+    end
     return nothing
   end
 
@@ -154,7 +164,7 @@ end
 
 @inline done(solver::DaxKaczmarz,iteration::Int) = iteration>=solver.iterations
 
-"""This funtion saves the denominators to compute αl in denom and the rowindices,
+"""This function saves the denominators to compute αl in denom and the rowindices,
   which lead to an update of cl in rowindex.
 """
 function initkaczmarzdax(S::AbstractMatrix, ɛ, weights::Vector)

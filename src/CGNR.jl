@@ -1,9 +1,10 @@
 export cgnr, CGNR
 
-mutable struct CGNR{matT,opT,vecT,T,Tsparse} <: AbstractLinearSolver
+mutable struct CGNR{matT,opT,vecT,T, R, PR} <: AbstractKrylovSolver
   A::matT
   AᴴA::opT
-  reg::Regularization
+  L2::R
+  constr::PR
   cl::vecT
   rl::vecT
   zl::vecT
@@ -14,52 +15,39 @@ mutable struct CGNR{matT,opT,vecT,T,Tsparse} <: AbstractLinearSolver
   βl::T
   ζl::T
   weights::vecT
-  enforceReal::Bool
-  enforcePositive::Bool
-  sparseTrafo::Tsparse
   iterations::Int64
   relTol::Float64
   z0::Float64
-  normalizeReg::Bool
-  regFac::Float64
+  normalizeReg::AbstractRegularizationNormalization
 end
 
 """
-    CGNR(A, x::vecT; λ = 0.0, reg = Regularization("L2", λ), kargs...) where vecT
+    CGNR(A, x; kargs...)
 
 creates an `CGNR` object for the system matrix `A`.
 
 # Arguments
 * `A`                               - system matrix
-* `x::vecT`                         - Array with the same type and size as the solution
-* (`λ=0.0`)                         - Regularization paramter
-* (`reg=Regularization("L2", λ)`)   - Regularization object
-* (weights::vecT=eltype(A)[]) - weights for the data term
-* (sparseTrafo=nothing)             - sparsifying transform
-* (enforceReal::Bool=false)         - constrain the solution to be real
-* (enforcePositive::Bool=false)     - constrain the solution to have positive real part
-* (iterations::Int64=10)            - number of iterations
-* (`relTol::Float64=eps()`)         - rel tolerance for stopping criterion
+* `x::vecT`                         - (optional) array with the same type and size as the solution
+
+# Keywords
+* `reg`   - regularization term vector
+* `normalizeReg`         - regularization normalization scheme
+* `weights::vecT=eltype(A)[]` - weights for the data term
+* `AᴴA=A'*A`              - specialized normal operator, default is `A'*A`
+* `iterations::Int64=10`      - number of iterations
+* `relTol::Float64=eps()`         - rel tolerance for stopping criterion
+
+See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); λ::Real=0.0, reg::R = Regularization("L2", λ)
+function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); reg::Vector{R} = [L2Regularization(zero(real(eltype(A))))]
               , weights::vecT=similar(x,0)
               , AᴴA::opT=nothing
-              , sparseTrafo=nothing
-              , enforceReal::Bool=false
-              , enforcePositive::Bool=false
               , iterations::Int64=10
               , relTol::Float64=eps()
-              , normalizeReg::Bool=false
-              , kargs...) where {opT,vecT<:AbstractVector,R<:Union{Regularization, Vector{Regularization}}}
-
-  if typeof(reg)==Vector{Regularization}
-    reg = reg[1]
-  end
-
-  if (reg.prox!) != (proxL2!)
-    @error "CGNR only supports L2 regularizer"
-  end
-
+              , normalizeReg::AbstractRegularizationNormalization=NoNormalization()
+              , kargs...) where {opT,vecT<:AbstractVector,R<:AbstractRegularization}
+            
   if AᴴA == nothing
     AᴴA = A'*A
   end
@@ -76,9 +64,29 @@ function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); λ::Real=0.0, reg::R = Regu
   βl = zero(T)        #temporary scalar
   ζl = zero(T)        #temporary scalar
 
+  # Prepare regularization terms
+  reg = normalize(CGNR, normalizeReg, reg, A, nothing)
+  idx = findsink(L2Regularization, reg)
+  if isnothing(idx)
+    L2 = L2Regularization(zero(typeof(real(T))))
+  else
+    L2 = reg[idx]
+    deleteat!(reg, idx)
+  end
+
+  indices = findsinks(RealRegularization, reg)
+  push!(indices, findsinks(PositiveRegularization, reg)...)
+  other = [reg[i] for i in indices]
+  deleteat!(reg, indices)
+  if length(reg) > 0
+    error("CGNR does not allow for more additional regularization terms, found $(length(reg))")
+  end
+  other = identity.(other)
+
+
   return CGNR(A, AᴴA,
-             reg,cl,rl,zl,pl,vl,xl,αl,βl,ζl,
-             weights,enforceReal,enforcePositive,sparseTrafo,iterations,relTol,0.0,normalizeReg,1.0)
+             L2,other,cl,rl,zl,pl,vl,xl,αl,βl,ζl,
+             weights,iterations,relTol,0.0,normalizeReg)
 end
 
 """
@@ -117,27 +125,25 @@ function init!(solver::CGNR, u::vecT
   copyto!(solver.pl,solver.zl)
 
   # normalization of regularization parameters
-  if solver.normalizeReg
-    solver.regFac = norm(u,1)/length(u)
-  else
-    solver.regFac = 1.0
-  end
+  solver.L2 = normalize(solver, solver.normalizeReg, solver.L2, solver.A, u)
 end
 
 """
-    solve(solver::CGNR, u::vecT) where vecT
+    solve(solver::CGNR, u; kwargs...) where vecT
 
 solves Tikhonov-regularized inverse problem using CGNR.
 
 # Arguments
 * `solver::CGNR                         - the solver containing both system matrix and regularizer
 * `u::vecT`                             - data vector
-* (`startVector::vecT=similar(u,0)`)    - initial guess for the solution
-* (`solverInfo=nothing`)                - solverInfo for logging
+
+# Keywords
+* `startVector::vecT=similar(u,0)`    - initial guess for the solution
+* `solverInfo=nothing`                - solverInfo for logging
 
 when a `SolverInfo` objects is passed, the residuals `solver.zl` are stored in `solverInfo.convMeas`.
 """
-function solve(solver::CGNR, u::vecT;  startVector::vecT=similar(u,0), solverInfo=nothing, kargs...) where {vecT}
+function solve(solver::CGNR, u;  startVector=similar(u,0), solverInfo=nothing, kargs...)
   # initialize solver parameters
   init!(solver, u; cl=startVector)
 
@@ -160,7 +166,9 @@ performs one CGNR iteration.
 """
 function iterate(solver::CGNR, iteration::Int=0) 
     if done(solver,iteration)
-      applyConstraints(solver.cl, solver.sparseTrafo, solver.enforceReal, solver.enforcePositive)
+      for r in solver.constr
+        prox!(r, solver.cl)
+      end
       return nothing
     end
 
@@ -169,8 +177,9 @@ function iterate(solver::CGNR, iteration::Int=0)
     solver.ζl= norm(solver.zl)^2
     normvl = dot(solver.pl,solver.vl) 
 
-    if solver.reg.λ > 0
-      solver.αl = solver.ζl/(normvl+solver.regFac*solver.reg.λ*norm(solver.pl)^2)
+    λ_ = λ(solver.L2)
+    if λ_ > 0
+      solver.αl = solver.ζl/(normvl+λ_*norm(solver.pl)^2)
     else
       solver.αl = solver.ζl/normvl
     end
@@ -179,8 +188,8 @@ function iterate(solver::CGNR, iteration::Int=0)
 
     BLAS.axpy!(-solver.αl,solver.vl,solver.zl)
     
-    if solver.reg.λ > 0
-      BLAS.axpy!(-solver.reg.λ*solver.αl,solver.pl,solver.zl)
+    if λ_ > 0
+      BLAS.axpy!(-λ_*solver.αl,solver.pl,solver.zl)
     end
 
     solver.βl = dot(solver.zl,solver.zl)/solver.ζl

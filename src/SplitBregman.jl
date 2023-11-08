@@ -1,10 +1,11 @@
 export SplitBregman
 
-mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT,rT} <: AbstractLinearSolver
+mutable struct SplitBregman{matT,vecT,opT,R,ropT,P,rvecT,preconT,rT} <: AbstractPrimalDualSolver
   # oerators and regularization
   A::matT
-  reg::Vector{Regularization}
+  reg::Vector{R}
   regTrafo::Vector{ropT}
+  proj::Vector{P}
   y::vecT
   # fields and operators for x update
   op::opT
@@ -36,55 +37,68 @@ mutable struct SplitBregman{matT,vecT,opT,ropT,rvecT,preconT,rT} <: AbstractLine
   tolInner::rT
   #counter for internal iterations
   iter_cnt::Int64
-  normalizeReg::Bool
-  regFac::rT
+  normalizeReg::AbstractRegularizationNormalization
 end
 
 """
-    SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2))
-                ; reg=nothing, regName=["L1","TV"], λ=[0.0,0.0], kargs...) where {matT,vecT}
+    SplitBregman(A, x; kwargs...)
 
 creates a `SplitBregman` object for the system matrix `A`.
 
 # Arguments
 * `A::matT`                     - system matrix
 * `x::vecT`                     - Array with the same type and size as the solution
-* (`reg=nothing`)               - Regularization object
-* (`regName=["L1"]`)            - name of the regularizations to use (if reg==nothing)
-* (`λ=[0.0]`)                   - Regularization paramters
-* (`regTrafo=nothing`)          - transformations applied inside each regularizer
-* (`precon=Identity()`)         - preconditionner for the internal CG algorithm
-* (`ρ=[1.e2]`)                  - weights for condition on regularized variables
-* (`iterations::Int64=10`)      - number of outer iterations
-* (`iterationsInner::Int64=50`) - maximum number of inner iterations
-* (`iterationsCG::Int64=10`)    - maximum number of CG iterations
-* (`absTol::Float64=eps()`)     - abs tolerance for stopping criterion
-* (`relTol::Float64=eps()`)     - rel tolerance for stopping criterion
-* (`tolInner::Float64=1.e-5`)   - tolerance for CG stopping criterion
+
+# Keywords
+* `reg=nothing`          - regularization term vector
+* `normalizeReg`         - regularization normalization scheme
+* `precon=Identity()`         - preconditionner for the internal CG algorithm
+* `ρ=[1.e2]`                  - weights for condition on regularized variables
+* `iterations::Int64=10`      - number of outer iterations
+* `iterationsInner::Int64=50` - maximum number of inner iterations
+* `iterationsCG::Int64=10`    - maximum number of CG iterations
+* `absTol::Float64=eps()`     - abs tolerance for stopping criterion
+* `relTol::Float64=eps()`     - rel tolerance for stopping criterion
+* `tolInner::Float64=1.e-5`   - tolerance for CG stopping criterion
+
+See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing; reg=nothing, regName=["L1"]
-                    , λ=[0.0]
-                    , regTrafo=nothing 
+function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing;
+                      reg=[L1Regularization(zero(eltype(A)))]
                     , precon=Identity()
                     , ρ=[1.e2]
                     , iterations::Int64=10
                     , iterationsInner::Int64=50
                     , iterationsCG::Int64=10
-                    , absTol=eps()
-                    , relTol=eps()
-                    , tolInner=1.e-6
-                    , normalizeReg::Bool=false
-                    , kargs...) where {matT<:Trafo, vecT<:AbstractVector}
+                    , absTol::Float64=eps()
+                    , relTol::Float64=eps()
+                    , tolInner::Float64=1.e-6
+                    , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
+                    , kargs...) where {T, matT, vecT<:AbstractVector{T}}
 
-  T = eltype(A)
+  reg = vec(reg)
+  indices = findsinks(AbstractProjectionRegularization, reg)
+  proj = [reg[i] for i in indices]
+  deleteat!(reg, indices)
+  regTrafo = []
+  # Retrieve constraint trafos
+  for r in reg
+    trafoReg = findfirst(ConstraintTransformedRegularization, r)
+    if isnothing(trafoReg) 
+      push!(regTrafo, opEye(eltype(x),size(A,2)))
+    else
+      push!(regTrafo, trafoReg)
+    end
+  end
+  regTrafo = identity.(regTrafo)
 
-  if reg == nothing
-    reg = Regularization(regName, λ, kargs...)
+  # make sure that ρ is a vector
+  if typeof(ρ) <: Number
+    ρ_vec = [real(T).(ρ) for i = 1:length(reg)]
+  else
+    ρ_vec = real(T).(ρ)
   end
 
-  if regTrafo == nothing
-    regTrafo = [opEye(eltype(x),size(A,2)) for i=1:length(vec(reg))]
-  end
 
   if b==nothing
     y = similar(x,size(A,1))
@@ -103,7 +117,7 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing; re
 
   # fields for primal & dual variables
   u = similar(x)
-  v = [similar(x, size(regTrafo[i],1)) for i=1:length(vec(reg))]
+  v = [similar(x, size(A,2)) for i=1:length(vec(reg))]
   vᵒˡᵈ = [similar(v[i]) for i=1:length(vec(reg))]
   b = [similar(v[i]) for i=1:length(vec(reg))]
 
@@ -119,17 +133,13 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing; re
 
   iter_cnt = 1
 
-  # make sure that ρ is a vector
-  if typeof(ρ) <: Real
-    ρ_vec = similar(x, real(eltype(x)), 1)
-    ρ_vec .= ρ
-  else
-    ρ_vec = typeof(real.(x))(ρ)
-  end
 
-  return SplitBregman(A,vec(reg),regTrafo,y,op,β,β_yj,y_j,u,v,vᵒˡᵈ,b,precon,ρ_vec
+  # normalization parameters
+  reg = normalize(SplitBregman, normalizeReg, vec(reg), A, nothing)
+
+  return SplitBregman(A,reg,regTrafo,proj,y,op,β,β_yj,y_j,u,v,vᵒˡᵈ,b,precon,ρ_vec
               ,iterations,iterationsInner,iterationsCG,statevars, rk,sk
-              ,eps_pri,eps_dt,real(T)(0),real(T)(absTol),real(T)(relTol),real(T)(tolInner),iter_cnt,normalizeReg,real(T)(1))
+              ,eps_pri,eps_dt,0.0,absTol,relTol,tolInner,iter_cnt,normalizeReg)
 end
 
 """
@@ -140,10 +150,10 @@ end
 
 (re-) initializes the SplitBregman iterator
 """
-function init!(solver::SplitBregman{matT,vecT,opT,ropT,rvecT,preconT}, b::vecT
+function init!(solver::SplitBregman{matT,vecT,opT,R,ropT,P,rvecT,preconT}, b::vecT
               ; A::matT=solver.A
               , u::vecT=similar(b,0)
-              , kargs...) where {matT,vecT,opT,ropT,rvecT,preconT}
+              , kargs...) where {matT,vecT,opT,R,ropT,P,rvecT,preconT}
 
   # operators
   if A != solver.A
@@ -181,27 +191,25 @@ function init!(solver::SplitBregman{matT,vecT,opT,ropT,rvecT,preconT}, b::vecT
   solver.σᵃᵇˢ = sqrt(length(b))*solver.absTol
 
   # normalization of regularization parameters
-  if solver.normalizeReg
-    solver.regFac = norm(b,1)/length(b)
-  else
-    solver.regFac = 1.0
-  end
+  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
 
   # reset interation counter
   solver.iter_cnt = 1
 end
 
 """
-    solve(solver::SplitBregman, b::vecT; kargs...) where vecT
+    solve(solver::SplitBregman, b; kwargs...)
 
 solves an inverse problem using the Split Bregman method.
 
 # Arguments
 * `solver::SplitBregman`              - the solver containing both system matrix and regularizer
 * `b::vecT`                           - data vector
-* (`A::matT=solver.A`)                - operator for the data-term of the problem
-* (`startVector::vecT=similar(b,0)`)  - initial guess for the solution
-* (`solverInfo=nothing`)              - solverInfo for logging
+
+# Keywords
+* `A::matT=solver.A`                - operator for the data-term of the problem
+* `startVector::vecT=similar(b,0)`  - initial guess for the solution
+* `solverInfo=nothing`              - solverInfo for logging
 
 when a `SolverInfo` objects is passed, the primal residuals `solver.rk`
 and the dual residual `norm(solver.sk)` are stored in `solverInfo.convMeas`.
@@ -222,7 +230,7 @@ function solve(solver::SplitBregman, b::vecT; A::matT=solver.A, startVector::vec
 end
 
 """
-    splitBregman(A, y::vecT, reg::Vector{Regularization}; kargs...) where vecT
+    splitBregman(A, y::vecT, reg::Vector{AbstractRegularization}; kargs...) where vecT
 
 Split Bregman method
 
@@ -240,7 +248,7 @@ The Split Bregman Method for l1 Regularized Problems
   # Arguments
   * `A`                           - system matrix
   * `y::vecT`                     - data vector (right hand size)
-  * `reg::Vector{Regularization}` - Regularization objects
+  * `reg::Vector{AbstractRegularization}` - Regularization objects
   * `regTrafo::Vector{Trafo}`     - transformations applied inside each regularizer
   * (`ρ1::Float64=1.0`)           - weighting factor for constraint u=v1
   * (`ρ2::Float64=1.0`)           - weighting factor for constraint u=v2
@@ -254,7 +262,7 @@ The Split Bregman Method for l1 Regularized Problems
   * (`tolInner::Float64=1.e-3`)   - relative tolerance for CG
   * (`solverInfo = nothing`)      - `solverInfo` object used to store convergence metrics
 """
-function iterate(solver::SplitBregman{matT,vecT,opT,rvecT,preconT}, iteration::Int=1) where {matT,vecT,opT,rvecT,preconT}
+function iterate(solver::SplitBregman{matT, vecT, opT, R, ropT, rvecT, preconT, rT}, iteration::Int=1) where {matT, vecT, opT, R, ropT, rvecT, preconT, rT}
   if done(solver, iteration) return nothing end
 
   # update u
@@ -263,13 +271,17 @@ function iterate(solver::SplitBregman{matT,vecT,opT,rvecT,preconT}, iteration::I
     solver.β[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*(solver.v[i].-solver.b[i])
   end
   cg!(solver.u,solver.op,solver.β,Pl=solver.precon,maxiter=solver.iterationsCG,reltol=solver.tolInner)
+  
+  for proj in solver.proj
+    prox!(proj, solver.u)
+  end
 
   #  proximal map for regularization terms
   for i=1:length(solver.reg)
     copyto!(solver.vᵒˡᵈ[i], solver.v[i])
     solver.v[i][:] .= solver.regTrafo[i]*solver.u .+ solver.b[i]
     if solver.ρ[i] != 0
-      solver.reg[i].prox!(solver.v[i],solver.regFac*solver.reg[i].λ/solver.ρ[i]; solver.reg[i].params...)
+      prox!(solver.reg[i], solver.v[i], λ(solver.reg[i])/solver.ρ[i])
     end
   end
 

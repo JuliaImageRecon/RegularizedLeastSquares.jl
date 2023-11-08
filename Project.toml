@@ -1,35 +1,40 @@
 name = "RegularizedLeastSquares"
 uuid = "1e9c538a-f78c-5de5-8ffb-0b6dbe892d23"
 authors = ["Tobias Knopp <tobias@knoppweb.de>"]
-version = "0.10.0"
+version = "0.11.0"
 
 [deps]
+FLoops = "cc61a311-1640-44b5-9fba-1b764f453329"
+FastClosures = "9aa1b823-49e4-5ca5-8b0f-3971ec8bab6a"
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 IterativeSolvers = "42fd0dbc-a981-5370-80f2-aaf504508153"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-FLoops = "cc61a311-1640-44b5-9fba-1b764f453329"
+LinearOperatorCollection = "a4a2c56f-fead-462a-a3ab-85921a5f2575"
+LinearOperators = "5c8ed15e-5a4c-59e4-a42b-c7e8811fb125"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 VectorizationBase = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
-LinearOperators = "5c8ed15e-5a4c-59e4-a42b-c7e8811fb125"
-FastClosures = "9aa1b823-49e4-5ca5-8b0f-3971ec8bab6a"
 
 [compat]
-FLoops = "0.2"
-IterativeSolvers = "0.9"
-ProgressMeter = "1.2"
-LinearOperators = "2.5"
-StatsBase = "0.33"
-VectorizationBase = "0.19, 0.21"
-julia = "1.6"
 FFTW = "1.0"
-FastClosures="0.3.2"
+FLoops = "0.2"
+FastClosures = "0.3.2"
+IterativeSolvers = "0.9"
+LinearOperatorCollection = "1.0"
+LinearOperators = "2.3.3"
+ProgressMeter = "1.2"
+StatsBase = "0.33, 0.34"
+VectorizationBase = "0.19, 0.21"
+julia = "1.9"
 
 [extras]
+FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 
 [targets]
 test = ["Test", "Random", "FFTW"]
