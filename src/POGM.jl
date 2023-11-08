@@ -151,9 +151,11 @@ solves an inverse problem using POGM.
 # Arguments
 * `solver::POGM`                     - the solver containing both system matrix and regularizer
 * `b::vecT`                           - data vector
+
+# Keywords
 * `A=solver.A`                        - operator for the data-term of the problem
-* (`startVector::vecT=similar(b,0)`)  - initial guess for the solution
-* (`solverInfo=nothing`)              - solverInfo object
+* `startVector::vecT=similar(b,0)`  - initial guess for the solution
+* `solverInfo=nothing`              - solverInfo object
 
 when a `SolverInfo` objects is passed, the residuals are stored in `solverInfo.convMeas`.
 """

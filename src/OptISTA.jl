@@ -136,16 +136,18 @@ function init!(solver::OptISTA{rT,vecT,matA,matAHA}, b::vecT
 end
 
 """
-    solve(solver::OptISTA, b::Vector)
+    solve(solver::OptISTA, b::Vector; kwargs...)
 
 solves an inverse problem using OptISTA.
 
 # Arguments
 * `solver::OptISTA`                     - the solver containing both system matrix and regularizer
 * `b::vecT`                           - data vector
+
+# Keywords
 * `A=solver.A`                        - operator for the data-term of the problem
-* (`startVector::vecT=similar(b,0)`)  - initial guess for the solution
-* (`solverInfo=nothing`)              - solverInfo object
+* `startVector::vecT=similar(b,0)`  - initial guess for the solution
+* `solverInfo=nothing`              - solverInfo object
 
 when a `SolverInfo` objects is passed, the residuals are stored in `solverInfo.convMeas`.
 """

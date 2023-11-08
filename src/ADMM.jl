@@ -191,20 +191,18 @@ function init!(solver::ADMM{rT,matT,opT,R,ropT,P,vecT,rvecT,preconT}, b::vecT
 end
 
 """
-    solve(solver::ADMM, b::vecT
-          ; A::matT=solver.A
-          , startVector::vecT=similar(b,0)
-          , solverInfo=nothing
-          , kargs...) where {matT,vecT}
+    solve(solver::ADMM, b; kwargs...) where {matT,vecT}
 
 solves an inverse problem using ADMM.
 
 # Arguments
 * `solver::ADMM`                  - the solver containing both system matrix and regularizer
 * `b::Vector`                     - data vector
-* (`A::matT=solver.A`)            - operator for the data-term of the problem
-* (`startVector::Vector{T}=T[]`)  - initial guess for the solution
-* (`solverInfo=nothing`)          - solverInfo for logging
+
+# Keywords
+* `A::matT=solver.A`            - operator for the data-term of the problem
+* `startVector::Vector{T}=T[]`  - initial guess for the solution
+* `solverInfo=nothing`          - solverInfo for logging
 
 when a `SolverInfo` objects is passed, the primal residuals `solver.rᵏ`
 and the dual residual `norm(solver.sᵏ)` are stored in `solverInfo.convMeas`.

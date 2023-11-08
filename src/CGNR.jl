@@ -129,15 +129,17 @@ function init!(solver::CGNR, u::vecT
 end
 
 """
-    solve(solver::CGNR, u::vecT) where vecT
+    solve(solver::CGNR, u; kwargs...) where vecT
 
 solves Tikhonov-regularized inverse problem using CGNR.
 
 # Arguments
 * `solver::CGNR                         - the solver containing both system matrix and regularizer
 * `u::vecT`                             - data vector
-* (`startVector::vecT=similar(u,0)`)    - initial guess for the solution
-* (`solverInfo=nothing`)                - solverInfo for logging
+
+# Keywords
+* `startVector::vecT=similar(u,0)`    - initial guess for the solution
+* `solverInfo=nothing`                - solverInfo for logging
 
 when a `SolverInfo` objects is passed, the residuals `solver.zl` are stored in `solverInfo.convMeas`.
 """

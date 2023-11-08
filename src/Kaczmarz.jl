@@ -162,21 +162,20 @@ function init!(solver::Kaczmarz
 end
 
 """
-  solve(solver::Kaczmarz, u::Vector{T};
-                S::matT=solver.S, startVector::Vector{T}=eltype(S)[]
-                , weights::Vector=solver.weights, shuffleRows::Bool=false
-                , solverInfo=nothing, kargs...) where {T,matT}
+    solve(solver::Kaczmarz, u::Vector; kwargs...)
 
 solves Tikhonov-regularized inverse problem using Kaczmarz algorithm.
 
 # Arguments
 * `solver::Kaczmarz  - the solver containing both system matrix and regularizer
 * `u::Vector`        - data vector
-* (`S::matT=solver.S`)                  - operator for the data-term of the problem
-* (`startVector::Vector{T}=T[]`)        - initial guess for the solution
-* (`weights::Vector{T}=solver.weights`) - weights for the data term
-* (`shuffleRows::Bool=false`)           - randomize Kacmarz algorithm
-* (`solverInfo=nothing`)                - solverInfo for logging
+
+# Keywords
+* `S::matT=solver.S`                  - operator for the data-term of the problem
+* `startVector::Vector{T}=T[]`        - initial guess for the solution
+* `weights::Vector{T}=solver.weights` - weights for the data term
+* `shuffleRows::Bool=false`           - randomize Kacmarz algorithm
+* `solverInfo=nothing`                - solverInfo for logging
 
 when a `SolverInfo` objects is passed, the residuals are stored in `solverInfo.convMeas`.
 """

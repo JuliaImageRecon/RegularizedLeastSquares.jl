@@ -8,9 +8,9 @@ RegularizedLeastSquares.linearSolverList
 RegularizedLeastSquares.createLinearSolver
 RegularizedLeastSquares.solve(::AbstractLinearSolver, ::Any)
 RegularizedLeastSquares.SolverInfo
-```
 RegularizedLeastSquares.applicableSolverList
-applicableSolverList.isapplicable
+RegularizedLeastSquares.isapplicable
+```
 
 ## ADMM
 ```@docs
@@ -27,7 +27,7 @@ RegularizedLeastSquares.solve(::CGNR, ::Any)
 ## Kaczmarz
 ```@docs
 RegularizedLeastSquares.Kaczmarz
-RegularizedLeastSquares.solve(::Kaczmarz, ::Vector)
+RegularizedLeastSquares.solve(::Kaczmarz, ::Vector{Any})
 ```
 
 ## FISTA

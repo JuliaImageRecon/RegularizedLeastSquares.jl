@@ -198,16 +198,18 @@ function init!(solver::SplitBregman{matT,vecT,opT,R,ropT,P,rvecT,preconT}, b::ve
 end
 
 """
-    solve(solver::SplitBregman, b::vecT; kargs...) where vecT
+    solve(solver::SplitBregman, b; kwargs...)
 
 solves an inverse problem using the Split Bregman method.
 
 # Arguments
 * `solver::SplitBregman`              - the solver containing both system matrix and regularizer
 * `b::vecT`                           - data vector
-* (`A::matT=solver.A`)                - operator for the data-term of the problem
-* (`startVector::vecT=similar(b,0)`)  - initial guess for the solution
-* (`solverInfo=nothing`)              - solverInfo for logging
+
+# Keywords
+* `A::matT=solver.A`                - operator for the data-term of the problem
+* `startVector::vecT=similar(b,0)`  - initial guess for the solution
+* `solverInfo=nothing`              - solverInfo for logging
 
 when a `SolverInfo` objects is passed, the primal residuals `solver.rk`
 and the dual residual `norm(solver.sk)` are stored in `solverInfo.convMeas`.

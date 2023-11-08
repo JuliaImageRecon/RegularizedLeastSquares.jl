@@ -104,8 +104,20 @@ function isapplicable(::Type{T}, A, x) where T <: AbstractLinearSolver
   return applicable
 end
 
+"""
+    isapplicable(solverType::Type{<:AbstractLinearSolver}, A, x, reg)
+
+return `true` if a `solver` of type `solverType` is applicable to system matrix `A`, data `x` and regularization terms `reg`. 
+"""
 isapplicable(::Type{T}, A, x, reg) where T <: AbstractLinearSolver = isapplicable(T, A, x) && isapplicable(T, reg)
 
+"""
+    applicable(args...)
+
+list all `solvers` that are applicable to the given arguments. Arguments are the same as for `isapplicable` without the `solver` type.
+
+See also [`isapplicable`](@ref), [`linearSolverList`](@ref).
+"""
 applicableSolverList(args...) = filter(solver -> isapplicable(solver, args...), linearSolverListReal())
 
 """

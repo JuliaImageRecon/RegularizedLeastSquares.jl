@@ -42,6 +42,7 @@ RegularizedLeastSquares.NormalizedRegularization
 RegularizedLeastSquares.NoNormalization
 RegularizedLeastSquares.MeasurementBasedNormalization
 RegularizedLeastSquares.SystemMatrixBasedNormalization
+RegularizedLeastSquares.FixedParameterRegularization
 ```
 
 ## Misc. Nested Regularization
@@ -49,4 +50,5 @@ RegularizedLeastSquares.SystemMatrixBasedNormalization
 RegularizedLeastSquares.MaskedRegularization
 RegularizedLeastSquares.TransformedRegularization
 RegularizedLeastSquares.ConstraintTransformedRegularization
+RegularizedLeastSquares.PlugAndPlayRegularization
 ```
