@@ -18,4 +18,4 @@ makedocs(
     checkdocs = :none
 )
 
-deploydocs(repo   = "github.com/tknopp/RegularizedLeastSquares.jl.git")
+deploydocs(repo   = "github.com/JuliaImageRecon/RegularizedLeastSquares.jl.git")
