@@ -102,6 +102,7 @@ function POGM(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1
   if length(reg) != 1
     error("POGM does not allow for more additional regularization terms, found $(length(reg))")
   end
+  other = identity.(other)
   reg = normalize(POGM, normalizeReg, reg, A, nothing)
 
   return POGM(A, AᴴA, reg[1], other, x, x₀, xᵒˡᵈ, y, z, w, res, rT(ρ),rT(t),rT(t),rT(0),rT(1),rT(1),rT(1),rT(1),rT(σ_fac),

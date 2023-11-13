@@ -88,6 +88,7 @@ function ADMM(A::matT, x::Vector{T}=zeros(eltype(A),size(A,2));
   regTrafo = []
   indices = findsinks(AbstractProjectionRegularization, reg)
   proj = [reg[i] for i in indices]
+  proj = identity.(proj)
   deleteat!(reg, indices)
   # Retrieve constraint trafos
   for r in reg

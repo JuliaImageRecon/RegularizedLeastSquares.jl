@@ -81,7 +81,7 @@ function Kaczmarz(S, b=zeros(eltype(S), size(S, 1)); reg::Vector{<:AbstractRegul
   other = AbstractRegularization[reg[i] for i in indices]
   deleteat!(reg, indices)
   if length(reg) == 1
-    pushfirst!(other, reg[1])
+    push!(other, reg[1])
   elseif length(reg) > 1
     error("Kaczmarz does not allow for more than one additional regularization term, found $(length(reg))")
   end
