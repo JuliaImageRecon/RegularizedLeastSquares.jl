@@ -90,6 +90,7 @@ function SplitBregman(A::matT, x::vecT=zeros(eltype(A),size(A,2)), b=nothing;
       push!(regTrafo, trafoReg)
     end
   end
+  proj = identity.(proj)
   regTrafo = identity.(regTrafo)
 
   # make sure that ρ is a vector

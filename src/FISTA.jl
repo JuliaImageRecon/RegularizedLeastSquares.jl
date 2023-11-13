@@ -74,6 +74,7 @@ function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L
   if length(reg) != 1
     error("FISTA does not allow for more additional regularization terms, found $(length(reg))")
   end
+  other = identity.(other)
   reg = normalize(FISTA, normalizeReg, reg, A, nothing)
 
 

@@ -92,6 +92,7 @@ function OptISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg
   if length(reg) != 1
     error("OptISTA does not allow for more additional regularization terms, found $(length(reg))")
   end
+  other = identity.(other)
   reg = normalize(OptISTA, normalizeReg, reg, A, nothing)
 
   return OptISTA(A, AᴴA, reg[1], other, x, x₀, y, z, zᵒˡᵈ, res, rT(ρ),rT(θ),rT(θ),rT(θn),rT(0),rT(1),rT(1),
