@@ -6,7 +6,6 @@ version = "0.11.0"
 [deps]
 FLoops = "cc61a311-1640-44b5-9fba-1b764f453329"
 FastClosures = "9aa1b823-49e4-5ca5-8b0f-3971ec8bab6a"
-Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 IterativeSolvers = "42fd0dbc-a981-5370-80f2-aaf504508153"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
