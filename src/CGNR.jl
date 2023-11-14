@@ -68,7 +68,7 @@ function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); reg::Vector{R} = [L2Regular
   reg = normalize(CGNR, normalizeReg, reg, A, nothing)
   idx = findsink(L2Regularization, reg)
   if isnothing(idx)
-    L2 = L2Regularization(zero(typeof(real(T))))
+    L2 = L2Regularization(zero(T))
   else
     L2 = reg[idx]
     deleteat!(reg, idx)
