@@ -29,7 +29,7 @@ RegularizedLeastSquares.RealRegularization
 
 ## Nested Regularization
 ```@docs
-RegularizedLeastSquares.inner(::AbstractNestedRegularization)
+RegularizedLeastSquares.innerreg(::AbstractNestedRegularization)
 RegularizedLeastSquares.sink(::AbstractNestedRegularization)
 RegularizedLeastSquares.sinktype(::AbstractNestedRegularization)
 ```
@@ -37,7 +37,7 @@ RegularizedLeastSquares.sinktype(::AbstractNestedRegularization)
 ## Scaled Regularization
 ```@docs
 RegularizedLeastSquares.AbstractScaledRegularization
-RegularizedLeastSquares.factor
+RegularizedLeastSquares.scalefactor
 RegularizedLeastSquares.NormalizedRegularization
 RegularizedLeastSquares.NoNormalization
 RegularizedLeastSquares.MeasurementBasedNormalization
