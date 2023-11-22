@@ -79,7 +79,7 @@ julia> prox!(reg, randn(32*32)); # Apply soft-thresholding in Wavelet domain
 ```
 The type of regularization term a nested term can be wrapped around depends on the concrete type of the nested term. However generally, they can be nested arbitrarly deep, adding new functionality with each layer. Each nested regularization term can return its `inner` regularization. Furthermore, all regularization terms implement the iteration interface to iterate over the nesting. The innermost regularization term of a nested term must be a core regularization term and it can be returned by the `sink` function:
 ```jldoctest wavelet
-julia> innerreg(reg) == core
+julia> RegularizedLeastSquares.innerreg(reg) == core
 true
 
 julia> sink(reg) == core
