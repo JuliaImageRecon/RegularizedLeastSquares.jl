@@ -1,8 +1,8 @@
-export AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, prox!, inner, sink, sinktype, λ, findsink, findsinks
+export AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, prox!, sink, sinktype, λ, findsink, findsinks
 
 abstract type AbstractRegularization end
-inner(::AbstractRegularization) = nothing
-iterate(reg::AbstractRegularization, state = reg) = isnothing(state) ? nothing : (state, inner(state))
+innerreg(::AbstractRegularization) = nothing
+iterate(reg::AbstractRegularization, state = reg) = isnothing(state) ? nothing : (state, innerreg(state))
 Base.IteratorSize(::AbstractRegularization) = Base.SizeUnknown()
 sink(reg::AbstractRegularization) = reg
 sinktype(reg::AbstractRegularization) = typeof(sink(reg))

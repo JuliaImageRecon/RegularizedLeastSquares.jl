@@ -23,7 +23,7 @@ struct TransformedRegularization{S, R<:AbstractRegularization, TR} <: AbstractNe
   TransformedRegularization(reg::R, trafo::TR) where {R<:AbstractRegularization, TR} = new{R, R, TR}(reg, trafo)
   TransformedRegularization(reg::R, trafo::TR) where {S, R<:AbstractNestedRegularization{S}, TR} = new{S,R, TR}(reg, trafo)
 end
-inner(reg::TransformedRegularization) = reg.reg
+innerreg(reg::TransformedRegularization) = reg.reg
 
 function prox!(reg::TransformedRegularization, x::AbstractArray, args...)
 	z = reg.trafo * x

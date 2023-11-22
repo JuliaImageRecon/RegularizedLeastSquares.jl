@@ -15,10 +15,10 @@ struct ConstraintTransformedRegularization{S, R<:AbstractRegularization, TR} <: 
   ConstraintTransformedRegularization(reg::AbstractRegularization, trafo::TR) where TR = new{R, R, TR}(reg, trafo)
   ConstraintTransformedRegularization(reg::R, trafo::TR) where {S, R<:AbstractNestedRegularization{S}, TR} = new{S,R, TR}(reg, trafo)
 end
-inner(reg::ConstraintTransformedRegularization) = reg.reg
+innerreg(reg::ConstraintTransformedRegularization) = reg.reg
 """
     transform(reg::ConstraintTransformedRegularization)
 
-return the transform associated with `inner(reg)`.
+return the transform associated with `innerreg(reg)`.
 """
 transform(reg::ConstraintTransformedRegularization) = reg.trafo
