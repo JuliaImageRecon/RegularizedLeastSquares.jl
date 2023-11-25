@@ -50,33 +50,33 @@ References:
     [https://doi.org/10.1007/s10957-018-1287-4]
 
 # Arguments
-* `A`                       - system matrix
-* `x::vecT`                 - array with the same type and size as the solution
+* `A`                     - system matrix
+* `x::vecT`               - array with the same type and size as the solution
 
 # Keywords
-* `reg`          - regularization term vector
-* `normalizeReg`         - regularization normalization scheme
+* `reg`                   - regularization term vector
+* `normalizeReg`          - regularization normalization scheme
 * `AᴴA=A'*A`              - specialized normal operator, default is `A'*A`
-* `λ=0`                   - regularization parameter
 * `ρ=0.95`                - step size for gradient step
-* `normalize_ρ=false`     - normalize step size by the maximum eigenvalue of `AᴴA`
-* `t=1.0`                 - parameter for predictor-corrector step
-* `σ_fac=1.0`             - parameter for decreasing γ-momentum ∈ [0,1]
-* `relTol::Float64=1.e-5` - tolerance for stopping criterion
+* `normalize_ρ=true`      - normalize step size by the maximum eigenvalue of `AᴴA`
+* `t=1`                   - parameter for predictor-corrector step
+* `σ_fac=1`               - parameter for decreasing γ-momentum ∈ [0,1]
+* `relTol::=eps(real(T))` - tolerance for stopping criterion
 * `iterations::Int64=50`  - maximum number of iterations
-* `restart::Symbol=:none` - :none, :gradient options for restarting
+* `restart::Symbol=:none` - `:none`, `:gradient` options for restarting
+* `verbose::Bool=false`   - print residual norm in each iteration
 
 See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
 function POGM(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1Regularization(zero(T))
+              , normalizeReg=NoNormalization()
               , AᴴA=A'*A
               , ρ=0.95
               , normalize_ρ=true
               , t=1
-              , σ_fac=1.0
+              , σ_fac=1
               , relTol=eps(real(T))
               , iterations=50
-              , normalizeReg=NoNormalization()
               , restart = :none
               , verbose = false
               , kargs...) where {T}
@@ -94,7 +94,7 @@ function POGM(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1
   if normalize_ρ
     ρ /= abs(power_iterations(AᴴA))
   end
-  
+
   reg = vec(reg)
   indices = findsinks(AbstractProjectionRegularization, reg)
   other = [reg[i] for i in indices]
