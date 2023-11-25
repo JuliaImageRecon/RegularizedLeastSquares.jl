@@ -27,30 +27,30 @@ end
 creates a `FISTA` object for the system matrix `A`.
 
 # Arguments
-* `A`                       - system matrix
-* `x::vecT`                 - (optional) array with the same type and size as the solution
+* `A`                     - system matrix
+* `x::vecT`               - (optional) array with the same type and size as the solution
 
 # Keywords
-* `reg`          - regularization term vector
-* `normalizeReg`         - regularization normalization scheme
+* `reg`                   - regularization term vector
+* `normalizeReg`          - regularization normalization scheme
 * `AᴴA=A'*A`              - specialized normal operator, default is `A'*A`
 * `ρ=0.95`                - step size for gradient step
-* `normalize_ρ=false`     - normalize step size by the maximum eigenvalue of `AᴴA`
+* `normalize_ρ=true`      - normalize step size by the maximum eigenvalue of `AᴴA`
 * `t=1.0`                 - parameter for predictor-corrector step
-* `relTol::Float64=1.e-5` - tolerance for stopping criterion
+* `relTol::=eps(real(T))` - tolerance for stopping criterion
 * `iterations::Int64=50`  - maximum number of iterations
 * `restart::Symbol=:none` - :none, :gradient options for restarting
 
 See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1Regularization(0)
+function FISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1Regularization(zero(T))
+              , normalizeReg=NoNormalization()
               , AᴴA=A'*A
               , ρ=0.95
               , normalize_ρ=true
               , t=1
               , relTol=eps(real(T))
               , iterations=50
-              , normalizeReg=NoNormalization()
               , restart = :none
               , verbose = false
               , kargs...) where {T}
@@ -85,7 +85,7 @@ end
     init!(it::FISTA, b::vecT
               ; A=solver.A
               , x::vecT=similar(b,0)
-              , t::Float64=1.0) where T
+              , t::Number=1)
 
 (re-) initializes the FISTA iterator
 """

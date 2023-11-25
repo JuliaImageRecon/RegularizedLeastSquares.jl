@@ -35,20 +35,20 @@ It stores 2 extra intermediate variables the size of the image compared to FISTA
 
 Reference:
 - Uijeong Jang, Shuvomoy Das Gupta, Ernest K. Ryu,
-    "Computer-Assisted Design of Accelerated Composite 
+    "Computer-Assisted Design of Accelerated Composite
     Optimization Methods: OptISTA," arXiv:2305.15704, 2023,
     [https://arxiv.org/abs/2305.15704]
 
 # Arguments
-* `A`                       - system matrix
-* `x::vecT`                 - array with the same type and size as the solution
+* `A`                     - system matrix
+* `x::vecT`               - array with the same type and size as the solution
 
 # Keywords
-* `reg`          - regularization term vector
-* `normalizeReg`         - regularization normalization scheme
+* `reg`                   - regularization term vector
+* `normalizeReg`          - regularization normalization scheme
 * `AᴴA=A'*A`              - specialized normal operator, default is `A'*A`
 * `ρ=0.95`                - step size for gradient step
-* `normalize_ρ=false`     - normalize step size by the maximum eigenvalue of `AᴴA`
+* `normalize_ρ=true`      - normalize step size by the maximum eigenvalue of `AᴴA`
 * `θ=1.0`                 - parameter for predictor-corrector step
 * `relTol::Float64=1.e-5` - tolerance for stopping criterion
 * `iterations::Int64=50`  - maximum number of iterations
@@ -56,13 +56,13 @@ Reference:
 See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
 function OptISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1Regularization(zero(T))
+              , normalizeReg=NoNormalization()
               , AᴴA=A'*A
               , ρ=0.95
               , normalize_ρ=true
               , θ=1
               , relTol=eps(real(T))
               , iterations=50
-              , normalizeReg=NoNormalization()
               , verbose = false
               , kargs...) where {T}
 
