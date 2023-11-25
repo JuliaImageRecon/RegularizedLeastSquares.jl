@@ -298,7 +298,12 @@ function power_iterations(AᴴA; rtol=1e-2, maxiter=30, verbose=false)
 
   for i = 1:maxiter
     b ./= norm(b)
-    copy!(bᵒˡᵈ, b)
+
+    # swap b and bᵒˡᵈ (pointers only, no data is moved or allocated)
+    bᵗᵐᵖ = bᵒˡᵈ
+    bᵒˡᵈ = b
+    b = bᵗᵐᵖ
+
     mul!(b, AᴴA, bᵒˡᵈ)
 
     λᵒˡᵈ = λ
