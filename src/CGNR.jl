@@ -1,16 +1,14 @@
 export cgnr, CGNR
 
-mutable struct CGNR{matT,opT,vecT,T, R, PR} <: AbstractKrylovSolver
+mutable struct CGNR{matT,opT,vecT,T,R,PR} <: AbstractKrylovSolver
   A::matT
-  AᴴA::opT
+  AHA::opT
   L2::R
   constr::PR
   cl::vecT
-  rl::vecT
-  zl::vecT
+  x₀::vecT
   pl::vecT
   vl::vecT
-  xl::vecT
   αl::T
   βl::T
   ζl::T
@@ -22,49 +20,50 @@ mutable struct CGNR{matT,opT,vecT,T, R, PR} <: AbstractKrylovSolver
 end
 
 """
-    CGNR(A, x; kargs...)
+    CGNR(A=, AHA=A' * A, reg = L2Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), weights = similar(AHA, 0), iterations = 10, relTol = eps(real(eltype(AHA))))
+    CGNR(AHA=,           reg = L2Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), weights = similar(AHA, 0), iterations = 10, relTol = eps(real(eltype(AHA))))
 
-creates an `CGNR` object for the system matrix `A`.
+creates an `CGNR` object for the forward operator `A` or normal operator `AHA`.
 
-# Arguments
-* `A`                               - system matrix
-* `x::vecT`                         - (optional) array with the same type and size as the solution
+# Required Keyword Arguments
+  * `A`                                                 - forward operator
+  OR
+  * `AHA`                                               - normal operator
 
-# Keywords
-* `reg`   - regularization term vector
-* `normalizeReg`         - regularization normalization scheme
-* `weights::vecT=eltype(A)[]` - weights for the data term
-* `AᴴA=A'*A`              - specialized normal operator, default is `A'*A`
-* `iterations::Int64=10`      - number of iterations
-* `relTol::Float64=eps()`         - rel tolerance for stopping criterion
+# Optional Keyword Arguments
+  * `AHA=A'*A`                                          - optional normal operator if `A` is supplied, default is `A'*A`
+  * `reg::AbstractParameterizedRegularization`          - regularization term; can also be a vector of regularization terms
+  * `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; default is no normalization
+  * `weights::AbstactVector`                            - weights for the data term; must be of same length and type as the data term
+  * `iterations::Int`                                   - maximum number of iterations
+  * `relTol::Real`                                      - tolerance for stopping criterion
 
 See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); reg::Vector{R} = [L2Regularization(zero(real(eltype(A))))]
-              , weights::vecT=similar(x,0)
-              , AᴴA::opT=nothing
-              , iterations::Int64=10
-              , relTol::Float64=eps()
-              , normalizeReg::AbstractRegularizationNormalization=NoNormalization()
-              , kargs...) where {opT,vecT<:AbstractVector,R<:AbstractRegularization}
-            
-  if AᴴA == nothing
-    AᴴA = A'*A
-  end
+function CGNR(
+              ; A = nothing
+              , AHA = A'*A
+              , reg = L2Regularization(zero(real(eltype(AHA))))
+              , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
+              , weights::AbstractVector = similar(AHA, 0)
+              , iterations::Int = 10
+              , relTol::Real = eps(real(eltype(AHA)))
+)
 
-  M, N = size(A)
-  T = eltype(A)
-  cl = similar(x,N)
-  rl = similar(x,M)     #residual vector
-  zl = similar(x,N)     #temporary vector
-  pl = similar(x,N)     #temporary vector
-  vl = similar(x,N)     #temporary vector
-  xl = similar(x,M)     #temporary vector
+  T = eltype(AHA)
+  rT = real(T)
+
+  x = Vector{T}(undef, size(AHA, 2))
+  cl = similar(x)
+  x₀ = similar(x)     #temporary vector
+  pl = similar(x)     #temporary vector
+  vl = similar(x)     #temporary vector
   αl = zero(T)        #temporary scalar
   βl = zero(T)        #temporary scalar
   ζl = zero(T)        #temporary scalar
 
   # Prepare regularization terms
+  reg = vec(reg)
   reg = normalize(CGNR, normalizeReg, reg, A, nothing)
   idx = findsink(L2Regularization, reg)
   if isnothing(idx)
@@ -84,75 +83,76 @@ function CGNR(A, x::vecT=zeros(eltype(A),size(A,2)); reg::Vector{R} = [L2Regular
   other = identity.(other)
 
 
-  return CGNR(A, AᴴA,
-             L2,other,cl,rl,zl,pl,vl,xl,αl,βl,ζl,
-             weights,iterations,relTol,0.0,normalizeReg)
+  return CGNR(A, AHA,
+    L2, other, cl, x₀, pl, vl, αl, βl, ζl,
+    weights, iterations, relTol, 0.0, normalizeReg)
 end
 
 """
-init!(solver::CGNR{vecT,T,Tsparse}, u::vecT
-              ; cl::vecT=similar(u,0)
-              , weights::vecT=solver.weights) where {vecT,T,Tsparse,matT}
+    init!(solver::CGNR{vecT,T,Tsparse}, b::vecT; startVector::vecT=similar(b,0)) where {vecT,T,Tsparse,matT}
 
 (re-) initializes the CGNR iterator
 """
-function init!(solver::CGNR, u::vecT
-              ; cl::vecT=similar(u,0)) where {vecT}
-  T = eltype(solver.A)
+function init!(solver::CGNR, b::vecT; startVector::vecT=similar(b, 0)) where {vecT}
+  solver.pl .= 0     #temporary vector
+  solver.vl .= 0     #temporary vector
+  solver.αl = 0     #temporary scalar
+  solver.βl = 0     #temporary scalar
+  solver.ζl = 0     #temporary scalar
 
-  if isempty(cl)
-    solver.cl[:] .= zero(T)
+  if isempty(startVector)
+    solver.cl .= 0
   else
-    solver.cl[:] .= cl
+    solver.A === nothing && error("providing a startVector requires solver.A to be defined")
+    solver.cl .= startVector
+    b .-= solver.A * solver.cl
   end
-  solver.rl[:] .= u - solver.A*solver.cl
-  solver.zl[:] .= zero(T)     #temporary vector
-  solver.pl[:] .= zero(T)     #temporary vector
-  solver.vl[:] .= zero(T)     #temporary vector
-  solver.xl[:] .= zero(T)     #temporary vector
-  solver.αl = zero(T)        #temporary scalar
-  solver.βl = zero(T)        #temporary scalar
-  solver.ζl = zero(T)        #temporary scalar
 
-  #zl = Aᶜ*rl, where ᶜ denotes complex conjugation
-  if !isempty(solver.weights)
-    solver.xl[:] .= solver.rl .* solver.weights
-    mul!(solver.zl, adjoint(solver.A), solver.xl)
+  #x₀ = Aᶜ*rl, where ᶜ denotes complex conjugation
+  if solver.A === nothing
+    !isempty(solver.weights) && @info "weights are being ignored if the backprojection is pre-computed"
+    solver.x₀ .= b
   else
-    mul!(solver.zl, adjoint(solver.A), solver.rl)
+    if isempty(solver.weights)
+      mul!(solver.x₀, adjoint(solver.A), b)
+    else
+      mul!(solver.x₀, adjoint(solver.A), b .* solver.weights)
+    end
   end
-  solver.z0 = norm(solver.zl)
-  copyto!(solver.pl,solver.zl)
+
+  solver.z0 = norm(solver.x₀)
+  copyto!(solver.pl, solver.x₀)
 
   # normalization of regularization parameters
-  solver.L2 = normalize(solver, solver.normalizeReg, solver.L2, solver.A, u)
+  solver.L2 = normalize(solver, solver.normalizeReg, solver.L2, solver.A, b)
 end
 
-"""
-    solve(solver::CGNR, u; kwargs...) where vecT
 
-solves Tikhonov-regularized inverse problem using CGNR.
+"""
+    solve(solver::CGNR, b; startVector=similar(b,0), solverInfo=nothing)
+
+solves an inverse problem using CGNR.
 
 # Arguments
-* `solver::CGNR                         - the solver containing both system matrix and regularizer
-* `u::vecT`                             - data vector
+* `solver::CGNR`                    - the solver containing both system matrix and regularizer
+* `b::AbstractVector`               - data vector if `A` was supplied to the solver, back-projection of the data otherwise
 
-# Keywords
-* `startVector::vecT=similar(u,0)`    - initial guess for the solution
-* `solverInfo=nothing`                - solverInfo for logging
+# Keyword Arguments
+* `startVector::AbstractVector`     - initial guess for the solution
+* `solverInfo::SolverInfo`          - solverInfo object
 
-when a `SolverInfo` objects is passed, the residuals `solver.zl` are stored in `solverInfo.convMeas`.
+when a `SolverInfo` object is passed, the residuals are stored in `solverInfo.convMeas`.
 """
-function solve(solver::CGNR, u;  startVector=similar(u,0), solverInfo=nothing, kargs...)
+function solve(solver::CGNR, b; startVector=similar(b, 0), solverInfo=nothing)
   # initialize solver parameters
-  init!(solver, u; cl=startVector)
+  init!(solver, b; startVector=startVector)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.cl,norm(solver.zl))
+  solverInfo != nothing && storeInfo(solverInfo, solver.cl, norm(solver.x₀))
 
   # perform CGNR iterations
   for (iteration, item) = enumerate(solver)
-    solverInfo != nothing && storeInfo(solverInfo,solver.cl,norm(solver.zl))
+    solverInfo != nothing && storeInfo(solverInfo, solver.cl, norm(solver.x₀))
   end
 
   return solver.cl
@@ -164,44 +164,44 @@ end
 
 performs one CGNR iteration.
 """
-function iterate(solver::CGNR, iteration::Int=0) 
-    if done(solver,iteration)
-      for r in solver.constr
-        prox!(r, solver.cl)
-      end
-      return nothing
+function iterate(solver::CGNR, iteration::Int=0)
+  if done(solver, iteration)
+    for r in solver.constr
+      prox!(r, solver.cl)
     end
+    return nothing
+  end
 
-    mul!(solver.vl, solver.AᴴA, solver.pl)
+  mul!(solver.vl, solver.AHA, solver.pl)
 
-    solver.ζl= norm(solver.zl)^2
-    normvl = dot(solver.pl,solver.vl) 
+  solver.ζl = norm(solver.x₀)^2
+  normvl = dot(solver.pl, solver.vl)
 
-    λ_ = λ(solver.L2)
-    if λ_ > 0
-      solver.αl = solver.ζl/(normvl+λ_*norm(solver.pl)^2)
-    else
-      solver.αl = solver.ζl/normvl
-    end
+  λ_ = λ(solver.L2)
+  if λ_ > 0
+    solver.αl = solver.ζl / (normvl + λ_ * norm(solver.pl)^2)
+  else
+    solver.αl = solver.ζl / normvl
+  end
 
-    BLAS.axpy!(solver.αl,solver.pl,solver.cl)
+  BLAS.axpy!(solver.αl, solver.pl, solver.cl)
 
-    BLAS.axpy!(-solver.αl,solver.vl,solver.zl)
-    
-    if λ_ > 0
-      BLAS.axpy!(-λ_*solver.αl,solver.pl,solver.zl)
-    end
+  BLAS.axpy!(-solver.αl, solver.vl, solver.x₀)
 
-    solver.βl = dot(solver.zl,solver.zl)/solver.ζl
+  if λ_ > 0
+    BLAS.axpy!(-λ_ * solver.αl, solver.pl, solver.x₀)
+  end
 
-    rmul!(solver.pl,solver.βl)
-    BLAS.axpy!(one(eltype(solver.A)),solver.zl,solver.pl)
-    return solver.zl, iteration+1
+  solver.βl = dot(solver.x₀, solver.x₀) / solver.ζl
+
+  rmul!(solver.pl, solver.βl)
+  BLAS.axpy!(one(eltype(solver.AHA)), solver.x₀, solver.pl)
+  return solver.x₀, iteration + 1
 end
 
 
 function converged(solver::CGNR)
-  return norm(solver.zl)/solver.z0 <= solver.relTol
+  return norm(solver.x₀) / solver.z0 <= solver.relTol
 end
 
-@inline done(solver::CGNR,iteration::Int) = converged(solver) || iteration>=min(solver.iterations, size(solver.A,2))
+@inline done(solver::CGNR, iteration::Int) = converged(solver) || iteration >= min(solver.iterations, size(solver.AHA, 2))

@@ -1,7 +1,7 @@
 export DaxConstrained
 
 mutable struct DaxConstrained{matT,T,Tsparse,U} <: AbstractRowActionSolver
-  S::matT
+  A::matT
   u::Vector{T}
   λ::Float64
   B::Tsparse
@@ -23,73 +23,75 @@ mutable struct DaxConstrained{matT,T,Tsparse,U} <: AbstractRowActionSolver
   iterationsInner::Int64
 end
 
-"""This function solves a constrained linear least squares problem using an algorithm proposed in [1].
-Returns an approximate solution to Sᵀx = u s.t. Bx>=0 (each component >=0).
+"""
+    DaxConstrained(A=, b=nothing, λ=0, weights=ones(real(eltype(A)),size(A,1)), sparseTrafo=nothing, iterations=3, iterationsInner=2)
+
+Creates an `DaxConstrained` object for the forward operator `A`. Solves a constrained linear least squares problem using an algorithm proposed in [1]. Returns an approximate solution to Sᵀx = u s.t. Bx>=0 (each component >=0).
 
 [1] Dax, A. On Row Relaxation Methods for Large Constrained Least Squares Problems. SIAM J. Sci. Comput. 14, 570–584 (1993).
 
-### Input Arguments
-* `S::AbstractMatrix{T}`: Problem Matrix S.
-* `u::Vector{T}`: Righthandside of the linear equation.
-* `B::AbstractMatrix{T}`: Transpose of Basistransformation if solving in dual space.
+# Required Keyword Arguments
+  * `A`                                                 - forward operator
 
-### Keywords
-
-* `iterations::Int`: Number of Iterations of outer dax scheme.
-* `iterationsInner::Int`: Number of Iterations of inner dax scheme.
-* `λ::Float64`: The regularization parameter ɛ>0 influences the speed of convergence but not the solution.
-* `weights::Bool`: Use weights in vector to weight equations. The larger the weight the more one 'trusts' a sqecific equation.
-* `B`: Basistransformation if solving in dual space.
+# Optional Keyword Arguments
+  * `b::AbstractMatrix`                                 - transpose of basistransformation if solving in dual space
+  * `λ::Real`                                           - regularization parameter ɛ>0 influences the speed of convergence but not the solution.
+  * `weights::AbstractVector`                           - the larger the weight the more one 'trusts' a sqecific equation
+  * `iterations::Int`                                   - maximum number of (outer) ADMM iterations
+  * `iterationsInner::Int`                              - max number of (inner) dax iterations
 
 See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-function DaxConstrained(S, b=nothing; λ::Real=0.0
-              , weights::Vector{R}=ones(Float64,size(S,1))
+function DaxConstrained(
+              ; A
+              , b=nothing
+              , λ::Real=0
+              , weights::AbstractVector=ones(real(eltype(A)),size(A,1))
               , sparseTrafo=nothing
               , iterations::Int=3
               , iterationsInner::Int=2
-              , kargs...) where R <: Real
+              )
 
-  T = typeof(real(S[1]))
-  M,N = size(S)
+  T = typeof(real(A[1]))
+  M,N = size(A)
 
   # setup denom and rowindex
-  denom, rowindex = initkaczmarzconstraineddax(S,λ,weights)
+  denom, rowindex = initkaczmarzconstraineddax(A,λ,weights)
 
   # set basis transformation
-  sparseTrafo==nothing ? B=Matrix{T}(I, size(S,2), size(S,2)) : B=sparseTrafo
+  sparseTrafo==nothing ? B=Matrix{T}(I, size(A,2), size(A,2)) : B=sparseTrafo
   Bnorm² = [rownorm²(B,i) for i=1:size(B,2)]
 
-  if b != nothing
+  if b !== nothing
     u = b
   else
-    u = zeros(eltype(S),M)
+    u = zeros(eltype(A),M)
   end
 
-  zk = zeros(eltype(S),N)
-  bk = zeros(eltype(S),M)
+  zk = zeros(eltype(A),N)
+  bk = zeros(eltype(A),M)
   bc = zeros(T,size(B,2))
-  xl = zeros(eltype(S),N)
-  yl = zeros(eltype(S),M)
-  yc = zeros(eltype(S),N)
-  δc = zeros(eltype(S),N)
-  εw = zeros(eltype(S),length(rowindex))
-  τl = zero(eltype(S))
-  αl = zero(eltype(S))
+  xl = zeros(eltype(A),N)
+  yl = zeros(eltype(A),M)
+  yc = zeros(eltype(A),N)
+  δc = zeros(eltype(A),N)
+  εw = zeros(eltype(A),length(rowindex))
+  τl = zero(eltype(A))
+  αl = zero(eltype(A))
 
-  return DaxConstrained(S,u,Float64(λ),B,Bnorm²,denom,rowindex,zk,bk,bc,xl,yl,yc,δc,εw,τl,αl
+  return DaxConstrained(A,u,Float64(λ),B,Bnorm²,denom,rowindex,zk,bk,bc,xl,yl,yc,δc,εw,τl,αl
                   ,T.(weights),iterations,iterationsInner)
 end
 
 function init!(solver::DaxConstrained
-              ; S::matT=solver.S
+              ; A::matT=solver.A
               , λ::Real=solver.λ
-              , u::Vector{T}=eltype(S)[]
-              , zk::Vector{T}=eltype(S)[]
+              , u::Vector{T}=eltype(A)[]
+              , zk::Vector{T}=eltype(A)[]
               , weights::Vector{Float64}=solver.weights) where {matT,T}
 
-  if S != solver.S
-    denom, rowindex = initkaczmarzconstraineddax(S,λ,weights)
+  if A != solver.A
+    denom, rowindex = initkaczmarzconstraineddax(A,λ,weights)
   end
   solver.λ = Float64(λ)
 
@@ -98,7 +100,7 @@ function init!(solver::DaxConstrained
 
   # start vector
   if isempty(zk)
-    solver.zk[:] .= zeros(T,size(S,2))
+    solver.zk[:] .= zeros(T,size(A,2))
   else
     solver.zk[:] .= x
   end
@@ -119,12 +121,12 @@ function init!(solver::DaxConstrained
 end
 
 function solve(solver::DaxConstrained, u::Vector{T}; λ::Real=solver.λ
-                , S::matT=solver.S, startVector::Vector{T}=eltype(S)[]
+                , A::matT=solver.A, startVector::Vector{T}=eltype(A)[]
                 , weights::Vector=solver.weights
                 , solverInfo=nothing, kargs...) where {T,matT}
 
   # initialize solver parameters
-  init!(solver; S=S, λ=λ, u=u, zk=startVector, weights=weights)
+  init!(solver; A=A, λ=λ, u=u, zk=startVector, weights=weights)
 
   # log solver information
   solverInfo != nothing && storeInfo(solverInfo,solver.zk,norm(solver.bk))
@@ -140,17 +142,17 @@ end
 function iterate(solver::DaxConstrained, iteration::Int=0)
   if done(solver,iteration) return nothing end
 
-  # bk = u-S'*zk
+  # bk = u-A'*zk
   copyto!(solver.bk,solver.u)
-  gemv!('N',-1.0,solver.S,solver.zk,1.0,solver.bk)
+  gemv!('N',-1.0,solver.A,solver.zk,1.0,solver.bk)
 
   # solve min ɛ|x|²+|W*A*x-W*bk|² with weightingmatrix W=diag(wᵢ), i=1,...,M.
   for l=1:solver.iterationsInner
     for i=1:length(solver.rowindex) # perform kaczmarz for all rows, which receive an update.
       j = solver.rowindex[i]
-      solver.τl = dot_with_matrix_row(solver.S,solver.xl,j)
+      solver.τl = dot_with_matrix_row(solver.A,solver.xl,j)
       solver.αl = solver.denom[i]*(solver.bk[j]-solver.τl-solver.ɛw[i]*solver.yl[j])
-      kaczmarz_update!(solver.S,solver.xl,j,solver.αl)
+      kaczmarz_update!(solver.A,solver.xl,j,solver.αl)
       solver.yl[j] += solver.αl*solver.ɛw[i]
     end
 
@@ -200,13 +202,13 @@ end
 
 """This function saves the denominators to compute αl in denom and the rowindices,
   which lead to an update of cl in rowindex."""
-function initkaczmarzconstraineddax(S::AbstractMatrix,ɛ::Number,weights::Vector)
-  length(weights)==size(S,1) ? nothing : error("number of weights must equal number of equations")
+function initkaczmarzconstraineddax(A::AbstractMatrix,ɛ::Number,weights::Vector)
+  length(weights)==size(A,1) ? nothing : error("number of weights must equal number of equations")
   denom = Float64[]
   rowindex = Int64[]
 
-  for i=1:size(S,1)
-    s² = rownorm²(S,i)*weights[i]^2
+  for i=1:size(A,1)
+    s² = rownorm²(A,i)*weights[i]^2
     if s²>0
       push!(denom,weights[i]^2/(s²+ɛ))
       push!(rowindex,i)
@@ -219,14 +221,14 @@ end
 This function saves the denominators to compute αl in denom and the rowindices,
 which lead to an update of cl in rowindex.
 """
-function initkaczmarzconstraineddaxfft(S::AbstractMatrix,ɛ::Number,weights::Vector)
-  length(weights)==size(S,1) ? nothing : error("number of weights must equal number of equations")
+function initkaczmarzconstraineddaxfft(A::AbstractMatrix,ɛ::Number,weights::Vector)
+  length(weights)==size(A,1) ? nothing : error("number of weights must equal number of equations")
   denom = Float64[]
   rowindex = Int64[]
 
-  for i=1:2:size(S,1)
-    s²a = (rownorm²(S,i)+rownorm²(S,i+1))*weights[i]^2
-    s²b = (rownorm²(S,i)+rownorm²(S,i+1))*weights[i+1]^2
+  for i=1:2:size(A,1)
+    s²a = (rownorm²(A,i)+rownorm²(A,i+1))*weights[i]^2
+    s²b = (rownorm²(A,i)+rownorm²(A,i+1))*weights[i+1]^2
     if s²a>0 && s²b>0
       push!(denom,weights[i]^2/(s²a+ɛ))
       push!(denom,weights[i+1]^2/(s²b+ɛ))

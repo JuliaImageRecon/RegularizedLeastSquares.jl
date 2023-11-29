@@ -1,9 +1,9 @@
 export PrimalDualSolver
 
-mutable struct PrimalDualSolver{T,S} <: AbstractPrimalDualSolver
-    S::Matrix{T}
+mutable struct PrimalDualSolver{T,A} <: AbstractPrimalDualSolver
+    A::Matrix{T}
     reg::Vector{<:AbstractRegularization}
-    gradientOp::S
+    gradientOp::A
     u::Vector{T}
     c::Vector{T}
     cO::Vector{T}
@@ -20,25 +20,36 @@ mutable struct PrimalDualSolver{T,S} <: AbstractPrimalDualSolver
     normalizeReg::AbstractRegularizationNormalization
 end
 
-function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = L1Regularization(λ)
+"""
+    PrimalDualSolver(A=, λ = 1e-4, reg = L1Regularization(λ), gradientOp = nothing, enforceReal=false, enforcePositive=false, iterations=10, σ=1, τ=1, ϵ=1e-10, PrimalDualGap=1, shape=(size(A,2),1), normalizeReg = NoNormalization())
+
+creates a `FISTA` object for the forward operator `A` or normal operator `AHA`.
+
+# Required Keyword Arguments
+* `A`                                                 - forward operator
+
+# Optional Keyword Arguments
+* TODO
+
+See also [`createLinearSolver`](@ref), [`solve`](@ref).
+"""
+# TODO: replace keywords with ASCII symbols
+function PrimalDualSolver(
+                         ; A::Matrix{T}
+                         , λ = 1e-4
+                         , reg = L1Regularization(λ)
                          , gradientOp = nothing
                          , enforceReal::Bool=false
                          , enforcePositive::Bool=false
                          , iterations::Int64=10
-                         , σ=1.0
-                         , τ=1.0
+                         , σ=1
+                         , τ=1
                          , ϵ=1e-10
-                         , PrimalDualGap=1.0
-                         , shape::NTuple{2,Int64}=(0,0)
+                         , PrimalDualGap=1
+                         , shape::NTuple{2,Int64}=(size(A,2),1)
                          , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
-                         , kargs...) where T
-  M,N = size(S)
-
-  if shape == (0,0)
-    shape = (Int(sqrt(N)),Int(sqrt(N))) # This guessing works only in special cases
-  else
-    shape = shape
-  end
+                         ) where T
+  M,N = size(A)
 
   if (reg isa Vector && reg[1] isa L1Regularization) || reg isa L1Regularization
     gradientOp = opEye(T,N) #UniformScaling(one(T))
@@ -46,25 +57,20 @@ function PrimalDualSolver(S::Matrix{T}; b=nothing, λ=1e-4, reg = L1Regularizati
     gradientOp = gradientOperator(T,shape)
   end
 
-  if b != nothing
-    u = b
-  else
-    u = zeros(T,M)
-  end
-
-  c = zeros(T,N)
+  u  = zeros(T,M)
+  c  = zeros(T,N)
   cO = zeros(T,N)
   y1 = zeros(T,M)
   y2 = zeros(T,size(gradientOp*c,1))
 
   # normalization parameters
-  reg = normalize(PrimalDualSolver, normalizeReg, vec(reg), S, nothing)
+  reg = normalize(PrimalDualSolver, normalizeReg, vec(reg), A, nothing)
 
-  return PrimalDualSolver(S,vec(reg),gradientOp,u,c,cO,y1,y2,T(σ),T(τ),T(ϵ),T(PrimalDualGap),enforceReal,enforcePositive,iterations,shape,
+  return PrimalDualSolver(A,vec(reg),gradientOp,u,c,cO,y1,y2,T(σ),T(τ),T(ϵ),T(PrimalDualGap),enforceReal,enforcePositive,iterations,shape,
   normalizeReg)
 end
 
-function init!(solver::PrimalDualSolver; S::Matrix{T}=solver.S, u::Vector{T}=T[], c::Vector{T}=T[],
+function init!(solver::PrimalDualSolver; A::Matrix{T}=solver.A, u::Vector{T}=T[], c::Vector{T}=T[],
     PrimalDualGap::T=solver.PrimalDualGap) where {T}
 
   solver.u[:] .= u
@@ -80,21 +86,21 @@ function init!(solver::PrimalDualSolver; S::Matrix{T}=solver.S, u::Vector{T}=T[]
   solver.y1[:] .= zero(T)
   solver.y2[:] .= zero(T)
 
-  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, S, u)
+  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, A, u)
 end
 
-function solve(solver::PrimalDualSolver, u::Vector{T}; S::Matrix{T}=solver.S, startVector::Vector{T}=eltype(S)[]
+function solve(solver::PrimalDualSolver, u::Vector{T}; A::Matrix{T}=solver.A, startVector::Vector{T}=eltype(A)[]
               , solverInfo=nothing, PrimalDualGap::T=solver.PrimalDualGap, kargs...) where {T}
 
   # initialize solver parameters
-  init!(solver; S=S, u=u, c=startVector, PrimalDualGap=solver.PrimalDualGap)
+  init!(solver; A=A, u=u, c=startVector, PrimalDualGap=solver.PrimalDualGap)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.c,solver.cO,solver.y1,solver.y2)
+  solverInfo !== nothing && storeInfo(solverInfo,solver.c,solver.cO,solver.y1,solver.y2)
 
   # perform the iterations
   for item in solver
-    solverInfo != nothing && storeInfo(solverInfo,solver.c,solver.cO,solver.y1,solver.y2)
+    solverInfo !== nothing && storeInfo(solverInfo,solver.c,solver.cO,solver.y1,solver.y2)
   end
 
   return solver.c
@@ -105,7 +111,7 @@ function iterate(solver::PrimalDualSolver, iteration::Int=0)
 
   # updating dual variables
   for i=1:length(solver.reg)
-      solver.y1 .= (solver.y1 + solver.σ*(solver.S*solver.c - solver.u))./(1+solver.σ)
+      solver.y1 .= (solver.y1 + solver.σ*(solver.A*solver.c - solver.u))./(1+solver.σ)
       if solver.reg[1] isa L1Regularization
           solver.y2 .= ProxL1Conj(solver.y2 + solver.σ*solver.gradientOp*solver.c, solver.reg[1].λ, solver.shape)
       elseif solver.reg[1] isa TVRegularization
@@ -115,14 +121,14 @@ function iterate(solver::PrimalDualSolver, iteration::Int=0)
 
   # updating primal variable
   for i=1:length(solver.reg)
-      solver.c += - solver.τ*(adjoint(solver.S)*solver.y1 + adjoint(solver.gradientOp)*solver.y2)
+      solver.c += - solver.τ*(adjoint(solver.A)*solver.y1 + adjoint(solver.gradientOp)*solver.y2)
   end
 
   applyConstraints(solver.c, nothing, solver.enforceReal, solver.enforcePositive) # todo remove constraints
 
   # updating convergence measure
   for i=1:length(solver.reg) # todo how to handle projection reg
-    solver.PrimalDualGap = abs((1/2)*norm(solver.S*solver.c-solver.u)^2 + solver.reg[1].λ*norm(solver.c,1) + (1/2)*norm(solver.y1,2)^2 + dot(solver.y1,solver.u))
+    solver.PrimalDualGap = abs((1/2)*norm(solver.A*solver.c-solver.u)^2 + solver.reg[1].λ*norm(solver.c,1) + (1/2)*norm(solver.y1,2)^2 + dot(solver.y1,solver.u))
   end
 
   return solver.y1, iteration+1
