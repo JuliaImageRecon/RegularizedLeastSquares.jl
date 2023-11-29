@@ -3,15 +3,48 @@ export PseudoInverse, DirectSolver
 
 ### Direct Solver ###
 
-mutable struct DirectSolver # <: AbstractDirectSolver
-  A
-  params
+mutable struct DirectSolver{matT, R, PR}  <: AbstractDirectSolver
+  A::matT
+  l2::R
+  normalizeReg::AbstractRegularizationNormalization
+  proj::Vector{PR}
 end
 
-DirectSolver(A; kargs...) = DirectSolver(A,kargs)
+function DirectSolver(A; reg::Vector{<:AbstractRegularization} = [L2Regularization(zero(real(eltype(A))))], normalizeReg::AbstractRegularizationNormalization = NoNormalization(), kargs...)
+  reg = normalize(DirectSolver, normalizeReg, reg, A, nothing)
+  idx = findsink(L2Regularization, reg)
+  if isnothing(idx)
+    L2 = L2Regularization(zero(T))
+  else
+    L2 = reg[idx]
+    deleteat!(reg, idx)
+  end
 
-function solve(solver::DirectSolver, u::Vector)
-  return directSolver(solver.A, u; solver.params... )
+  indices = findsinks(AbstractProjectionRegularization, reg)
+  other = AbstractRegularization[reg[i] for i in indices]
+  deleteat!(reg, indices)
+  if length(reg) == 1
+    push!(other, reg[1])
+  elseif length(reg) > 1
+    error("PseudoInverse does not allow for more than one L2 regularization term, found $(length(reg))")
+  end
+  other = identity.(other)
+
+  return DirectSolver(A, L2, normalizeReg, other)
+end
+
+function solve(solver::DirectSolver, b::Vector)
+  solver.l2 = normalize(solver, solver.normalizeReg, solver.l2, solver.A, b)
+
+  A = solver.A
+  λ_ = λ(solver.l2)
+  lufact = lu(Matrix(A'*A + λ_*opEye(size(A,2),size(A,2))))
+  x = \(lufact,A' * b)
+
+  for p in solver.proj
+    prox!(p, x)
+  end
+  return x
 end
 
 #type for Gauß elimination
