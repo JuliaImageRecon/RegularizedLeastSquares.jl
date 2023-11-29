@@ -107,7 +107,7 @@ end
 """
     isapplicable(solverType::Type{<:AbstractLinearSolver}, A, x, reg)
 
-return `true` if a `solver` of type `solverType` is applicable to system matrix `A`, data `x` and regularization terms `reg`. 
+return `true` if a `solver` of type `solverType` is applicable to system matrix `A`, data `x` and regularization terms `reg`.
 """
 isapplicable(::Type{T}, A, x, reg) where T <: AbstractLinearSolver = isapplicable(T, A, x) && isapplicable(T, reg)
 
@@ -121,22 +121,17 @@ See also [`isapplicable`](@ref), [`linearSolverList`](@ref).
 applicableSolverList(args...) = filter(solver -> isapplicable(solver, args...), linearSolverListReal())
 
 """
-    createLinearSolver(solver::AbstractLinearSolver, A; log::Bool=false, kargs...)
+    createLinearSolver(solver::AbstractLinearSolver, A; kargs...)
 
 This method creates a solver. The supported solvers are methods typically used for solving
 regularized linear systems. All solvers return an approximate solution to Ax = b.
 
 TODO: give a hint what solvers are available
 """
-function createLinearSolver(solver::Type{T}, A; log::Bool=false, kargs...) where {T<:AbstractLinearSolver}
-  log ? solverInfo = SolverInfo(;kargs...) : solverInfo=nothing
-  return solver(A; kargs...)
+function createLinearSolver(solver::Type{T}, A; kargs...) where {T<:AbstractLinearSolver}
+  return solver(A=A; kargs...)
 end
 
-function createLinearSolver(solver::Type{T}, A, x; log::Bool=false, kargs...) where {T<:AbstractLinearSolver}
-  log ? solverInfo = SolverInfo(;kargs...) : solverInfo=nothing
-  return solver(A, x; kargs...)
-end
-
+@deprecate createLinearSolver(solver, A, x; kargs...) createLinearSolver(solver, A; kargs...)
 
 end
