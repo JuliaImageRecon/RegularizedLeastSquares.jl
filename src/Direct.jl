@@ -1,4 +1,4 @@
-export pseudoinverse, directSolver, PseudoInverse, DirectSolver
+export PseudoInverse, DirectSolver
 
 
 ### Direct Solver ###
@@ -46,60 +46,61 @@ end
 
 ###  Pseudoinverse ###
 
-mutable struct PseudoInverse # <: AbstractDirectSolver
-  A
-  params
+mutable struct PseudoInverse{R, PR}  <: AbstractDirectSolver
+  svd::SVD
+  l2::R
+  normalizeReg::AbstractRegularizationNormalization
+  proj::Vector{PR}
 end
 
-PseudoInverse(A; kargs...) = PseudoInverse(A,kargs)
-
-function solve(solver::PseudoInverse, u::Vector)
-  return pseudoinverse(solver.A, u; solver.params... )
-end
-
-
-##### SVD #######
-
-#type for singular value decomposition
-"""
-This Type stores the singular value decomposition of a Matrix
-"""
-mutable struct SVD
-  U::Matrix
-  Σ::Vector
-  V::Matrix
-  D::Vector
-end
-
-SVD(U::Matrix,Σ::Vector,V::Matrix) = SVD(U, Σ, V, 1. / Σ)
-
-Base.size(A::SVD) = (size(A.U,1),size(A.V,1))
-Base.length(A::SVD) = prod(size(A))
-
-"""
-This function can be used to calculate the singular values used for
-Tikhonov regularization.
-"""
-function setlambda(A::SVD, λ::Real)
-  for i=1:length(A.Σ)
-    σi = A.Σ[i]
-    A.D[i] = σi/(σi*σi+λ*λ)
+function PseudoInverse(A; reg::Vector{<:AbstractRegularization} = [L2Regularization(zero(real(eltype(A))))], normalizeReg::AbstractRegularizationNormalization = NoNormalization(), kargs...)
+  reg = normalize(PseudoInverse, normalizeReg, reg, A, nothing)
+  idx = findsink(L2Regularization, reg)
+  if isnothing(idx)
+    L2 = L2Regularization(zero(T))
+  else
+    L2 = reg[idx]
+    deleteat!(reg, idx)
   end
-  return nothing
+
+  indices = findsinks(AbstractProjectionRegularization, reg)
+  other = AbstractRegularization[reg[i] for i in indices]
+  deleteat!(reg, indices)
+  if length(reg) == 1
+    push!(other, reg[1])
+  elseif length(reg) > 1
+    error("PseudoInverse does not allow for more than one L2 regularization term, found $(length(reg))")
+  end
+  other = identity.(other)
+
+  return PseudoInverse(A, L2, normalizeReg, other)
+end
+function PseudoInverse(A::AbstractMatrix, l2, norm, proj)
+  u, s, v = svd(A)
+  temp = SVD(u, s, v)
+  return PseudoInverse(temp, l2, norm, proj)
 end
 
-# Inversion by using the pseudoinverse of the SVD
-"""
-This solves the Tikhonov regularized problem using the singular value decomposition.
-"""
-function pseudoinverse(A::SVD, b::Vector{T}; enforceReal=false,
-                       enforcePositive=false, kargs...) where T
-  tmp = BLAS.gemv('C', one(T), A.U, b)
-  tmp .*=  A.D
-  c = BLAS.gemv('N', one(T), A.V, tmp)
+function solve(solver::PseudoInverse, b::Vector{T}) where T
+  solver.l2 = normalize(solver, solver.normalizeReg, solver.l2, solver.svd, b)
 
-  enforceReal && enfReal!(c)
-  enforcePositive && enfPos!(c)
+  # Inversion by using the pseudoinverse of the SVD
+  svd = solver.svd
 
+  # Calculate singular values used for tikhonov regularization
+  D = [1/s for s in svd.S]
+  λ_ = λ(solver.l2)
+  for i=1:length(D)
+    σi = svd.S[i]
+    D[i] = σi/(σi*σi+λ_*λ_)
+  end
+
+  tmp = BLAS.gemv('C', one(T), svd.U, b)
+  tmp .*=  D
+  c = BLAS.gemv('N', one(T), svd.Vt, tmp)
+
+  for p in solver.proj
+    prox!(p, c)
+  end
   return c
 end
