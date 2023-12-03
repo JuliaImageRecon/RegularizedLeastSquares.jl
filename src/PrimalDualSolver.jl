@@ -21,11 +21,11 @@ mutable struct PrimalDualSolver{T,A} <: AbstractPrimalDualSolver
 end
 
 """
-    PrimalDualSolver(A=, λ = 1e-4, reg = L1Regularization(λ), gradientOp = nothing, enforceReal=false, enforcePositive=false, iterations=10, σ=1, τ=1, ϵ=1e-10, PrimalDualGap=1, shape=(size(A,2),1), normalizeReg = NoNormalization())
+    PrimalDualSolver(A; λ = 1e-4, reg = L1Regularization(λ), gradientOp = nothing, enforceReal=false, enforcePositive=false, iterations=10, σ=1, τ=1, ϵ=1e-10, PrimalDualGap=1, shape=(size(A,2),1), normalizeReg = NoNormalization())
 
-creates a `FISTA` object for the forward operator `A` or normal operator `AHA`.
+creates a `PrimalDualSolver` object for the forward operator `A`.
 
-# Required Keyword Arguments
+# Required Arguments
 * `A`                                                 - forward operator
 
 # Optional Keyword Arguments
@@ -34,21 +34,20 @@ creates a `FISTA` object for the forward operator `A` or normal operator `AHA`.
 See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
 # TODO: replace keywords with ASCII symbols
-function PrimalDualSolver(
-                         ; A::Matrix{T}
-                         , λ = 1e-4
-                         , reg = L1Regularization(λ)
-                         , gradientOp = nothing
-                         , enforceReal::Bool=false
-                         , enforcePositive::Bool=false
-                         , iterations::Int64=10
-                         , σ=1
-                         , τ=1
-                         , ϵ=1e-10
-                         , PrimalDualGap=1
-                         , shape::NTuple{2,Int64}=(size(A,2),1)
-                         , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
-                         ) where T
+function PrimalDualSolver(A::Matrix{T}
+                        ; λ = 1e-4
+                        , reg = L1Regularization(λ)
+                        , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
+                        , gradientOp = nothing
+                        , enforceReal::Bool=false
+                        , enforcePositive::Bool=false
+                        , iterations::Int64=10
+                        , σ=1
+                        , τ=1
+                        , ϵ=1e-10
+                        , PrimalDualGap=1
+                        , shape::NTuple{2,Int64}=(size(A,2),1)
+                        ) where T
   M,N = size(A)
 
   if (reg isa Vector && reg[1] isa L1Regularization) || reg isa L1Regularization
@@ -70,30 +69,22 @@ function PrimalDualSolver(
   normalizeReg)
 end
 
-function init!(solver::PrimalDualSolver; A::Matrix{T}=solver.A, u::Vector{T}=T[], c::Vector{T}=T[],
-    PrimalDualGap::T=solver.PrimalDualGap) where {T}
-
-  solver.u[:] .= u
+function init!(solver::PrimalDualSolver, b; x0 = 0)
+  solver.u .= b
   solver.PrimalDualGap = (1/2)*(norm(solver.u,2))^2
 
-  # start vector
-  if isempty(c)
-    solver.c[:] .= zero(T)
-  else
-    solver.c[:] .= c
-  end
-  solver.cO[:] .= zero(T)
-  solver.y1[:] .= zero(T)
-  solver.y2[:] .= zero(T)
+  solver.c  .= x0
+  solver.cO .= 0
+  solver.y1 .= 0
+  solver.y2 .= 0
 
-  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, A, u)
+  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
 end
 
-function solve(solver::PrimalDualSolver, u::Vector{T}; A::Matrix{T}=solver.A, startVector::Vector{T}=eltype(A)[]
-              , solverInfo=nothing, PrimalDualGap::T=solver.PrimalDualGap, kargs...) where {T}
+function solve(solver::PrimalDualSolver, b; x0=0, solverInfo=nothing)
 
   # initialize solver parameters
-  init!(solver; A=A, u=u, c=startVector, PrimalDualGap=solver.PrimalDualGap)
+  init!(solver, b; x0)
 
   # log solver information
   solverInfo !== nothing && storeInfo(solverInfo,solver.c,solver.cO,solver.y1,solver.y2)
@@ -106,7 +97,7 @@ function solve(solver::PrimalDualSolver, u::Vector{T}; A::Matrix{T}=solver.A, st
   return solver.c
 end
 
-function iterate(solver::PrimalDualSolver, iteration::Int=0)
+function iterate(solver::PrimalDualSolver, iteration=0)
   if done(solver,iteration) return nothing end
 
   # updating dual variables
@@ -142,7 +133,6 @@ function converged(solver::PrimalDualSolver)
 
   return true
 end
-
 @inline done(solver::PrimalDualSolver,iteration::Int) = converged(solver) || iteration>=solver.iterations
 
 # Proximal map of the convex conjugate of the l1 norm

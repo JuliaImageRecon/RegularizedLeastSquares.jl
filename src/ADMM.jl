@@ -1,4 +1,4 @@
-export admm, ADMM
+export ADMM
 
 mutable struct ADMM{rT,matT,opT,R,ropT,P,vecT,rvecT,preconT} <: AbstractPrimalDualSolver where {vecT <: AbstractVector{Union{rT, Complex{rT}}}, rvecT <: AbstractVector{rT}}
   # operators and regularization
@@ -40,21 +40,21 @@ mutable struct ADMM{rT,matT,opT,R,ropT,P,vecT,rvecT,preconT} <: AbstractPrimalDu
 end
 
 """
-    ADMM(A=, AHA = A'*A, precon = Identity(), reg = [L1Regularization(zero(eltype(AHA)))], normalizeReg = NoNormalization(), rho = 1e-1, vary_rho = :none, iterations = 50, iterationsInner = 10, absTol = eps(real(eltype(AHA))), relTol = eps(real(eltype(AHA))), tolInner = 1e-5, verbose = false)
-    ADMM(AHA=,           precon = Identity(), reg = [L1Regularization(zero(eltype(AHA)))], normalizeReg = NoNormalization(), rho = 1e-1, vary_rho = :none, iterations = 50, iterationsInner = 10, absTol = eps(real(eltype(AHA))), relTol = eps(real(eltype(AHA))), tolInner = 1e-5, verbose = false)
+    ADMM(A; AHA = A'*A, precon = Identity(), reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 1e-1, vary_rho = :none, iterations = 50, iterationsInner = 10, absTol = eps(real(eltype(AHA))), relTol = eps(real(eltype(AHA))), tolInner = 1e-5, verbose = false)
+    ADMM( ; AHA = ,     precon = Identity(), reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 1e-1, vary_rho = :none, iterations = 50, iterationsInner = 10, absTol = eps(real(eltype(AHA))), relTol = eps(real(eltype(AHA))), tolInner = 1e-5, verbose = false)
 
 creates an `ADMM` object for the forward operator `A` or normal operator `AHA`.
 
-# Required Keyword Arguments
+# Required Arguments
   * `A`                                                 - forward operator
   OR
-  * `AHA`                                               - normal operator
+  * `AHA`                                               - normal operator (as a keyword argument)
 
 # Optional Keyword Arguments
-  * `AHA=A'*A`                                          - optional normal operator if `A` is supplied, default is `A'*A`
+  * `AHA`                                               - normal operator is optional if `A` is supplied
   * `precon`                                            - preconditionner for the internal CG algorithm
   * `reg::AbstractParameterizedRegularization`          - regularization term; can also be a vector of regularization terms
-  * `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; default is no normalization
+  * `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; options are `NoNormalization()`, `MeasurementBasedNormalization()`, `SystemMatrixBasedNormalization()`
   * `rho::Real`                                         - penalty of the augmented Lagrangian
   * `vary_rho::Symbol`                                  - vary rho to balance primal and dual feasibility; options `:none`, `:balance`, `:PnP`
   * `iterations::Int`                                   - maximum number of (outer) ADMM iterations
@@ -66,21 +66,22 @@ creates an `ADMM` object for the forward operator `A` or normal operator `AHA`.
 
 See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-function ADMM(
-              ; A = nothing
-              , AHA = A'*A
-              , precon = Identity()
-              , reg = L1Regularization(zero(eltype(AHA)))
-              , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
-              , rho = 1e-1
-              , vary_rho::Symbol = :none
-              , iterations::Int = 50
-              , iterationsInner::Int = 10
-              , absTol::Real = eps(real(eltype(AHA)))
-              , relTol::Real = eps(real(eltype(AHA)))
-              , tolInner::Real = 1e-5
-              , verbose = false
-              )
+ADMM(; AHA = A'*A, precon = Identity(), reg = L1Regularization(zero(eltype(AHA))), normalizeReg::AbstractRegularizationNormalization = NoNormalization(), rho = 1e-1, vary_rho::Symbol = :none, iterations::Int = 50, iterationsInner::Int = 10, absTol::Real = eps(real(eltype(AHA))), relTol::Real = eps(real(eltype(AHA))), tolInner::Real = 1e-5, verbose = false) = ADMM(nothing; AHA, precon, reg, normalizeReg, rho, vary_rho, iterations, iterationsInner, absTol, relTol, tolInner, verbose)
+
+function ADMM(A
+            ; AHA = A'*A
+            , precon = Identity()
+            , reg = L1Regularization(zero(eltype(AHA)))
+            , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
+            , rho = 1e-1
+            , vary_rho::Symbol = :none
+            , iterations::Int = 50
+            , iterationsInner::Int = 10
+            , absTol::Real = eps(real(eltype(AHA)))
+            , relTol::Real = eps(real(eltype(AHA)))
+            , tolInner::Real = 1e-5
+            , verbose = false
+            )
   # TODO: The constructor is not type stable
 
   T  = eltype(AHA)
@@ -146,14 +147,8 @@ end
 
 (re-) initializes the ADMM iterator
 """
-function init!(solver::ADMM{rT,matT,opT,R,ropT,P,vecT,rvecT,preconT}, b::vecT; x::vecT=similar(b,0)) where {rT,matT,opT,R,ropT,P,vecT,rvecT,preconT}
-
-  # start vector
-  if isempty(x)
-    solver.x .= 0
- else
-    solver.x[:] .= x
- end
+function init!(solver::ADMM, b::AbstractVector{T}; x0=0) where T
+  solver.x .= x0
 
   # primal and dual variables
   for i=1:length(solver.reg)
@@ -196,9 +191,9 @@ solves an inverse problem using ADMM.
 
 when a `SolverInfo` object is passed, the residuals are stored in `solverInfo.convMeas`.
 """
-function solve(solver::ADMM, b; startVector=similar(b,0), solverInfo=nothing)
+function solve(solver::ADMM, b; x0=0, solverInfo=nothing)
   # initialize solver parameters
-  init!(solver, b; x=startVector)
+  init!(solver, b; x0)
 
   # log solver information
   solverInfo !== nothing && storeInfo(solverInfo,solver.x,solver.rᵏ...,solver.sᵏ...)
@@ -216,7 +211,7 @@ end
 
 performs one ADMM iteration.
 """
-function iterate(solver::ADMM, iteration::Integer=0)
+function iterate(solver::ADMM, iteration=0)
   if done(solver, iteration) return nothing end
   solver.verbose && println("Outer ADMM Iteration #$iteration")
 

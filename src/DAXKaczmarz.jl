@@ -21,14 +21,14 @@ mutable struct DaxKaczmarz{matT,T,U} <: AbstractRowActionSolver
 end
 
 """
-    DaxKaczmarz(A=, b=nothing, λ=0, weights=ones(real(eltype(A)),size(A,1)), sparseTrafo=nothing, enforceReal=false, enforcePositive=false, iterations=3, iterationsInner=2)
+    DaxKaczmarz(A; b=nothing, λ=0, weights=ones(real(eltype(A)),size(A,1)), sparseTrafo=nothing, enforceReal=false, enforcePositive=false, iterations=3, iterationsInner=2)
 
 Creates an `DaxKaczmarz` object for the forward operator `A`. Solves a unconstrained linear least squares problem using an algorithm proposed in [1] combined with a randomized version of kaczmarz [2]. Returns an approximate solution to the linear least squares problem Sᵀx = u.
 
 [1] Dax, A. On Row Relaxation Methods for Large Constrained Least Squares Problems. SIAM J. Sci. Comput. 14, 570–584 (1993).
 [2] Strohmer, T. & Vershynin, R. A Randomized Kaczmarz Algorithm with Exponential Convergence. J. Fourier Anal. Appl. 15, 262–278 (2008).
 
-# Required Keyword Arguments
+# Required Arguments
   * `A`                                                 - forward operator
 
 # Optional Keyword Arguments
@@ -42,17 +42,16 @@ Creates an `DaxKaczmarz` object for the forward operator `A`. Solves a unconstra
 
 See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-function DaxKaczmarz(
-              ; A
-              , b=nothing
-              , λ::Real=0
-              , weights::Vector=ones(real(eltype(A)),size(A,1))
-              , sparseTrafo=nothing
-              , enforceReal::Bool=false
-              , enforcePositive::Bool=false
-              , iterations::Int=3
-              , iterationsInner::Int=2
-              )
+function DaxKaczmarz(A
+                   ; b=nothing
+                   , λ::Real=0
+                   , weights::Vector=ones(real(eltype(A)),size(A,1))
+                   , sparseTrafo=nothing
+                   , enforceReal::Bool=false
+                   , enforcePositive::Bool=false
+                   , iterations::Int=3
+                   , iterationsInner::Int=2
+                   )
 
   # setup denom and rowindex
   sumrowweights, denom, rowindex = initkaczmarzdax(A,λ,weights)

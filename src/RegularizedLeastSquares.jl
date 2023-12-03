@@ -129,7 +129,7 @@ regularized linear systems. All solvers return an approximate solution to Ax = b
 TODO: give a hint what solvers are available
 """
 function createLinearSolver(solver::Type{T}, A; kargs...) where {T<:AbstractLinearSolver}
-  return solver(A=A; kargs...)
+  return solver(A; kargs...)
 end
 
 @deprecate createLinearSolver(solver, A, x; kargs...) createLinearSolver(solver, A; kargs...)

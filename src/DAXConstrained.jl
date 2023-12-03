@@ -24,13 +24,13 @@ mutable struct DaxConstrained{matT,T,Tsparse,U} <: AbstractRowActionSolver
 end
 
 """
-    DaxConstrained(A=, b=nothing, λ=0, weights=ones(real(eltype(A)),size(A,1)), sparseTrafo=nothing, iterations=3, iterationsInner=2)
+    DaxConstrained(A; b=nothing, λ=0, weights=ones(real(eltype(A)),size(A,1)), sparseTrafo=nothing, iterations=3, iterationsInner=2)
 
 Creates an `DaxConstrained` object for the forward operator `A`. Solves a constrained linear least squares problem using an algorithm proposed in [1]. Returns an approximate solution to Sᵀx = u s.t. Bx>=0 (each component >=0).
 
 [1] Dax, A. On Row Relaxation Methods for Large Constrained Least Squares Problems. SIAM J. Sci. Comput. 14, 570–584 (1993).
 
-# Required Keyword Arguments
+# Required Arguments
   * `A`                                                 - forward operator
 
 # Optional Keyword Arguments
@@ -42,15 +42,14 @@ Creates an `DaxConstrained` object for the forward operator `A`. Solves a constr
 
 See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-function DaxConstrained(
-              ; A
-              , b=nothing
-              , λ::Real=0
-              , weights::AbstractVector=ones(real(eltype(A)),size(A,1))
-              , sparseTrafo=nothing
-              , iterations::Int=3
-              , iterationsInner::Int=2
-              )
+function DaxConstrained(A
+                      ; b=nothing
+                      , λ::Real=0
+                      , weights::AbstractVector=ones(real(eltype(A)),size(A,1))
+                      , sparseTrafo=nothing
+                      , iterations::Int=3
+                      , iterationsInner::Int=2
+                      )
 
   T = typeof(real(A[1]))
   M,N = size(A)

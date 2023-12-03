@@ -26,16 +26,16 @@ mutable struct Kaczmarz{matT,T,U,R,RN} <: AbstractRowActionSolver
 end
 
 """
-    Kaczmarz(A=, reg = L2Regularization(0), normalizeReg = NoNormalization(), weights=nothing, randomized=false, subMatrixFraction=0.15, shuffleRows=false, seed=1234, iterations=10, regMatrix=nothing)
+    Kaczmarz(A; reg = L2Regularization(0), normalizeReg = NoNormalization(), weights=nothing, randomized=false, subMatrixFraction=0.15, shuffleRows=false, seed=1234, iterations=10, regMatrix=nothing)
 
 Creates a Kaczmarz object for the forward operator `A`.
 
-  # Required Keyword Arguments
+# Required Arguments
   * `A`                                                 - forward operator
 
-  # Optional Keyword Arguments
+# Optional Keyword Arguments
   * `reg::AbstractParameterizedRegularization`          - regularization term
-  * `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; default is no normalization
+  * `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; options are `NoNormalization()`, `MeasurementBasedNormalization()`, `SystemMatrixBasedNormalization()`
   * `weights::AbstractVector`                             - weights for the data term
   * `randomized::Bool`                                    - randomize Kacmarz algorithm
   * `subMatrixFraction::Real`                             - fraction of rows used in randomized Kaczmarz algorithm
@@ -45,18 +45,17 @@ Creates a Kaczmarz object for the forward operator `A`.
 
 See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-function Kaczmarz(
-              ; A
-              , reg = L2Regularization(0)
-              , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
-              , weights = nothing
-              , randomized::Bool = false
-              , subMatrixFraction::Real = 0.15
-              , shuffleRows::Bool = false
-              , seed::Int = 1234
-              , iterations::Int = 10
-              , regMatrix = nothing
-              )
+function Kaczmarz(A
+                ; reg = L2Regularization(0)
+                , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
+                , weights = nothing
+                , randomized::Bool = false
+                , subMatrixFraction::Real = 0.15
+                , shuffleRows::Bool = false
+                , seed::Int = 1234
+                , iterations::Int = 10
+                , regMatrix = nothing
+                )
 
   T = real(eltype(A))
 
