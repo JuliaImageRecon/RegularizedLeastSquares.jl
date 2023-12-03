@@ -121,16 +121,12 @@ function solve(solver::PseudoInverse, b::AbstractVector{T}) where T
   svd = solver.svd
 
   # Calculate singular values used for tikhonov regularization
-  D = [1/s for s in svd.S]
   λ_ = λ(solver.l2)
-  for i=1:length(D)
-    σi = svd.S[i]
-    D[i] = σi/(σi*σi+λ_*λ_)
-  end
+  D = svd.S ./ (svd.S.*svd.S .+ λ_ )
 
-  tmp = BLAS.gemv('C', one(T), svd.U, b)
-  tmp .*=  D
-  c = BLAS.gemv('N', one(T), svd.Vt, tmp)
+  tmp = adjoint(svd.U)*b
+  tmp .*= D
+  c = svd.Vt * tmp
 
   for p in solver.proj
     prox!(p, c)
