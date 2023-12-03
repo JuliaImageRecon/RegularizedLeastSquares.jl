@@ -31,8 +31,8 @@ mutable struct POGM{rT<:Real,vecT<:Union{AbstractVector{rT},AbstractVector{Compl
 end
 
 """
-    POGM(A =, AHA = A'*A, reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false)
-    POGM(AHA = ,          reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false)
+    POGM(A; AHA = A'*A, reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false)
+    POGM( ; AHA = ,     reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false)
 
 Creates a `POGM` object for the forward operator `A` or normal operator `AHA`. POGM has a 2x better worst-case bound than FISTA, but actual performance varies by application. It stores 3 extra intermediate variables the size of the image compared to FISTA. Only gradient restart scheme is implemented for now.
 
@@ -47,15 +47,15 @@ Creates a `POGM` object for the forward operator `A` or normal operator `AHA`. P
     Journal of Optimization Theory and Applications, 178(1), 240–263.
     [https://doi.org/10.1007/s10957-018-1287-4]
 
-  # Required Keyword Arguments
+  # Required Arguments
   * `A`                                                 - forward operator
   OR
-  * `AHA`                                               - normal operator
+  * `AHA`                                               - normal operator (as a keyword argument)
 
   # Optional Keyword Arguments
-  * `AHA=A'*A`                                          - optional normal operator if `A` is supplied, default is `A'*A`
+  * `AHA`                                               - normal operator is optional if `A` is supplied
   * `reg::AbstractParameterizedRegularization`          - regularization term
-  * `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; default is no normalization
+  * `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; options are `NoNormalization()`, `MeasurementBasedNormalization()`, `SystemMatrixBasedNormalization()`
   * `rho::Real`                                         - step size for gradient step
   * `normalize_rho::Bool`                               - normalize step size by the largest eigenvalue of `AHA`
   * `theta::Real`                                       - parameter for predictor-corrector step
@@ -67,19 +67,21 @@ Creates a `POGM` object for the forward operator `A` or normal operator `AHA`. P
 
 See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-function POGM(
-              ; A = nothing
-              , AHA = A'*A
-              , reg = L1Regularization(zero(eltype(AHA)))
-              , normalizeReg = NoNormalization()
-              , rho = 0.95
-              , normalize_rho = true
-              , theta = 1
-              , sigma_fac = 1
-              , relTol = eps(real(eltype(AHA)))
-              , iterations = 50
-              , restart = :none
-              , verbose = false
+
+POGM(; AHA = A'*A, reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false) = POGM(nothing; AHA, reg, normalizeReg, rho, normalize_rho, theta, sigma_fac, relTol, iterations, restart, verbose)
+
+function POGM(A
+            ; AHA = A'*A
+            , reg = L1Regularization(zero(eltype(AHA)))
+            , normalizeReg = NoNormalization()
+            , rho = 0.95
+            , normalize_rho = true
+            , theta = 1
+            , sigma_fac = 1
+            , relTol = eps(real(eltype(AHA)))
+            , iterations = 50
+            , restart = :none
+            , verbose = false
 )
 
   T = eltype(AHA)

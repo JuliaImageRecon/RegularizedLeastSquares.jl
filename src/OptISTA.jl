@@ -27,23 +27,23 @@ mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVec
 end
 
 """
-    OptISTA(A=, AHA=A'*A, reg=L1Regularization(zero(eltype(AHA))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, verbose = false)
-    OptISTA(AHA=,         reg=L1Regularization(zero(eltype(AHA))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, verbose = false)
+    OptISTA(A; AHA=A'*A, reg=L1Regularization(zero(eltype(AHA))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, verbose = false)
+    OptISTA( ; AHA=,     reg=L1Regularization(zero(eltype(AHA))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, verbose = false)
 
 creates a `OptISTA` object for the forward operator `A` or normal operator `AHA`. OptISTA has a 2x better worst-case bound than FISTA, but actual performance varies by application. It stores 2 extra intermediate variables the size of the image compared to FISTA.
 
 Reference:
 - Uijeong Jang, Shuvomoy Das Gupta, Ernest K. Ryu, "Computer-Assisted Design of Accelerated Composite Optimization Methods: OptISTA," arXiv:2305.15704, 2023, [https://arxiv.org/abs/2305.15704]
 
-# Required Keyword Arguments
+# Required Arguments
 * `A`                                                 - forward operator
 OR
-* `AHA`                                               - normal operator
+* `AHA`                                               - normal operator (as a keyword argument)
 
 # Optional Keyword Arguments
-* `AHA=A'*A`                                          - optional normal operator if `A` is supplied, default is `A'*A`
+* `AHA`                                               - normal operator is optional if `A` is supplied
 * `reg::AbstractParameterizedRegularization`          - regularization term
-* `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; default is no normalization
+* `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; options are `NoNormalization()`, `MeasurementBasedNormalization()`, `SystemMatrixBasedNormalization()`
 * `rho::Real`                                         - step size for gradient step
 * `normalize_rho::Bool`                               - normalize step size by the largest eigenvalue of `AHA`
 * `theta::Real`                                       - parameter for predictor-corrector step
@@ -53,18 +53,19 @@ OR
 
 See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-function OptISTA(
-              ; A = nothing
-              , AHA = A'*A
-              , reg = L1Regularization(zero(eltype(AHA)))
-              , normalizeReg = NoNormalization()
-              , rho = 0.95
-              , normalize_rho = true
-              , theta = 1
-              , relTol = eps(real(eltype(AHA)))
-              , iterations = 50
-              , verbose = false
-              )
+OptISTA(; AHA, reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, relTol = eps(real(eltype(AHA))), iterations = 50, verbose = false) = OptISTA(nothing; AHA, reg, normalizeReg, rho, normalize_rho, theta, relTol, iterations, verbose)
+
+function OptISTA(A
+               ; AHA = A'*A
+               , reg = L1Regularization(zero(eltype(AHA)))
+               , normalizeReg = NoNormalization()
+               , rho = 0.95
+               , normalize_rho = true
+               , theta = 1
+               , relTol = eps(real(eltype(AHA)))
+               , iterations = 50
+               , verbose = false
+               )
 
   T  = eltype(AHA)
   rT = real(T)

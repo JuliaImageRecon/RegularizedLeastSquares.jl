@@ -41,19 +41,17 @@ mutable struct SplitBregman{matT,vecT,opT,R,ropT,P,rvecT,preconT,rT} <: Abstract
 end
 
 """
-  SplitBregman(A=, AHA = A'*A, reg = L1Regularization(zero(eltype(A))), normalizeReg = NoNormalization(), precon = Identity(), rho = 1.e2absTol = eps(), relTol = eps(), tolInner = 1.e-6, iterations::Int = 10, iterationsInner::Int = 50, iterationsCG::Int = 10)
+    SplitBregman(A; AHA = A'*A, reg = L1Regularization(zero(eltype(A))), normalizeReg = NoNormalization(), precon = Identity(), rho = 1.e2absTol = eps(), relTol = eps(), tolInner = 1.e-6, iterations::Int = 10, iterationsInner::Int = 50, iterationsCG::Int = 10)
 
-Creates a `SplitBregman` object for the forward operator `A` or normal operator `AHA`.
+Creates a `SplitBregman` object for the forward operator `A`.
 
-  # Required Keyword Arguments
+# Required Arguments
   * `A`                                                 - forward operator
-  OR
-  * `AHA`                                               - normal operator
 
-  # Optional Keyword Arguments
-  * `AHA=A'*A`                                          - optional normal operator, default is `A'*A`
+# Optional Keyword Arguments
+  * `AHA`                                               - normal operator is optional if `A` is supplied
   * `reg::AbstractParameterizedRegularization`          - regularization term
-  * `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; default is no normalization
+  * `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; options are `NoNormalization()`, `MeasurementBasedNormalization()`, `SystemMatrixBasedNormalization()`
   * `precon`                                            - preconditionner for the internal CG algorithm
   * `rho::Real`                                         - weights for condition on regularized variables; can also be a vector for multiple regularization terms
   * `absTol::Float64`                                   - absolute tolerance for stopping criterion
@@ -65,9 +63,8 @@ Creates a `SplitBregman` object for the forward operator `A` or normal operator 
 
 See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-function SplitBregman(
-                    ; A
-                    , AHA = A'*A
+function SplitBregman(A
+                    ; AHA = A'*A
                     , reg = L1Regularization(zero(eltype(A)))
                     , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
                     , precon = Identity()

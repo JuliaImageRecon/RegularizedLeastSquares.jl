@@ -22,20 +22,21 @@ mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVecto
 end
 
 """
-    FISTA(A=, AHA=A'*A, reg=L1Regularization(zero(eltype(AHA))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, restart = :none, verbose = false)
-    FISTA(AHA=,         reg=L1Regularization(zero(eltype(AHA))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, restart = :none, verbose = false)
+    FISTA(A; AHA=A'*A, reg=L1Regularization(zero(eltype(AHA))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, restart = :none, verbose = false)
+    FISTA( ; AHA=,     reg=L1Regularization(zero(eltype(AHA))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, restart = :none, verbose = false)
 
 creates a `FISTA` object for the forward operator `A` or normal operator `AHA`.
 
-# Required Keyword Arguments
-* `A`                                                 - forward operator
-OR
-* `AHA`                                               - normal operator
+# Required Arguments
+  * `A`                                                 - forward operator
+  OR
+  * `AHA`                                               - normal operator (as a keyword argument)
 
 # Optional Keyword Arguments
-* `AHA=A'*A`                                          - optional normal operator if `A` is supplied, default is `A'*A`
-* `reg::AbstractParameterizedRegularization`          - regularization term
-* `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; default is no normalization
+* `AHA`                                               - normal operator is optional if `A` is supplied
+* `precon`                                            - preconditionner for the internal CG algorithm
+* `reg::AbstractParameterizedRegularization`          - regularization term; can also be a vector of regularization terms
+* `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; options are `NoNormalization()`, `MeasurementBasedNormalization()`, `SystemMatrixBasedNormalization()`
 * `rho::Real`                                         - step size for gradient step
 * `normalize_rho::Bool`                               - normalize step size by the largest eigenvalue of `AHA`
 * `theta::Real`                                       - parameter for predictor-corrector step
@@ -46,19 +47,20 @@ OR
 
 See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-function FISTA(
-               ; A = nothing
-               , AHA = A'*A
-               , reg = L1Regularization(zero(eltype(AHA)))
-               , normalizeReg = NoNormalization()
-               , rho = 0.95
-               , normalize_rho = true
-               , theta = 1
-               , relTol = eps(real(eltype(AHA)))
-               , iterations = 50
-               , restart = :none
-               , verbose = false
-               )
+FISTA(; AHA = A'*A, reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false) = FISTA(nothing; AHA, reg, normalizeReg, rho, normalize_rho, theta, relTol, iterations, restart, verbose)
+
+function FISTA(A
+             ; AHA = A'*A
+             , reg = L1Regularization(zero(eltype(AHA)))
+             , normalizeReg = NoNormalization()
+             , rho = 0.95
+             , normalize_rho = true
+             , theta = 1
+             , relTol = eps(real(eltype(AHA)))
+             , iterations = 50
+             , restart = :none
+             , verbose = false
+             )
 
   T  = eltype(AHA)
   rT = real(T)
