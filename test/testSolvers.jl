@@ -14,7 +14,7 @@ Random.seed!(12345)
             iterations = 200,
         )
         x_approx = solve(S, b)
-        @info "Testing solver $solver ...: $x  == $x_approx"
+        @info "Testing solver $solver: $x ≈ $x_approx"
         @test norm(x - x_approx) / norm(x) ≈ 0 atol = 0.1
     end
 end
@@ -74,7 +74,7 @@ end
                 restart = :gradient,
             )
             x_approx = solve(S, b)
-            @info "Testing solver $solver  w/ gradient restart: relative error = $(norm(x - x_approx) / norm(x))"
+            @info "Testing solver $solver w/ gradient restart: relative error = $(norm(x - x_approx) / norm(x))"
             @test x ≈ x_approx rtol = 0.1
         end
 
@@ -108,7 +108,7 @@ end
         verbose = false,
     )
     x_approx = solve(S, b)
-    @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
+    @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol = 0.1
 
     S = createLinearSolver(
@@ -122,7 +122,7 @@ end
         verbose = false,
     )
     x_approx = solve(S, b)
-    @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
+    @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol = 0.1
 
     # the PnP scheme only increases rho, hence we only test it with a small initial rho
@@ -137,7 +137,7 @@ end
         verbose = false,
     )
     x_approx = solve(S, b)
-    @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
+    @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol = 0.1
 
     ##
@@ -153,7 +153,7 @@ end
         normalizeReg = NoNormalization(),
     )
     x_approx = solve(S, b)
-    @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
+    @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol = 0.1
 
     reg = L1Regularization(reg.λ * length(b) / norm(b, 1))
@@ -167,7 +167,7 @@ end
         normalizeReg = MeasurementBasedNormalization(),
     )
     x_approx = solve(S, b)
-    @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
+    @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol = 0.1
 
     ##
@@ -182,6 +182,6 @@ end
         iterations = 1000,
     )
     x_approx = solve(S, bR)
-    @info "Testing solver $solver ...: relative error = $(norm(x - x_approx) / norm(x))"
+    @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol = 0.1
 end
