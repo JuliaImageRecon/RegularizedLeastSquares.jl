@@ -22,6 +22,28 @@ Random.seed!(12345)
     end
 end
 
+@testset "Real Linear Solver" begin
+  A = JLArray(rand(3, 2))
+  x = JLArray(rand(2))
+  b = A * x
+
+  solvers = linearSolverListReal()
+
+  for solver in solvers
+      solverInfo = SolverInfo(Float64)
+      S = createLinearSolver(
+          solver,
+          A,
+          iterations = 200,
+          solverInfo = solverInfo,
+          shape = (2, 1),
+      )
+      x_approx = solve(S, b)
+      @info "Testing solver $solver ...: $x  == $x_approx"
+      @test norm(x - x_approx) / norm(x) ≈ 0 atol = 0.1
+  end
+end
+
 @testset "Complex Linear Solver" begin
     A = rand(3, 2) + im * rand(3, 2)
     x = rand(2) + im * rand(2)
