@@ -33,7 +33,7 @@ function DirectSolver(A; reg::Vector{<:AbstractRegularization} = [L2Regularizati
   return DirectSolver(A, L2, normalizeReg, other)
 end
 
-function solve(solver::DirectSolver, b::Vector)
+function solve(solver::DirectSolver, b::AbstractVector)
   solver.l2 = normalize(solver, solver.normalizeReg, solver.l2, solver.A, b)
 
   A = solver.A
@@ -114,23 +114,19 @@ function PseudoInverse(A::AbstractMatrix, l2, norm, proj)
   return PseudoInverse(temp, l2, norm, proj)
 end
 
-function solve(solver::PseudoInverse, b::Vector{T}) where T
+function solve(solver::PseudoInverse, b::AbstractVector{T}) where T
   solver.l2 = normalize(solver, solver.normalizeReg, solver.l2, solver.svd, b)
 
   # Inversion by using the pseudoinverse of the SVD
   svd = solver.svd
 
   # Calculate singular values used for tikhonov regularization
-  D = [1/s for s in svd.S]
   λ_ = λ(solver.l2)
-  for i=1:length(D)
-    σi = svd.S[i]
-    D[i] = σi/(σi*σi+λ_*λ_)
-  end
+  D = svd.S ./ (svd.S.*svd.S .+ λ_ )
 
-  tmp = BLAS.gemv('C', one(T), svd.U, b)
-  tmp .*=  D
-  c = BLAS.gemv('N', one(T), svd.Vt, tmp)
+  tmp = adjoint(svd.U)*b
+  tmp .*= D
+  c = svd.Vt * tmp
 
   for p in solver.proj
     prox!(p, c)
