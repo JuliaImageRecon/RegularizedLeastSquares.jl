@@ -8,14 +8,10 @@ Random.seed!(12345)
     solvers = linearSolverListReal()
 
     for solver in solvers
-        S = createLinearSolver(
-            solver,
-            A,
-            iterations = 200,
-        )
+        S = createLinearSolver(solver, A, iterations = 200)
         x_approx = solve(S, b)
         @info "Testing solver $solver: $x ≈ $x_approx"
-        @test norm(x - x_approx) / norm(x) ≈ 0 atol = 0.1
+        @test x_approx ≈ x rtol = 0.1
     end
 end
 
@@ -29,8 +25,24 @@ end
     for solver in solvers
         S = createLinearSolver(solver, A, iterations = 100)
         x_approx = solve(S, b)
-        @info "Testing solver $solver ...: $x  == $x_approx"
-        @test norm(x - x_approx) / norm(x) ≈ 0 atol = 0.1
+        @info "Testing solver $solver: $x ≈ $x_approx"
+        @test x_approx ≈ x rtol = 0.1
+    end
+end
+
+@testset "Complex Linear Solver w/ AHA Interface" begin
+    A = rand(3, 2) + im * rand(3, 2)
+    x = rand(2) + im * rand(2)
+    AHA = A'*A
+    b = AHA * x
+
+    solvers = filter(s -> s ∉ [DirectSolver, PseudoInverse, DaxKaczmarz, DaxConstrained, Kaczmarz, PrimalDualSolver], linearSolverListReal())
+
+    for solver in solvers
+        S = createLinearSolver(solver, nothing; AHA=AHA, iterations = 100)
+        x_approx = solve(S, b)
+        @info "Testing solver $solver: $x ≈ $x_approx"
+        @test x_approx ≈ x rtol = 0.1
     end
 end
 
