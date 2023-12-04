@@ -219,14 +219,13 @@ function iterate(solver::ADMM, iteration=0)
   # <=> (A'A+ρ Σ_i Φi'Φi)*x = A'b+ρΣ_i Φi'(zi-ui)
   solver.β .= solver.β_y
   AHA = solver.AHA
-  for i=1:length(solver.reg)
-    solver.β[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*(solver.z[i].-solver.u[i])
-    AHA += solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
+  for i ∈ eachindex(solver.reg)
+    solver.β .+= solver.ρ[i] * adjoint(solver.regTrafo[i]) * (solver.z[i].-solver.u[i])
+    AHA       += solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
   end
   solver.verbose && println("conjugated gradients: ")
   solver.xᵒˡᵈ .= solver.x
-  cg!(solver.x, AHA, solver.β, Pl=solver.precon
-      , maxiter=solver.iterationsInner, reltol=solver.tolInner, statevars=solver.cgStateVars, verbose = solver.verbose)
+  cg!(solver.x, AHA, solver.β, Pl=solver.precon, maxiter=solver.iterationsInner, reltol=solver.tolInner, statevars=solver.cgStateVars, verbose = solver.verbose)
 
   for proj in solver.proj
     prox!(proj, solver.x)

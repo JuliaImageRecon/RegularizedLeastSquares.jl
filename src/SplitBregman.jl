@@ -11,7 +11,6 @@ mutable struct SplitBregman{matT,vecT,opT,R,ropT,P,rvecT,preconT,rT} <: Abstract
   AHA::opT
   β::vecT
   β_yj::vecT
-  y_j::vecT
   # fields for primal & dual variables
   u::vecT
   v::Vector{vecT}
@@ -63,6 +62,8 @@ Creates a `SplitBregman` object for the forward operator `A`.
 
 See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
+SplitBregman(; AHA = A'*A, reg = L1Regularization(zero(eltype(AHA))), normalizeReg::AbstractRegularizationNormalization = NoNormalization(), precon = Identity(), rho = 1.e2, absTol::Float64 = eps(), relTol::Float64 = eps(), tolInner::Float64 = 1.e-6, iterations::Int = 10, iterationsInner::Int = 50, iterationsCG::Int = 10) = SplitBregman(nothing; AHA, reg, normalizeReg, precon, rho, absTol, relTol, tolInner, iterations, iterationsInner, iterationsCG)
+
 function SplitBregman(A
                     ; AHA = A'*A
                     , reg = L1Regularization(zero(eltype(AHA)))
@@ -82,38 +83,32 @@ function SplitBregman(A
   x = zeros(T,size(AHA,2))
 
   reg = vec(reg)
+
+  regTrafo = []
   indices = findsinks(AbstractProjectionRegularization, reg)
   proj = [reg[i] for i in indices]
+  proj = identity.(proj)
   deleteat!(reg, indices)
-  regTrafo = []
   # Retrieve constraint trafos
   for r in reg
     trafoReg = findfirst(ConstraintTransformedRegularization, r)
     if isnothing(trafoReg)
-      push!(regTrafo, opEye(eltype(x),size(A,2)))
+      push!(regTrafo, opEye(T,size(AHA,2)))
     else
       push!(regTrafo, trafoReg)
     end
   end
-  proj = identity.(proj)
   regTrafo = identity.(regTrafo)
 
-  # make sure that rho is a vector
   if typeof(rho) <: Number
-    ρ_vec = [real(T).(rho) for _ ∈ eachindex(reg)]
+    rho = [rT.(rho) for _ ∈ eachindex(reg)]
   else
-    ρ_vec = real(T).(rho)
+    rho = rT.(rho)
   end
 
-  y = similar(x,size(A,1))
-
-  # operator and fields for the update of x
-  for i=1:length(vec(reg))
-    AHA += rho[i]*adjoint(regTrafo[i])*regTrafo[i]
-  end
-  β = similar(x)
+  y    = similar(x)
+  β    = similar(x)
   β_yj = similar(x)
-  y_j = similar(x, size(A,1))
 
   # fields for primal & dual variables
   u = similar(x)
@@ -137,7 +132,7 @@ function SplitBregman(A
   # normalization parameters
   reg = normalize(SplitBregman, normalizeReg, vec(reg), A, nothing)
 
-  return SplitBregman(A,reg,regTrafo,proj,y,AHA,β,β_yj,y_j,u,v,vᵒˡᵈ,b,precon,ρ_vec,iterations,iterationsInner,iterationsCG,statevars,rk,sk,eps_pri,eps_dt,rT(0),absTol,relTol,tolInner,iter_cnt,normalizeReg)
+  return SplitBregman(A,reg,regTrafo,proj,y,AHA,β,β_yj,u,v,vᵒˡᵈ,b,precon,rho,iterations,iterationsInner,iterationsCG,statevars,rk,sk,eps_pri,eps_dt,rT(0),absTol,relTol,tolInner,iter_cnt,normalizeReg)
 end
 
 """
@@ -148,8 +143,12 @@ end
 function init!(solver::SplitBregman, b; x0=0)
 
   # right hand side for the x-update
+  if solver.A === nothing
     solver.y .= b
-  mul!(solver.β_yj, adjoint(solver.A), b)
+  else
+    mul!(solver.y, adjoint(solver.A), b)
+  end
+  solver.β_yj .= solver.y
 
   # start vector
   if any(x0 .!= 0)
@@ -212,10 +211,12 @@ function iterate(solver::SplitBregman, iteration=1)
 
   # update u
   solver.β .= solver.β_yj
+  AHA = solver.AHA
   for i ∈ eachindex(solver.reg)
-    solver.β .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*(solver.v[i].-solver.b[i])
+    solver.β .+= solver.ρ[i] * adjoint(solver.regTrafo[i]) * (solver.v[i].-solver.b[i])
+    AHA       += solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
   end
-  cg!(solver.u,solver.AHA,solver.β,Pl=solver.precon,maxiter=solver.iterationsCG,reltol=solver.tolInner)
+  cg!(solver.u, AHA, solver.β, Pl = solver.precon, maxiter = solver.iterationsCG, reltol=solver.tolInner)
 
   for proj in solver.proj
     prox!(proj, solver.u)
@@ -251,9 +252,7 @@ function iterate(solver::SplitBregman, iteration=1)
   end
 
   if update_y(solver,iteration)
-    solver.y_j[:] .+= solver.y .- solver.A*solver.u
-    solver.β_yj[:] .= adjoint(solver.A) * solver.y_j
-    # solver.β_yj .+= solver.y .- solver.AHA * solver.u
+    solver.β_yj .+= solver.y .- solver.AHA * solver.u
     # reset v and b
     for i ∈ eachindex(solver.reg)
       solver.v[i] .= solver.regTrafo[i]*solver.u
