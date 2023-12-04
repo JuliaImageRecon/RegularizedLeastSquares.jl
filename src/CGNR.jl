@@ -5,7 +5,7 @@ mutable struct CGNR{matT,opT,vecT,T,R,PR} <: AbstractKrylovSolver
   AHA::opT
   L2::R
   constr::PR
-  cl::vecT
+  x::vecT
   x₀::vecT
   pl::vecT
   vl::vecT
@@ -54,7 +54,6 @@ function CGNR(A
   T = eltype(AHA)
 
   x = Vector{T}(undef, size(AHA, 2))
-  cl = similar(x)
   x₀ = similar(x)     #temporary vector
   pl = similar(x)     #temporary vector
   vl = similar(x)     #temporary vector
@@ -84,28 +83,27 @@ function CGNR(A
 
 
   return CGNR(A, AHA,
-    L2, other, cl, x₀, pl, vl, αl, βl, ζl,
-    weights, iterations, relTol, 0.0, normalizeReg)
+    L2, other, x, x₀, pl, vl, αl, βl, ζl, weights, iterations, relTol, 0.0, normalizeReg)
 end
 
 """
-    init!(solver::CGNR{vecT,T,Tsparse}, b::vecT; startVector::vecT=similar(b,0)) where {vecT,T,Tsparse,matT}
+    init!(solver::CGNR{vecT,T,Tsparse}, b::vecT; x0::vecT=similar(b,0)) where {vecT,T,Tsparse,matT}
 
 (re-) initializes the CGNR iterator
 """
-function init!(solver::CGNR, b::vecT; startVector::vecT=similar(b, 0)) where {vecT}
+function init!(solver::CGNR, b; x0=0)
   solver.pl .= 0     #temporary vector
   solver.vl .= 0     #temporary vector
   solver.αl = 0     #temporary scalar
   solver.βl = 0     #temporary scalar
   solver.ζl = 0     #temporary scalar
 
-  if isempty(startVector)
-    solver.cl .= 0
+  if all(x0 .== 0)
+    solver.x .= 0
   else
-    solver.A === nothing && error("providing a startVector requires solver.A to be defined")
-    solver.cl .= startVector
-    b .-= solver.A * solver.cl
+    solver.A === nothing && error("providing a x0 requires solver.A to be defined")
+    solver.x .= x0
+    mul!(b, solver.A, solver.x, -1, 1)
   end
 
   #x₀ = Aᶜ*rl, where ᶜ denotes complex conjugation
@@ -129,7 +127,7 @@ end
 
 
 """
-    solve(solver::CGNR, b; startVector=similar(b,0), solverInfo=nothing)
+    solve(solver::CGNR, b; x0=0, solverInfo=nothing)
 
 solves an inverse problem using CGNR.
 
@@ -138,24 +136,24 @@ solves an inverse problem using CGNR.
 * `b::AbstractVector`               - data vector if `A` was supplied to the solver, back-projection of the data otherwise
 
 # Keyword Arguments
-* `startVector::AbstractVector`     - initial guess for the solution
+* `x0::AbstractVector`              - initial guess for the solution
 * `solverInfo::SolverInfo`          - solverInfo object
 
 when a `SolverInfo` object is passed, the residuals are stored in `solverInfo.convMeas`.
 """
-function solve(solver::CGNR, b; startVector=similar(b, 0), solverInfo=nothing)
+function solve(solver::CGNR, b; x0=0, solverInfo=nothing)
   # initialize solver parameters
-  init!(solver, b; startVector=startVector)
+  init!(solver, b; x0=x0)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo, solver.cl, norm(solver.x₀))
+  solverInfo !== nothing && storeInfo(solverInfo, solver.x, norm(solver.x₀))
 
   # perform CGNR iterations
   for (iteration, item) = enumerate(solver)
-    solverInfo != nothing && storeInfo(solverInfo, solver.cl, norm(solver.x₀))
+    solverInfo !== nothing && storeInfo(solverInfo, solver.x, norm(solver.x₀))
   end
 
-  return solver.cl
+  return solver.x
 end
 
 
@@ -167,7 +165,7 @@ performs one CGNR iteration.
 function iterate(solver::CGNR, iteration::Int=0)
   if done(solver, iteration)
     for r in solver.constr
-      prox!(r, solver.cl)
+      prox!(r, solver.x)
     end
     return nothing
   end
@@ -184,7 +182,7 @@ function iterate(solver::CGNR, iteration::Int=0)
     solver.αl = solver.ζl / normvl
   end
 
-  BLAS.axpy!(solver.αl, solver.pl, solver.cl)
+  BLAS.axpy!(solver.αl, solver.pl, solver.x)
 
   BLAS.axpy!(-solver.αl, solver.vl, solver.x₀)
 

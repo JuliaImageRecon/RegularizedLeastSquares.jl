@@ -12,7 +12,7 @@ mutable struct SplitBregman{matT,vecT,opT,R,ropT,P,rvecT,preconT,rT} <: Abstract
   β::vecT
   β_yj::vecT
   # fields for primal & dual variables
-  u::vecT
+  x::vecT
   v::Vector{vecT}
   vᵒˡᵈ::Vector{vecT}
   b::Vector{vecT}
@@ -111,14 +111,13 @@ function SplitBregman(A
   β_yj = similar(x)
 
   # fields for primal & dual variables
-  u = similar(x)
   v    = [similar(x, size(AHA,2)) for i ∈ eachindex(vec(reg))]
   vᵒˡᵈ = [similar(v[i])           for i ∈ eachindex(vec(reg))]
   b    = [similar(v[i])           for i ∈ eachindex(vec(reg))]
 
   # statevariables for CG
   # we store them here to prevent CG from allocating new fields at each call
-  statevars = CGStateVariables(zero(u),similar(u),similar(u))
+  statevars = CGStateVariables(zero(x),similar(x),similar(x))
 
   # convergence parameters
   rk = similar(x, rT, length(reg))
@@ -132,7 +131,7 @@ function SplitBregman(A
   # normalization parameters
   reg = normalize(SplitBregman, normalizeReg, vec(reg), A, nothing)
 
-  return SplitBregman(A,reg,regTrafo,proj,y,AHA,β,β_yj,u,v,vᵒˡᵈ,b,precon,rho,iterations,iterationsInner,iterationsCG,statevars,rk,sk,eps_pri,eps_dt,rT(0),absTol,relTol,tolInner,iter_cnt,normalizeReg)
+  return SplitBregman(A,reg,regTrafo,proj,y,AHA,β,β_yj,x,v,vᵒˡᵈ,b,precon,rho,iterations,iterationsInner,iterationsCG,statevars,rk,sk,eps_pri,eps_dt,rT(0),absTol,relTol,tolInner,iter_cnt,normalizeReg)
 end
 
 """
@@ -152,14 +151,14 @@ function init!(solver::SplitBregman, b; x0=0)
 
   # start vector
   if any(x0 .!= 0)
-    solver.u .= x0
+    solver.x .= x0
   else
-    solver.u .= solver.β_yj
+    solver.x .= solver.β_yj
   end
 
   # primal and dual variables
   for i ∈ eachindex(solver.reg)
-    solver.v[i] .= solver.regTrafo[i]*solver.u
+    solver.v[i] .= solver.regTrafo[i]*solver.x
     solver.vᵒˡᵈ[i] .= 0
     solver.b[i] .= 0
   end
@@ -195,37 +194,43 @@ function solve(solver::SplitBregman, b; x0=0, solverInfo=nothing)
   init!(solver, b; x0=x0)
 
   # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.v,solver.rk...,norm(solver.sk))
+  solverInfo !== nothing && storeInfo(solverInfo,solver.v,solver.rk...,norm(solver.sk))
 
   # perform SplitBregman iterations
   for (iteration, item) = enumerate(solver)
-    solverInfo != nothing && storeInfo(solverInfo,solver.v,solver.rk...,norm(solver.sk))
+    solverInfo !== nothing && storeInfo(solverInfo,solver.v,solver.rk...,norm(solver.sk))
   end
 
-  return solver.u
+  return solver.x
 end
 
 
 function iterate(solver::SplitBregman, iteration=1)
   if done(solver, iteration) return nothing end
 
-  # update u
+  # update x
   solver.β .= solver.β_yj
   AHA = solver.AHA
   for i ∈ eachindex(solver.reg)
-    solver.β .+= solver.ρ[i] * adjoint(solver.regTrafo[i]) * (solver.v[i].-solver.b[i])
-    AHA       += solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
+    mul!(solver.β, adjoint(solver.regTrafo[i]), solver.v[i],  solver.ρ[i], 1)
+    mul!(solver.β, adjoint(solver.regTrafo[i]), solver.b[i], -solver.ρ[i], 1)
+    AHA += solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
   end
-  cg!(solver.u, AHA, solver.β, Pl = solver.precon, maxiter = solver.iterationsCG, reltol=solver.tolInner)
+  cg!(solver.x, AHA, solver.β, Pl = solver.precon, maxiter = solver.iterationsCG, reltol=solver.tolInner)
 
   for proj in solver.proj
-    prox!(proj, solver.u)
+    prox!(proj, solver.x)
   end
 
   #  proximal map for regularization terms
   for i ∈ eachindex(solver.reg)
-    copyto!(solver.vᵒˡᵈ[i], solver.v[i])
-    solver.v[i][:] .= solver.regTrafo[i]*solver.u .+ solver.b[i]
+    # swap v and vᵒˡᵈ w/o copying data
+    tmp = solver.vᵒˡᵈ[i]
+    solver.vᵒˡᵈ[i] = solver.v[i]
+    solver.v[i] = tmp
+
+    mul!(solver.v[i], solver.regTrafo[i], solver.x)
+    solver.v[i] .+= solver.b[i]
     if solver.ρ[i] != 0
       prox!(solver.reg[i], solver.v[i], λ(solver.reg[i])/solver.ρ[i])
     end
@@ -233,29 +238,33 @@ function iterate(solver::SplitBregman, iteration=1)
 
   # update b
   for i ∈ eachindex(solver.reg)
-    solver.b[i] .+= solver.regTrafo[i]*solver.u .- solver.v[i]
+    mul!(solver.b[i], solver.regTrafo[i], solver.x, 1, 1)
+    solver.b[i] .-= solver.v[i]
   end
 
   # update convergence criteria
   # primal residuals norms (one for each constraint)
   for i ∈ eachindex(solver.reg)
-    solver.rk[i] = norm(solver.regTrafo[i]*solver.u-solver.v[i])
-    solver.eps_pri[i] = solver.σᵃᵇˢ + solver.relTol*max( norm(solver.regTrafo[i]*solver.u), norm(solver.v[i]) )
+    solver.rk[i] = norm(solver.regTrafo[i] * solver.x - solver.v[i])
+    solver.eps_pri[i] = solver.σᵃᵇˢ + solver.relTol * max(norm(solver.regTrafo[i]*solver.x), norm(solver.v[i]))
   end
   # accumulated dual residual
   # effectively this corresponds to combining all constraints into one larger constraint.
   solver.sk .= 0
   solver.eps_dt .= 0
   for i ∈ eachindex(solver.reg)
-    solver.sk[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*(solver.v[i].-solver.vᵒˡᵈ[i])
-    solver.eps_dt[:] .+= solver.ρ[i]*adjoint(solver.regTrafo[i])*solver.b[i]
+    mul!(solver.sk,     adjoint(solver.regTrafo[i]), solver.v[i],     solver.ρ[i], 1)
+    mul!(solver.sk,     adjoint(solver.regTrafo[i]), solver.vᵒˡᵈ[i], -solver.ρ[i], 1)
+    mul!(solver.eps_dt, adjoint(solver.regTrafo[i]), solver.b[i],     solver.ρ[i], 1)
   end
 
-  if update_y(solver,iteration)
-    solver.β_yj .+= solver.y .- solver.AHA * solver.u
+
+  if converged(solver) || iteration >= solver.iterationsInner
+    solver.β_yj .+= solver.y
+    mul!(solver.β_yj, solver.AHA, solver.x, -1, 1)
     # reset v and b
     for i ∈ eachindex(solver.reg)
-      solver.v[i] .= solver.regTrafo[i]*solver.u
+      mul!(solver.v[i], solver.regTrafo[i], solver.x)
       solver.b[i] .= 0
     end
     solver.iter_cnt += 1
@@ -263,7 +272,6 @@ function iterate(solver::SplitBregman, iteration=1)
   end
 
   return solver.rk[1], iteration+1
-
 end
 
 function converged(solver::SplitBregman)
@@ -279,8 +287,3 @@ function converged(solver::SplitBregman)
 end
 
 @inline done(solver::SplitBregman,iteration::Int) = (iteration==1 && solver.iter_cnt>solver.iterations)
-
-function update_y(solver::SplitBregman,iteration::Int)
-  conv = converged(solver)
-  return conv || iteration >= solver.iterationsInner
-end
