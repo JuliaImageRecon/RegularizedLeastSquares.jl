@@ -25,7 +25,7 @@ end
 
 creates an `CGNR` object for the forward operator `A` or normal operator `AHA`.
 
-# Required Keyword Arguments
+# Required Arguments
   * `A`                                                 - forward operator
   OR
   * `AHA`                                               - normal operator (as a keyword argument)
@@ -87,21 +87,20 @@ function CGNR(A
 end
 
 """
-    init!(solver::CGNR{vecT,T,Tsparse}, b::vecT; x0::vecT=similar(b,0)) where {vecT,T,Tsparse,matT}
+    init!(solver::CGNR, b; x0 = 0)
 
 (re-) initializes the CGNR iterator
 """
-function init!(solver::CGNR, b; x0=0)
+function init!(solver::CGNR, b; x0 = 0)
   solver.pl .= 0     #temporary vector
   solver.vl .= 0     #temporary vector
-  solver.αl = 0     #temporary scalar
-  solver.βl = 0     #temporary scalar
-  solver.ζl = 0     #temporary scalar
-
+  solver.αl  = 0     #temporary scalar
+  solver.βl  = 0     #temporary scalar
+  solver.ζl  = 0     #temporary scalar
   if all(x0 .== 0)
     solver.x .= 0
   else
-    solver.A === nothing && error("providing a x0 requires solver.A to be defined")
+    solver.A === nothing && error("providing x0 requires solver.A to be defined")
     solver.x .= x0
     mul!(b, solver.A, solver.x, -1, 1)
   end
@@ -123,37 +122,6 @@ function init!(solver::CGNR, b; x0=0)
 
   # normalization of regularization parameters
   solver.L2 = normalize(solver, solver.normalizeReg, solver.L2, solver.A, b)
-end
-
-
-"""
-    solve(solver::CGNR, b; x0=0, solverInfo=nothing)
-
-solves an inverse problem using CGNR.
-
-# Arguments
-* `solver::CGNR`                    - the solver containing both system matrix and regularizer
-* `b::AbstractVector`               - data vector if `A` was supplied to the solver, back-projection of the data otherwise
-
-# Keyword Arguments
-* `x0::AbstractVector`              - initial guess for the solution
-* `solverInfo::SolverInfo`          - solverInfo object
-
-when a `SolverInfo` object is passed, the residuals are stored in `solverInfo.convMeas`.
-"""
-function solve(solver::CGNR, b; x0=0, solverInfo=nothing)
-  # initialize solver parameters
-  init!(solver, b; x0=x0)
-
-  # log solver information
-  solverInfo !== nothing && storeInfo(solverInfo, solver.x, norm(solver.x₀))
-
-  # perform CGNR iterations
-  for (iteration, item) = enumerate(solver)
-    solverInfo !== nothing && storeInfo(solverInfo, solver.x, norm(solver.x₀))
-  end
-
-  return solver.x
 end
 
 

@@ -110,12 +110,7 @@ end
 
 (re-) initializes the OptISTA iterator
 """
-function init!(solver::OptISTA{rT,vecT,matA,matAHA}, b::vecT
-              ; x::vecT=similar(b,0)
-              , θ=1
-              ) where {rT,vecT,matA,matAHA}
-
-
+function init!(solver::OptISTA, b; x0=0, θ=1)
   if solver.A === nothing
     solver.x₀ .= b
   else
@@ -124,11 +119,7 @@ function init!(solver::OptISTA{rT,vecT,matA,matAHA}, b::vecT
 
   solver.norm_x₀ = norm(solver.x₀)
 
-  if isempty(x)
-    solver.x .= 0
-  else
-    solver.x .= x
-  end
+  solver.x .= x0
   solver.y .= solver.x
   solver.z .= solver.x
   solver.zᵒˡᵈ .= solver.x
@@ -145,35 +136,6 @@ function init!(solver::OptISTA{rT,vecT,matA,matAHA}, b::vecT
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
 end
 
-"""
-    solve(solver::OptISTA, b::Vector)
-
-solves an inverse problem using OptISTA.
-
-# Arguments
-* `solver::OptISTA`                 - the solver containing both system matrix and regularizer
-* `b::vecT`                         - data vector
-
-# Keywords
-* `startVector::vecT=similar(b,0)`  - initial guess for the solution
-* `solverInfo=nothing`              - solverInfo object
-
-when a `SolverInfo` objects is passed, the residuals are stored in `solverInfo.convMeas`.
-"""
-function solve(solver::OptISTA, b; A=solver.A, startVector=similar(b,0), solverInfo=nothing, kargs...)
-  # initialize solver parameters
-  init!(solver, b; x=startVector)
-
-  # log solver information
-  solverInfo !== nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
-
-  # perform OptISTA iterations
-  for (iteration, item) = enumerate(solver)
-    solverInfo !== nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
-  end
-
-  return solver.x
-end
 
 """
   iterate(it::OptISTA, iteration::Int=0)

@@ -135,11 +135,11 @@ function SplitBregman(A
 end
 
 """
-  init!(solver::SplitBregman, b; x0=0)
+  init!(solver::SplitBregman, b; x0 = 0)
 
 (re-) initializes the SplitBregman iterator
 """
-function init!(solver::SplitBregman, b; x0=0)
+function init!(solver::SplitBregman, b; x0 = 0)
 
   # right hand side for the x-update
   if solver.A === nothing
@@ -171,37 +171,6 @@ function init!(solver::SplitBregman, b; x0=0)
 
   # reset interation counter
   solver.iter_cnt = 1
-end
-
-"""
-    solve(solver::SplitBregman, b; tartVector::vecT=similar(b,0), solverInfo=nothing)
-
-solves an inverse problem using the Split Bregman method.
-
-# Arguments
-* `solver::SplitBregman`              - the solver containing both system matrix and regularizer
-* `b::vecT`                           - data vector
-
-# Keywords
-* `x0::vecT=similar(b,0)`  - initial guess for the solution
-* `solverInfo=nothing`              - solverInfo for logging
-
-when a `SolverInfo` objects is passed, the primal residuals `solver.rk`
-and the dual residual `norm(solver.sk)` are stored in `solverInfo.convMeas`.
-"""
-function solve(solver::SplitBregman, b; x0=0, solverInfo=nothing)
-  # initialize solver parameters
-  init!(solver, b; x0=x0)
-
-  # log solver information
-  solverInfo !== nothing && storeInfo(solverInfo,solver.v,solver.rk...,norm(solver.sk))
-
-  # perform SplitBregman iterations
-  for (iteration, item) = enumerate(solver)
-    solverInfo !== nothing && storeInfo(solverInfo,solver.v,solver.rk...,norm(solver.sk))
-  end
-
-  return solver.x
 end
 
 

@@ -176,35 +176,6 @@ function init!(solver::ADMM, b::AbstractVector{T}; x0=0) where T
 
 end
 
-"""
-    solve(solver::ADMM, b; startVector=similar(b,0), solverInfo=nothing)
-
-solves an inverse problem using ADMM.
-
-# Arguments
-* `solver::ADMM`                    - the solver containing both system matrix and regularizer
-* `b::AbstractVector`               - data vector if `A` was supplied to the solver, back-projection of the data otherwise
-
-# Keyword Arguments
-* `startVector::AbstractVector`     - initial guess for the solution
-* `solverInfo::SolverInfo`          - solverInfo object
-
-when a `SolverInfo` object is passed, the residuals are stored in `solverInfo.convMeas`.
-"""
-function solve(solver::ADMM, b; x0=0, solverInfo=nothing)
-  # initialize solver parameters
-  init!(solver, b; x0)
-
-  # log solver information
-  solverInfo !== nothing && storeInfo(solverInfo,solver.x,solver.rᵏ...,solver.sᵏ...)
-
-  # perform ADMM iterations
-  for (iteration, item) = enumerate(solver)
-    solverInfo !== nothing && storeInfo(solverInfo,solver.x,solver.rᵏ...,solver.sᵏ...)
-  end
-
-  return solver.x
-end
 
 """
   iterate(it::ADMM, iteration::Int=0)

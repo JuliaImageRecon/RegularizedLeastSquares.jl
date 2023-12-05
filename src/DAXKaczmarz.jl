@@ -8,7 +8,7 @@ mutable struct DaxKaczmarz{matT,T,U} <: AbstractRowActionSolver
   denom::Vector{U}
   rowindex::Vector{Int64}
   sumrowweights::Vector{Float64}
-  zk::Vector{T}
+  x::Vector{T}
   bk::Vector{T}
   xl::Vector{T}
   yl::Vector{T}
@@ -63,7 +63,7 @@ function DaxKaczmarz(A
   else
     u = zeros(eltype(A),M)
   end
-  zk = zeros(eltype(A),N)
+  x  = zeros(eltype(A),N)
   bk = zeros(eltype(A),M)
   xl = zeros(eltype(A),N)
   yl = zeros(eltype(A),M)
@@ -80,73 +80,36 @@ function DaxKaczmarz(A
   if !isempty(reg) && !isnothing(sparseTrafo)
     reg = map(r -> TransformedRegularization(r, sparseTrafo), reg)
   end
-  return DaxKaczmarz(A,u,reg, Float64(λ), denom,rowindex,sumrowweights,zk,bk,xl,yl,εw,τl,αl
+  return DaxKaczmarz(A,u,reg, Float64(λ), denom,rowindex,sumrowweights,x,bk,xl,yl,εw,τl,αl
                   ,T.(weights) ,iterations,iterationsInner)
 end
 
-function init!(solver::DaxKaczmarz
-              ; A::matT=solver.A
-              , λ::Real=solver.λ
-              , u::Vector{T}=eltype(A)[]
-              , zk::Vector{T}=eltype(A)[]
-              , weights::Vector{Float64}=solver.weights) where {matT,T}
+function init!(solver::DaxKaczmarz, b; x0 = 0)
+  solver.u .= b
+  solver.x .= x0
 
-  if A != solver.A
-    solver.sumrowweights, solver.denom, solver.rowindex = initkaczmarzdax(A,solver.λ,solver.weights)
-  end
-  solver.λ = Float64(λ)
-
-  solver.u[:] .= u
-  solver.weights=weights
-
-  # start vector
-  if isempty(zk)
-    solver.zk[:] .= zeros(T,size(A,2))
-  else
-    solver.zk[:] .= x
-  end
-
-  solver.bk[:] .= zero(T)
-  solver.xl[:] .= zero(T)
-  solver.yl[:] .= zero(T)
-  solver.αl = zero(T)        #temporary scalar
-  solver.τl = zero(T)        #temporary scalar
+  solver.bk .= 0
+  solver.xl .= 0
+  solver.yl .= 0
+  solver.αl  = 0
+  solver.τl  = 0
 
   for i=1:length(solver.rowindex)
     j = solver.rowindex[i]
-    solver.ɛw[i] = sqrt(solver.λ)/weights[j]
+    solver.ɛw[i] = sqrt(solver.λ)/solver.weights[j]
   end
-end
-
-function solve(solver::DaxKaczmarz, u::Vector{T}; λ::Real=solver.λ
-                , A::matT=solver.A, startVector::Vector{T}=eltype(A)[]
-                , weights::Vector=solver.weights
-                , solverInfo=nothing, kargs...) where {T,matT}
-
-  # initialize solver parameters
-  init!(solver; A=A, λ=λ, u=u, zk=startVector, weights=weights)
-
-  # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.zk,norm(bk))
-
-  # perform CGNR iterations
-  for (iteration, item) = enumerate(solver)
-    solverInfo != nothing && storeInfo(solverInfo,solver.zk,norm(bk))
-  end
-
-  return solver.zk
 end
 
 function iterate(solver::DaxKaczmarz, iteration::Int=0)
   if done(solver,iteration)
     for r in solver.reg
-      prox!(r, solver.zk)
+      prox!(r, solver.x)
     end
     return nothing
   end
 
   copyto!(solver.bk, solver.u)
-  gemv!('N',-1.0,solver.A,solver.zk,1.0,solver.bk)
+  gemv!('N',-1.0,solver.A,solver.x,1.0,solver.bk)
 
   # solve min ɛ|x|²+|W*A*x-W*bk|² with weightingmatrix W=diag(wᵢ), i=1,...,M.
   for l=1:length(solver.rowindex)*solver.iterationsInner
@@ -158,7 +121,7 @@ function iterate(solver::DaxKaczmarz, iteration::Int=0)
     solver.yl[j] += solver.αl*solver.ɛw[i]
   end
 
-  BLAS.axpy!(1.0,solver.xl,solver.zk)  # zk += xl
+  BLAS.axpy!(1.0,solver.xl,solver.x)  # x += xl
   # reset xl and yl for next Kaczmarz run
   rmul!(solver.xl,0.0)
   rmul!(solver.yl,0.0)

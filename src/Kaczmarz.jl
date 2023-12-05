@@ -9,7 +9,7 @@ mutable struct Kaczmarz{matT,T,U,R,RN} <: AbstractRowActionSolver
   denom::Vector{U}
   rowindex::Vector{Int64}
   rowIndexCycle::Vector{Int64}
-  cl::Vector{T}
+  x::Vector{T}
   vl::Vector{T}
   εw::Vector{T}
   τl::T
@@ -60,7 +60,7 @@ function Kaczmarz(A
   T = real(eltype(A))
 
   # Apply Tikhonov regularization matrix
-  if regMatrix != nothing
+  if regMatrix !== nothing
     regMatrix = T.(regMatrix) # make sure regMatrix has the same element type as A
     A = transpose(1 ./ sqrt.(regMatrix)) .* A # apply Tikhonov regularization to system matrix
   end
@@ -99,107 +99,61 @@ function Kaczmarz(A
   subMatrixSize = round(Int, subMatrixFraction*M)
 
   u  = zeros(eltype(A),M)
-  cl = zeros(eltype(A),N)
+  x = zeros(eltype(A),N)
   vl = zeros(eltype(A),M)
   εw = zeros(eltype(A),length(rowindex))
   τl = zero(eltype(A))
   αl = zero(eltype(A))
 
-  return Kaczmarz(A, u, L2, other, denom, rowindex, rowIndexCycle, cl, vl, εw, τl, αl,
+  return Kaczmarz(A, u, L2, other, denom, rowindex, rowIndexCycle, x, vl, εw, τl, αl,
                   T.(w), randomized, subMatrixSize, probabilities, shuffleRows,
                   Int64(seed), iterations, regMatrix,
                   normalizeReg)
 end
 
 """
-  init!(solver::Kaczmarz
-              ; A::matT=solver.A
-              , u::Vector{T}=T[]
-              , cl::Vector{T}=T[]
-              , shuffleRows=solver.shuffleRows) where {T,matT}
+  init!(solver::Kaczmarz, b; x0 = 0)
 
 (re-) initializes the Kacmarz iterator
 """
-function init!(solver::Kaczmarz
-              ; A::matT=solver.A
-              , u::Vector{T}=T[]
-              , cl::Vector{T}=T[]
-              , weights::Vector{R}=solver.weights
-              , shuffleRows=solver.shuffleRows) where {T,matT,R}
-
-  solver.L2 = normalize(solver, solver.normalizeReg, solver.L2, A, u)
-  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, A, u)
+function init!(solver::Kaczmarz, b; x0 = 0)
+  solver.L2  = normalize(solver, solver.normalizeReg, solver.L2,  solver.A, b)
+  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
 
   λ_ = λ(solver.L2)
-  if A != solver.A
-    solver.denom, solver.rowindex = initkaczmarz(A, λ_, weights)
-    solver.rowIndexCycle = collect(1:length(solver.rowindex))
-  end
 
-  if shuffleRows || solver.randomized
+  if solver.shuffleRows || solver.randomized
     Random.seed!(solver.seed)
   end
-  if shuffleRows
+  if solver.shuffleRows
     shuffle!(solver.rowIndexCycle)
   end
-  solver.u[:] .= u
-  solver.weights=weights
+  solver.u .= b
 
   # start vector
-  if isempty(cl)
-    solver.cl[:] .= zero(T)
-  else
-    solver.cl[:] .= cl
-  end
-  solver.vl[:] .= zero(T)
+  solver.x .= x0
+  solver.vl .= 0
 
   for i=1:length(solver.rowindex)
     j = solver.rowindex[i]
-    solver.ɛw[i] = sqrt(λ_) / weights[j]
+    solver.ɛw[i] = sqrt(λ_) / solver.weights[j]
   end
-
 end
 
-"""
-    solve(solver::Kaczmarz, u::Vector; kwargs...)
+function solve(solver::Kaczmarz, b; x0 = 0, f_trace = (_, _) -> nothing)
+  init!(solver, b; x0)
+  f_trace(solver, 0)
 
-solves Tikhonov-regularized inverse problem using Kaczmarz algorithm.
-
-# Arguments
-* `solver::Kaczmarz  - the solver containing both system matrix and regularizer
-* `u::Vector`        - data vector
-
-# Keywords
-* `A::matT=solver.A`                  - operator for the data-term of the problem
-* `startVector::Vector{T}=T[]`        - initial guess for the solution
-* `weights::Vector{T}=solver.weights` - weights for the data term
-* `shuffleRows::Bool=false`           - randomize Kacmarz algorithm
-* `solverInfo=nothing`                - solverInfo for logging
-
-when a `SolverInfo` objects is passed, the residuals are stored in `solverInfo.convMeas`.
-"""
-function solve(solver::Kaczmarz, u::Vector{T};
-                A::matT=solver.A, startVector::Vector{T}=eltype(A)[]
-                , weights::Vector=solver.weights, shuffleRows::Bool=false
-                , solverInfo=nothing, kargs...) where {T,matT}
-
-  # initialize solver parameters
-  init!(solver; A=A, u=u, cl=startVector, weights=weights, shuffleRows=shuffleRows)
-
-  # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.cl,norm(solver.vl))
-
-  # perform Kaczmarz iterations
-  for item in solver
-    solverInfo != nothing && storeInfo(solverInfo,solver.cl,norm(solver.vl))
+  for (iteration, _) = enumerate(solver)
+    f_trace(solver, iteration)
   end
 
   # backtransformation of solution with Tikhonov matrix
-  if solver.regMatrix != nothing
-    solver.cl = solver.cl .* (1 ./ sqrt.(solver.regMatrix))
+  if solver.regMatrix !== nothing
+    solver.x .= solver.x .* (1 ./ sqrt.(solver.regMatrix))
   end
 
-  return solver.cl
+  return solver.x
 end
 
 function iterate(solver::Kaczmarz, iteration::Int=0)
@@ -213,14 +167,14 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
 
   for i in usedIndices
     j = solver.rowindex[i]
-    solver.τl = dot_with_matrix_row(solver.A,solver.cl,j)
+    solver.τl = dot_with_matrix_row(solver.A,solver.x,j)
     solver.αl = solver.denom[i]*(solver.u[j]-solver.τl-solver.ɛw[i]*solver.vl[j])
-    kaczmarz_update!(solver.A,solver.cl,j,solver.αl)
+    kaczmarz_update!(solver.A,solver.x,j,solver.αl)
     solver.vl[j] += solver.αl*solver.ɛw[i]
   end
 
   for r in solver.reg
-    prox!(r, solver.cl)
+    prox!(r, solver.x)
   end
 
   return solver.vl, iteration+1
@@ -252,7 +206,7 @@ end
     initkaczmarz(A::AbstractMatrix,λ,weights::Vector)
 
 This function saves the denominators to compute αl in denom and the rowindices,
-which lead to an update of cl in rowindex.
+which lead to an update of x in rowindex.
 """
 function initkaczmarz(A::AbstractMatrix,λ,weights::Vector)
   T = typeof(real(A[1]))

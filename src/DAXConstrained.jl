@@ -8,7 +8,7 @@ mutable struct DaxConstrained{matT,T,Tsparse,U} <: AbstractRowActionSolver
   Bnorm²::Vector{Float64}
   denom::Vector{U}
   rowindex::Vector{Int64}
-  zk::Vector{T}
+  x::Vector{T}
   bk::Vector{T}
   bc::Vector{T}
   xl::Vector{T}
@@ -51,99 +51,64 @@ function DaxConstrained(A
                       , iterationsInner::Int=2
                       )
 
-  T = typeof(real(A[1]))
+  T = eltype(A)
+  rT = real(eltype(A))
   M,N = size(A)
 
   # setup denom and rowindex
   denom, rowindex = initkaczmarzconstraineddax(A,λ,weights)
 
   # set basis transformation
-  sparseTrafo==nothing ? B=Matrix{T}(I, size(A,2), size(A,2)) : B=sparseTrafo
+  sparseTrafo === nothing ? B=Matrix{rT}(I, size(A,2), size(A,2)) : B=sparseTrafo
   Bnorm² = [rownorm²(B,i) for i=1:size(B,2)]
 
   if b !== nothing
     u = b
   else
-    u = zeros(eltype(A),M)
+    u = zeros(T,M)
   end
 
-  zk = zeros(eltype(A),N)
-  bk = zeros(eltype(A),M)
-  bc = zeros(T,size(B,2))
-  xl = zeros(eltype(A),N)
-  yl = zeros(eltype(A),M)
-  yc = zeros(eltype(A),N)
-  δc = zeros(eltype(A),N)
-  εw = zeros(eltype(A),length(rowindex))
-  τl = zero(eltype(A))
-  αl = zero(eltype(A))
+  x  = zeros(T,N)
+  bk = zeros(T,M)
+  bc = zeros(rT,size(B,2))
+  xl = zeros(T,N)
+  yl = zeros(T,M)
+  yc = zeros(T,N)
+  δc = zeros(T,N)
+  εw = zeros(T,length(rowindex))
+  τl = zero(T)
+  αl = zero(T)
 
-  return DaxConstrained(A,u,Float64(λ),B,Bnorm²,denom,rowindex,zk,bk,bc,xl,yl,yc,δc,εw,τl,αl
-                  ,T.(weights),iterations,iterationsInner)
+  return DaxConstrained(A,u,Float64(λ),B,Bnorm²,denom,rowindex,x,bk,bc,xl,yl,yc,δc,εw,τl,αl
+                  ,rT.(weights),iterations,iterationsInner)
 end
 
-function init!(solver::DaxConstrained
-              ; A::matT=solver.A
-              , λ::Real=solver.λ
-              , u::Vector{T}=eltype(A)[]
-              , zk::Vector{T}=eltype(A)[]
-              , weights::Vector{Float64}=solver.weights) where {matT,T}
+function init!(solver::DaxConstrained, b; x0 = 0)
+  solver.u .= b
+  solver.x .= x0
 
-  if A != solver.A
-    denom, rowindex = initkaczmarzconstraineddax(A,λ,weights)
-  end
-  solver.λ = Float64(λ)
-
-  solver.u[:] .= u
-  solver.weights=weights
-
-  # start vector
-  if isempty(zk)
-    solver.zk[:] .= zeros(T,size(A,2))
-  else
-    solver.zk[:] .= x
-  end
-
-  solver.bk[:] .= zero(T)
-  solver.bc[:] .= zero(T)
-  solver.xl[:] .= zero(T)
-  solver.yl[:] .= zero(T)
-  solver.yc[:] .= zero(T)
-  solver.δc[:] .= zero(T)
-  solver.αl = zero(T)        #temporary scalar
-  solver.τl = zero(T)        #temporary scalar
+  solver.bk .= 0
+  solver.bc .= 0
+  solver.xl .= 0
+  solver.yl .= 0
+  solver.yc .= 0
+  solver.δc .= 0
+  solver.αl  = 0
+  solver.τl  = 0
 
   for i=1:length(solver.rowindex)
     j = solver.rowindex[i]
-    solver.ɛw[i] = sqrt(solver.λ)/weights[j]
+    solver.ɛw[i] = sqrt(solver.λ)/solver.weights[j]
   end
 end
 
-function solve(solver::DaxConstrained, u::Vector{T}; λ::Real=solver.λ
-                , A::matT=solver.A, startVector::Vector{T}=eltype(A)[]
-                , weights::Vector=solver.weights
-                , solverInfo=nothing, kargs...) where {T,matT}
-
-  # initialize solver parameters
-  init!(solver; A=A, λ=λ, u=u, zk=startVector, weights=weights)
-
-  # log solver information
-  solverInfo != nothing && storeInfo(solverInfo,solver.zk,norm(solver.bk))
-
-  # perform CGNR iterations
-  for (iteration, item) = enumerate(solver)
-    solverInfo != nothing && storeInfo(solverInfo,solver.zk,norm(solver.bk))
-  end
-
-  return solver.zk
-end
 
 function iterate(solver::DaxConstrained, iteration::Int=0)
   if done(solver,iteration) return nothing end
 
-  # bk = u-A'*zk
+  # bk = u-A'*x
   copyto!(solver.bk,solver.u)
-  gemv!('N',-1.0,solver.A,solver.zk,1.0,solver.bk)
+  gemv!('N',-1.0,solver.A,solver.x,1.0,solver.bk)
 
   # solve min ɛ|x|²+|W*A*x-W*bk|² with weightingmatrix W=diag(wᵢ), i=1,...,M.
   for l=1:solver.iterationsInner
@@ -155,9 +120,9 @@ function iterate(solver::DaxConstrained, iteration::Int=0)
       solver.yl[j] += solver.αl*solver.ɛw[i]
     end
 
-    #Lent-Censor scheme for ensuring B(xl+zk) >= 0
+    #Lent-Censor scheme for ensuring B(xl+x) >= 0
     # copyto!(solver.δc,solver.xl)
-    # BLAS.axpy!(1.0,solver.zk,solver.δc)
+    # BLAS.axpy!(1.0,solver.x,solver.δc)
     # lmul!(solver.B, solver.δc)
     # lentcensormin!(solver.δc,solver.yc)
     #
@@ -167,8 +132,8 @@ function iterate(solver::DaxConstrained, iteration::Int=0)
     # BLAS.axpy!(1.0,solver.solver.δc,solver.xl) # xl += Bᵀ*δc
 
     #Lent-Censor scheme for solving Bx >= 0
-    # bc = xl + zk
-    copyto!(solver.bc,solver.zk)
+    # bc = xl + x
+    copyto!(solver.bc,solver.x)
     BLAS.axpy!(1.0,solver.xl,solver.bc)
 
     for i=1:size(solver.B,2)
@@ -179,7 +144,7 @@ function iterate(solver::DaxConstrained, iteration::Int=0)
       kaczmarz_update!(solver.B,solver.bc,i,δ)  # update bc
     end
   end
-  BLAS.axpy!(1.0,solver.xl,solver.zk)  # zk += xl
+  BLAS.axpy!(1.0,solver.xl,solver.x)  # x += xl
 
   # reset xl and yl for next Kaczmarz run
   rmul!(solver.xl,0.0)

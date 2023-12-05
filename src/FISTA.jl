@@ -91,12 +91,11 @@ function FISTA(A
 end
 
 """
-    init!(it::FISTA, b, x=similar(b,0), theta::Number=1)
+    init!(it::FISTA, b; x0 = 0, theta = 1)
 
 (re-) initializes the FISTA iterator
 """
-function init!(solver::FISTA{rT,vecT,matA,matAHA}, b::vecT; x::vecT=similar(b,0), theta=1) where {rT,vecT,matA,matAHA}
-
+function init!(solver::FISTA, b; x0 = 0, theta=1)
   if solver.A === nothing
     solver.x₀ .= b
   else
@@ -105,47 +104,13 @@ function init!(solver::FISTA{rT,vecT,matA,matAHA}, b::vecT; x::vecT=similar(b,0)
 
   solver.norm_x₀ = norm(solver.x₀)
 
-  if isempty(x)
-    solver.x .= 0
-  else
-    solver.x .= x
-  end
+  solver.x    .= x0
   solver.xᵒˡᵈ .= 0 # makes no difference in 1st iteration what this is set to
 
   solver.theta = theta
   solver.thetaᵒˡᵈ = theta
   # normalization of regularization parameters
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
-end
-
-"""
-    solve(solver::FISTA, b; startVector=similar(b,0), solverInfo=nothing)
-
-solves an inverse problem using FISTA.
-
-# Arguments
-* `solver::FISTA`                   - the solver containing both system matrix and regularizer
-* `b::AbstractVector`               - data vector if `A` was supplied to the solver, back-projection of the data otherwise
-
-# Keyword Arguments
-* `startVector::AbstractVector`     - initial guess for the solution
-* `solverInfo::SolverInfo`          - solverInfo object
-
-when a `SolverInfo` object is passed, the residuals are stored in `solverInfo.convMeas`.
-"""
-function solve(solver::FISTA, b; startVector=similar(b,0), solverInfo=nothing)
-  # initialize solver parameters
-  init!(solver, b; x=startVector)
-
-  # log solver information
-  solverInfo !== nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
-
-  # perform FISTA iterations
-  for (iteration, item) = enumerate(solver)
-    solverInfo !== nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
-  end
-
-  return solver.x
 end
 
 

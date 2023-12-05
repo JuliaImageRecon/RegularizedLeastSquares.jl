@@ -67,7 +67,6 @@ Creates a `POGM` object for the forward operator `A` or normal operator `AHA`. P
 
 See also [`createLinearSolver`](@ref), [`solve`](@ref).
 """
-
 POGM(; AHA = A'*A, reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false) = POGM(nothing; AHA, reg, normalizeReg, rho, normalize_rho, theta, sigma_fac, relTol, iterations, restart, verbose)
 
 function POGM(A
@@ -119,8 +118,7 @@ end
 
 (re-) initializes the POGM iterator
 """
-function init!(solver::POGM{rT,vecT,matA,matAHA}, b::vecT; x::vecT=similar(b, 0), theta=1) where {rT,vecT,matA,matAHA}
-
+function init!(solver::POGM, b; x0=0, theta=1)
   if solver.A === nothing
     solver.x₀ .= b
   else
@@ -129,11 +127,7 @@ function init!(solver::POGM{rT,vecT,matA,matAHA}, b::vecT; x::vecT=similar(b, 0)
 
   solver.norm_x₀ = norm(solver.x₀)
 
-  if isempty(x)
-    solver.x .= 0
-  else
-    solver.x .= x
-  end
+  solver.x .= x0
   solver.xᵒˡᵈ .= 0 # makes no difference in 1st iteration what this is set to
   solver.y .= 0
   solver.z .= 0
@@ -148,36 +142,6 @@ function init!(solver::POGM{rT,vecT,matA,matAHA}, b::vecT; x::vecT=similar(b, 0)
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
 end
 
-"""
-    solve(solver::POGM, b::Vector)
-
-solves an inverse problem using POGM.
-
-# Arguments
-* `solver::POGM`                     - the solver containing both system matrix and regularizer
-* `b::vecT`                           - data vector
-
-# Keywords
-* `A=solver.A`                        - operator for the data-term of the problem
-* `startVector::vecT=similar(b,0)`  - initial guess for the solution
-* `solverInfo=nothing`              - solverInfo object
-
-when a `SolverInfo` objects is passed, the residuals are stored in `solverInfo.convMeas`.
-"""
-function solve(solver::POGM, b; startVector=similar(b, 0), solverInfo=nothing)
-  # initialize solver parameters
-  init!(solver, b; x=startVector)
-
-  # log solver information
-  solverInfo !== nothing && storeInfo(solverInfo, solver.x, norm(solver.res))
-
-  # perform POGM iterations
-  for (iteration, item) = enumerate(solver)
-    solverInfo !== nothing && storeInfo(solverInfo, solver.x, norm(solver.res))
-  end
-
-  return solver.x
-end
 
 """
   iterate(it::POGM, iteration::Int=0)

@@ -22,13 +22,11 @@ mutable struct SolverInfo{T}
   store_solutions::Bool
 end
 
-function SolverInfo(x_ref::Vector{T}; store_solutions::Bool=false,
-    kargs...) where T
+function SolverInfo(x_ref::Vector{T}; store_solutions::Bool=false) where T
   return SolverInfo(Vector{Float64}(), Vector{Float64}(), x_ref, Vector{Vector{T}}(), store_solutions)
 end
 
-function SolverInfo(T::Type=Number; store_solutions::Bool=false,
-    kargs...)
+function SolverInfo(T::Type=Number; store_solutions::Bool=false)
   return SolverInfo(Vector{Float64}(), Vector{Float64}(), Vector{T}(), Vector{Vector{T}}(), store_solutions)
 end
 
