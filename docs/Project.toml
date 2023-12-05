@@ -1,5 +1,10 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+LinearOperatorCollection = "a4a2c56f-fead-462a-a3ab-85921a5f2575"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+RegularizedLeastSquares = "1e9c538a-f78c-5de5-8ffb-0b6dbe892d23"
+UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
+Wavelets = "29a6e085-ba6d-5f35-a997-948ac2efa89a"
 
 [compat]
-Documenter = "0.25"
+Documenter = "1.0, 1.1, 1.2"

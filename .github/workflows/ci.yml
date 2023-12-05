@@ -54,14 +54,13 @@ jobs:
           julia --project=docs -e '
             using Pkg
             Pkg.develop(PackageSpec(path=pwd()))
-            Pkg.add("LinearOperatorCollection")
-            Pkg.add("Wavelets")
             Pkg.instantiate()'
       - run: |
           julia --project=docs -e '
-            using Documenter: doctest
+            using Documenter: DocMeta, doctest
             using RegularizedLeastSquares
-            doctest(RegularizedLeastSquares)' # change MYPACKAGE to the name of your package
+            DocMeta.setdocmeta!(RegularizedLeastSquares, :DocTestSetup, :(using RegularizedLeastSquares); recursive=true)
+            doctest(RegularizedLeastSquares)'
       - run: julia --project=docs docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
