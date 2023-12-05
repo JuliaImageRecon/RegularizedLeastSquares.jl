@@ -21,7 +21,8 @@ makedocs(
     ],
     pagesonly = true,
     checkdocs = :none,
-    doctest   = true
-)
+    doctest   = true,
+    doctestfilters = [r"(\d*)\.(\d{4})\d+"]
+    )
 
 deploydocs(repo   = "github.com/JuliaImageRecon/RegularizedLeastSquares.jl.git", push_preview = true)
