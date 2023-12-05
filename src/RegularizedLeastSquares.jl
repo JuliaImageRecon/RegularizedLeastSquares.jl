@@ -46,7 +46,7 @@ julia> A = [0.831658  0.96717
             0.383056  0.39043
             0.820692  0.08118];
 
-julia> x = [0.5932; 0.2697];
+julia> x = [0.5932234523399985; 0.2697534345340015];
 
 julia> b = A * x;
 
@@ -54,8 +54,8 @@ julia> S = ADMM(A);
 
 julia> x_approx = solve(S, b)
 2-element Vector{Float64}:
- 0.5931999999999996
- 0.2697000000000004
+ 0.5932234523399984
+ 0.26975343453400163
 ```
 Here, we use [`L1Regularization`](@ref), which is default for [`ADMM`](@ref). All regularization options can be found in [API for Regularizers](@ref).
 
@@ -69,14 +69,14 @@ store_trace! (generic function with 1 method)
 
 julia> x_approx = solve(S, b; f_trace=(solver, iteration) -> store_trace!(tr, solver, iteration))
 2-element Vector{Float64}:
- 0.5931999999999996
- 0.2697000000000004
+ 0.5932234523399984
+ 0.26975343453400163
 
 julia> tr[3]
 Dict{String, Any} with 3 entries:
   "iteration" => 2
-  "x"         => [0.5932, 0.2697]
-  "beta"      => [1.23143, 0.927523]
+  "x"         => [0.593223, 0.269753]
+  "beta"      => [1.23152, 0.927611]
 ```
 
 The last example show demonstrates how to plot the solution at every 10th iteration:
