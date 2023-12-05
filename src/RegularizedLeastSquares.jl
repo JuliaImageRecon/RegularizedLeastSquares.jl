@@ -11,9 +11,7 @@ using VectorizationBase
 using VectorizationBase: shufflevector, zstridedpointer
 using FLoops
 using LinearOperators: opEye
-using ProgressMeter
 using StatsBase
-using FastClosures
 using LinearOperatorCollection
 using InteractiveUtils
 
