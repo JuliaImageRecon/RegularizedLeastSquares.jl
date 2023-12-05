@@ -58,9 +58,7 @@ jobs:
       - run: |
           julia --project=docs -e '
             using Documenter: DocMeta, doctest
-            using RegularizedLeastSquares
-            DocMeta.setdocmeta!(RegularizedLeastSquares, :DocTestSetup, :(using RegularizedLeastSquares); recursive=true)
-            doctest(RegularizedLeastSquares)'
+            using RegularizedLeastSquares'
       - run: julia --project=docs docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
