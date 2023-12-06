@@ -162,7 +162,7 @@ function solversolution(solver::Kaczmarz)
   end
   return solver.x
 end
-solverconvergence(solver::Kaczmarz) = (; :residual = norm(solver.vl))
+solverconvergence(solver::Kaczmarz) = (; :residual => norm(solver.vl))
 
 function iterate(solver::Kaczmarz, iteration::Int=0)
   if done(solver,iteration) return nothing end

@@ -113,7 +113,7 @@ function init!(solver::FISTA, b; x0 = 0, theta=1)
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
 end
 
-solverconvergence(solver::FISTA) = (; :residual = norm(solver.res))
+solverconvergence(solver::FISTA) = (; :residual => norm(solver.res))
 
 
 """
