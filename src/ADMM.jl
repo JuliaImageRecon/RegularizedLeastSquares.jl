@@ -106,9 +106,9 @@ function ADMM(A
   regTrafo = identity.(regTrafo)
 
   if typeof(rho) <: Number
-    ρ_vec = [rT.(rho) for _ ∈ eachindex(reg)]
+    rho = [rT.(rho) for _ ∈ eachindex(reg)]
   else
-    ρ_vec = rT.(rho)
+    rho = rT.(rho)
   end
 
   x    = Vector{T}(undef,size(AHA,2))
@@ -137,7 +137,7 @@ function ADMM(A
   # normalization parameters
   reg = normalize(ADMM, normalizeReg, reg, A, nothing)
 
-  return ADMM(A,reg,regTrafo,proj,AHA,β,β_y,x,xᵒˡᵈ,z,zᵒˡᵈ,u,uᵒˡᵈ,precon,ρ_vec,iterations
+  return ADMM(A,reg,regTrafo,proj,AHA,β,β_y,x,xᵒˡᵈ,z,zᵒˡᵈ,u,uᵒˡᵈ,precon,rho,iterations
               ,iterationsCG,cgStateVars, rᵏ,sᵏ,ɛᵖʳⁱ,ɛᵈᵘᵃ,zero(rT),Δ,rT(absTol),rT(relTol),rT(tolInner)
               ,normalizeReg, vary_rho, verbose)
 end
@@ -190,7 +190,8 @@ function iterate(solver::ADMM, iteration=0)
   solver.β .= solver.β_y
   AHA = solver.AHA
   for i ∈ eachindex(solver.reg)
-    solver.β .+= solver.ρ[i] * adjoint(solver.regTrafo[i]) * (solver.z[i].-solver.u[i])
+    mul!(solver.β, adjoint(solver.regTrafo[i]), solver.z[i],  solver.ρ[i], 1)
+    mul!(solver.β, adjoint(solver.regTrafo[i]), solver.u[i], -solver.ρ[i], 1)
     AHA       += solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
   end
   solver.verbose && println("conjugated gradients: ")
