@@ -43,7 +43,7 @@ solver = createLinearSolver(ADMM, A; reg=reg, ρ=0.1, iterations=20)
 ```
 and apply it to our measurement
 ```julia
-Ireco = solve(solver,y)
+Ireco = solve!(solver,y)
 Ireco = reshape(Ireco,N,N)
 ```
 

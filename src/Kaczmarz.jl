@@ -43,7 +43,7 @@ Creates a Kaczmarz object for the forward operator `A`.
   * `seed::Int`                                           - seed for randomized algorithm
   * `iterations::Int`                                     - number of iterations
 
-See also [`createLinearSolver`](@ref), [`solve`](@ref).
+See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
 function Kaczmarz(A
                 ; reg = L2Regularization(0)
@@ -140,7 +140,7 @@ function init!(solver::Kaczmarz, b; x0 = 0)
   end
 end
 
-function solve(solver::Kaczmarz, b; x0 = 0, f_trace = (_, _) -> nothing)
+function solve!(solver::Kaczmarz, b; x0 = 0, f_trace = (_, _) -> nothing)
   init!(solver, b; x0)
   f_trace(solver, 0)
 

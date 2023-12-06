@@ -31,7 +31,7 @@ creates a `PrimalDualSolver` object for the forward operator `A`.
 # Optional Keyword Arguments
 * TODO
 
-See also [`createLinearSolver`](@ref), [`solve`](@ref).
+See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
 # TODO: replace keywords with ASCII symbols
 function PrimalDualSolver(A::Matrix{T}
