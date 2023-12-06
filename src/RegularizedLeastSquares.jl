@@ -207,7 +207,17 @@ regularized linear systems. All solvers return an approximate solution to Ax = b
 TODO: give a hint what solvers are available
 """
 function createLinearSolver(solver::Type{T}, A; kargs...) where {T<:AbstractLinearSolver}
-  return solver(A; kargs...)
+  table = methods(T)
+  keywords = union(Base.kwarg_decl.(table))
+  filtered = filter(in(keywords), keys(kargs))
+  return solver(A; [key=>kargs[key] for key in filtered]...)
+end
+
+function createLinearSolver(solver::Type{T}; AHA, kargs...) where {T<:AbstractLinearSolver}
+  table = methods(T)
+  keywords = union(Base.kwarg_decl.(table))
+  filtered = filter(in(keywords), keys(kargs))
+  return solver(; [key=>kargs[key] for key in filtered]..., AHA = AHA)
 end
 
 @deprecate createLinearSolver(solver, A, x; kargs...) createLinearSolver(solver, A; kargs...)
