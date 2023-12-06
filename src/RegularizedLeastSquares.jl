@@ -129,6 +129,9 @@ include("Transforms.jl")
 include("Regularization/Regularization.jl")
 include("proximalMaps/ProximalMaps.jl")
 
+solversolution(solver::AbstractLinearSolver) = solver.x
+function solverconvergence end
+
 include("Utils.jl")
 include("Kaczmarz.jl")
 include("DAXKaczmarz.jl")
@@ -141,6 +144,8 @@ include("POGM.jl")
 include("ADMM.jl")
 include("SplitBregman.jl")
 include("PrimalDualSolver.jl")
+
+include("Callbacks.jl")
 
 """
 Return a list of all available linear solvers

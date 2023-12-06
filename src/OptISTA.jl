@@ -136,6 +136,7 @@ function init!(solver::OptISTA, b; x0=0, θ=1)
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
 end
 
+solverconvergence(solver::OptISTA) = (; :residual = norm(solver.res))
 
 """
   iterate(it::OptISTA, iteration::Int=0)

@@ -142,6 +142,7 @@ function init!(solver::POGM, b; x0=0, theta=1)
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
 end
 
+solverconvergence(solver::POGM) = (; :residual = norm(solver.res))
 
 """
   iterate(it::POGM, iteration::Int=0)

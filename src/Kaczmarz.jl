@@ -156,6 +156,14 @@ function solve(solver::Kaczmarz, b; x0 = 0, callback = (_, _) -> nothing)
   return solver.x
 end
 
+function solversolution(solver::Kaczmarz)
+  if solver.regMatrix !== nothing
+    return solver.x .* (1 ./ sqrt.(solver.regMatrix))
+  end
+  return solver.x
+end
+solverconvergence(solver::Kaczmarz) = (; :residual = norm(solver.vl))
+
 function iterate(solver::Kaczmarz, iteration::Int=0)
   if done(solver,iteration) return nothing end
 
