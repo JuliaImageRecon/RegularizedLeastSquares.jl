@@ -20,7 +20,7 @@ export AbstractLinearSolver, createLinearSolver, init, deinit, solve, linearSolv
 abstract type AbstractLinearSolver end
 
 """
-    solve(solver::AbstractLinearSolver, b; x0 = 0, f_trace = (_, _) -> nothing)
+    solve(solver::AbstractLinearSolver, b; x0 = 0, callback = (_, _) -> nothing)
 
 Solves an inverse problem for the data vector `b` using `solver`.
 
@@ -30,7 +30,7 @@ Solves an inverse problem for the data vector `b` using `solver`.
 
 # Optional Keyword Arguments
   * `x0::AbstractVector`              - initial guess for the solution; default is zero
-  * `f_trace::Function`               - function that takes the two arguments `f_trace(solver, iteration)` and, e.g., stores, prints, or plots the intermediate solutions or convergence parameters.
+  * `callback`               - function or callable struct that takes the two arguments `callback(solver, iteration)` and, e.g., stores, prints, or plots the intermediate solutions or convergence parameters.
 
 
 # Examples
@@ -67,7 +67,7 @@ Dict[]
 julia> store_trace!(tr, solver, iteration) = push!(tr, Dict("iteration" => iteration, "x" => solver.x, "beta" => solver.β))
 store_trace! (generic function with 1 method)
 
-julia> x_approx = solve(S, b; f_trace=(solver, iteration) -> store_trace!(tr, solver, iteration))
+julia> x_approx = solve(S, b; callback=(solver, iteration) -> store_trace!(tr, solver, iteration))
 2-element Vector{Float64}:
  0.5932234523399984
  0.26975343453400163
@@ -90,16 +90,16 @@ julia> function plot_trace(solver, iteration)
        end
 plot_trace (generic function with 1 method)
 
-julia> x_approx = solve(S, b; f_trace = plot_trace);
+julia> x_approx = solve(S, b; callback = plot_trace);
 ```
-The keyword `f_trace` allows you to pass any function that takes the arguments `solver` and `iteration` and prints, stores, or plots intermediate result.
+The keyword `callback` allows you to pass any function that takes the arguments `solver` and `iteration` and prints, stores, or plots intermediate result.
 """
-function solve(solver::AbstractLinearSolver, b; x0 = 0, f_trace = (_, _) -> nothing)
+function solve(solver::AbstractLinearSolver, b; x0 = 0, callback = (_, _) -> nothing)
   init!(solver, b; x0)
-  f_trace(solver, 0)
+  callback(solver, 0)
 
   for (iteration, _) = enumerate(solver)
-    f_trace(solver, iteration)
+    callback(solver, iteration)
   end
 
   return solver.x
