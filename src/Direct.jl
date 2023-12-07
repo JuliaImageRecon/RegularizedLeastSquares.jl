@@ -39,7 +39,7 @@ function DirectSolver(A; reg::Vector{<:AbstractRegularization} = [L2Regularizati
   return DirectSolver(A, x, b, L2, normalizeReg, other)
 end
 
-function solve!(solver::DirectSolver, b; x0=0)
+function init!(solver::DirectSolver, b; x0=0)
   solver.l2 = normalize(solver, solver.normalizeReg, solver.l2, solver.A, b)
   solver.b .= b
 end
@@ -53,7 +53,8 @@ function iterate(solver::DirectSolver, iteration=0)
   for p in solver.proj
     prox!(p, x)
   end
-  return x
+  solver.x .= x
+  return nothing
 end
 
 #type for Gauß elimination
