@@ -140,24 +140,14 @@ function init!(solver::Kaczmarz, b; x0 = 0)
   end
 end
 
-function solve!(solver::Kaczmarz, b; x0 = 0, callback = (_, _) -> nothing)
-  init!(solver, b; x0)
-  callback(solver, 0)
-
-  for (iteration, _) = enumerate(solver)
-    callback(solver, iteration)
-  end
-
-  # backtransformation of solution with Tikhonov matrix
-  if solver.regMatrix !== nothing
-    solver.x .= solver.x .* (1 ./ sqrt.(solver.regMatrix))
-  end
-
-  return solver.x
-end
-
 function iterate(solver::Kaczmarz, iteration::Int=0)
-  if done(solver,iteration) return nothing end
+  if done(solver,iteration)
+    # backtransformation of solution with Tikhonov matrix
+    if solver.regMatrix !== nothing
+      solver.x .= solver.x .* (1 ./ sqrt.(solver.regMatrix))
+    end
+    return nothing
+  end
 
   if solver.randomized
     usedIndices = Int.(StatsBase.sample!(Random.GLOBAL_RNG, solver.rowIndexCycle, weights(solver.probabilities), zeros(solver.subMatrixSize), replace=false))
@@ -178,7 +168,6 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
   end
 
   return solver.vl, iteration+1
-
 end
 
 @inline done(solver::Kaczmarz,iteration::Int) = iteration>=solver.iterations
