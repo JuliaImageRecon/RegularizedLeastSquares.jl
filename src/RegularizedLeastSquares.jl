@@ -111,7 +111,7 @@ function solve!(solver::AbstractLinearSolver, b; x0 = 0, callbacks = (_, _) -> n
     foreach(cb -> cb(solver, iteration), callbacks)
   end
 
-  return solver.x
+  return solversolution(solver)
 end
 
 """
@@ -247,14 +247,14 @@ TODO: give a hint what solvers are available
 """
 function createLinearSolver(solver::Type{T}, A; kargs...) where {T<:AbstractLinearSolver}
   table = methods(T)
-  keywords = union(Base.kwarg_decl.(table))
+  keywords = union(Base.kwarg_decl.(table)...)
   filtered = filter(in(keywords), keys(kargs))
   return solver(A; [key=>kargs[key] for key in filtered]...)
 end
 
 function createLinearSolver(solver::Type{T}; AHA, kargs...) where {T<:AbstractLinearSolver}
   table = methods(T)
-  keywords = union(Base.kwarg_decl.(table))
+  keywords = union(Base.kwarg_decl.(table)...)
   filtered = filter(in(keywords), keys(kargs))
   return solver(; [key=>kargs[key] for key in filtered]..., AHA = AHA)
 end

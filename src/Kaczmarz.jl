@@ -141,6 +141,7 @@ function init!(solver::Kaczmarz, b; x0 = 0)
 end
 
 function solversolution(solver::Kaczmarz)
+  # backtransformation of solution with Tikhonov matrix
   if solver.regMatrix !== nothing
     return solver.x .* (1 ./ sqrt.(solver.regMatrix))
   end
@@ -149,13 +150,7 @@ end
 solverconvergence(solver::Kaczmarz) = (; :residual => norm(solver.vl))
 
 function iterate(solver::Kaczmarz, iteration::Int=0)
-  if done(solver,iteration)
-    # backtransformation of solution with Tikhonov matrix
-    if solver.regMatrix !== nothing
-      solver.x .= solver.x .* (1 ./ sqrt.(solver.regMatrix))
-    end
-    return nothing
-  end
+  if done(solver,iteration) return nothing end
 
   if solver.randomized
     usedIndices = Int.(StatsBase.sample!(Random.GLOBAL_RNG, solver.rowIndexCycle, weights(solver.probabilities), zeros(solver.subMatrixSize), replace=false))
