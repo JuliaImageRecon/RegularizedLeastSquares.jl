@@ -124,6 +124,7 @@ function init!(solver::CGNR, b; x0 = 0)
   solver.L2 = normalize(solver, solver.normalizeReg, solver.L2, solver.A, b)
 end
 
+solverconvergence(solver::CGNR) = (; :residual => norm(solver.x₀))
 
 """
   iterate(solver::CGNR{vecT,T,Tsparse}, iteration::Int=0) where {vecT,T,Tsparse}

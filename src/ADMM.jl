@@ -175,6 +175,8 @@ function init!(solver::ADMM, b::AbstractVector{T}; x0=0) where T
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
 end
 
+solverconvergence(solver::ADMM) = (; :primal => solver.rᵏ, :dual => norm(solver.sᵏ))
+
 
 """
   iterate(it::ADMM, iteration::Int=0)

@@ -102,6 +102,7 @@ function init!(solver::DaxConstrained, b; x0 = 0)
   end
 end
 
+solverconvergence(solver::DaxConstrained) = (; :residual => norm(solver.bk))
 
 function iterate(solver::DaxConstrained, iteration::Int=0)
   if done(solver,iteration) return nothing end

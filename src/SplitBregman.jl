@@ -170,6 +170,7 @@ function init!(solver::SplitBregman, b; x0 = 0)
   solver.iter_cnt = 1
 end
 
+solverconvergence(solver::SplitBregman) = (; :primal => solver.rk, :dual => norm(solver.sk))
 
 function iterate(solver::SplitBregman, iteration=1)
   if done(solver, iteration) return nothing end

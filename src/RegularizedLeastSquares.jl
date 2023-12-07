@@ -20,7 +20,7 @@ export AbstractLinearSolver, createLinearSolver, init, deinit, solve!, linearSol
 abstract type AbstractLinearSolver end
 
 """
-    solve!(solver::AbstractLinearSolver, b; x0 = 0, callback = (_, _) -> nothing)
+    solve!(solver::AbstractLinearSolver, b; x0 = 0, callbacks = (_, _) -> nothing)
 
 Solves an inverse problem for the data vector `b` using `solver`.
 
@@ -30,7 +30,7 @@ Solves an inverse problem for the data vector `b` using `solver`.
 
 # Optional Keyword Arguments
   * `x0::AbstractVector`              - initial guess for the solution; default is zero
-  * `callback::Function`              - function that takes the two arguments `callback(solver, iteration)` and, e.g., stores, prints, or plots the intermediate solutions or convergence parameters. Be sure not to modify `solver` or `iteration` in the callback function as this would japaridze convergence. The default does nothing.
+  * `callbacks`              - (optionally a vector of) function or callable struct that takes the two arguments `callback(solver, iteration)` and, e.g., stores, prints, or plots the intermediate solutions or convergence parameters. Be sure not to modify `solver` or `iteration` in the callback function as this would japaridze convergence. The default does nothing.
 
 
 # Examples
@@ -67,7 +67,7 @@ Dict[]
 julia> store_trace!(tr, solver, iteration) = push!(tr, Dict("iteration" => iteration, "x" => solver.x, "beta" => solver.β))
 store_trace! (generic function with 1 method)
 
-julia> x_approx = solve!(S, b; callback=(solver, iteration) -> store_trace!(tr, solver, iteration))
+julia> x_approx = solve!(S, b; callbacks=(solver, iteration) -> store_trace!(tr, solver, iteration))
 2-element Vector{Float64}:
  0.5932234523399984
  0.26975343453400163
@@ -79,9 +79,11 @@ Dict{String, Any} with 3 entries:
   "beta"      => [1.23152, 0.927611]
 ```
 
-The last example show demonstrates how to plot the solution at every 10th iteration:
+The last example show demonstrates how to plot the solution at every 10th iteration and store the solvers convergence metrics:
 ```julia
 julia> using Plots
+
+julia> conv = StoreConvergenceCallback()
 
 julia> function plot_trace(solver, iteration)
          if iteration % 10 == 0
@@ -90,20 +92,41 @@ julia> function plot_trace(solver, iteration)
        end
 plot_trace (generic function with 1 method)
 
-julia> x_approx = solve!(S, b; callback = plot_trace);
+julia> x_approx = solve!(S, b; callbacks = [conv, plot_trace]);
 ```
-The keyword `callback` allows you to pass any function that takes the arguments `solver` and `iteration` and prints, stores, or plots intermediate result.
+The keyword `callbacks` allows you to pass a (vector of) callable objects that takes the arguments `solver` and `iteration` and prints, stores, or plots intermediate result.
+
+See also [`StoreSolutionCallback`](@ref), [`StoreConvergenceCallback`](@ref), [`CompareSolutionCallback`](@ref) for a number of provided callback options.
 """
-function solve!(solver::AbstractLinearSolver, b; x0 = 0, callback = (_, _) -> nothing)
+function solve!(solver::AbstractLinearSolver, b; x0 = 0, callbacks = (_, _) -> nothing)
+  if !(callbacks isa Vector)
+    callbacks = [callbacks]
+  end
+
+
   init!(solver, b; x0)
-  callback(solver, 0)
+  foreach(cb -> cb(solver, 0), callbacks)
 
   for (iteration, _) = enumerate(solver)
-    callback(solver, iteration)
+    foreach(cb -> cb(solver, iteration), callbacks)
   end
 
   return solver.x
 end
+
+"""
+    solve!(cb, solver, b; kwargs...)
+
+Pass `cb` as the callback to `solve!`
+
+# Examples
+```julia 
+julia> x_approx = solve!(solver, b) do solver, iteration
+  println(iteration)
+end
+```
+"""
+solve!(cb, solver::AbstractLinearSolver, b; kwargs...) = solve!(solver, b; kwargs..., callbacks = cb)
 
 
 
@@ -129,6 +152,20 @@ include("Transforms.jl")
 include("Regularization/Regularization.jl")
 include("proximalMaps/ProximalMaps.jl")
 
+export solversolution, solverconvergence
+"""
+    solversolution(solver::AbstractLinearSolver)
+
+Return the current solution of the solver
+"""
+solversolution(solver::AbstractLinearSolver) = solver.x
+"""
+    solverconvergence(solver::AbstractLinearSolver)
+
+Return a named tuple of the solvers current convergence metrics
+"""
+function solverconvergence end
+
 include("Utils.jl")
 include("Kaczmarz.jl")
 include("DAXKaczmarz.jl")
@@ -141,6 +178,8 @@ include("POGM.jl")
 include("ADMM.jl")
 include("SplitBregman.jl")
 include("PrimalDualSolver.jl")
+
+include("Callbacks.jl")
 
 """
 Return a list of all available linear solvers
@@ -207,7 +246,17 @@ regularized linear systems. All solvers return an approximate solution to Ax = b
 TODO: give a hint what solvers are available
 """
 function createLinearSolver(solver::Type{T}, A; kargs...) where {T<:AbstractLinearSolver}
-  return solver(A; kargs...)
+  table = methods(T)
+  keywords = union(Base.kwarg_decl.(table))
+  filtered = filter(in(keywords), keys(kargs))
+  return solver(A; [key=>kargs[key] for key in filtered]...)
+end
+
+function createLinearSolver(solver::Type{T}; AHA, kargs...) where {T<:AbstractLinearSolver}
+  table = methods(T)
+  keywords = union(Base.kwarg_decl.(table))
+  filtered = filter(in(keywords), keys(kargs))
+  return solver(; [key=>kargs[key] for key in filtered]..., AHA = AHA)
 end
 
 @deprecate createLinearSolver(solver, A, x; kargs...) createLinearSolver(solver, A; kargs...)

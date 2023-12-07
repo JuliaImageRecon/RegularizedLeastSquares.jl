@@ -140,6 +140,14 @@ function init!(solver::Kaczmarz, b; x0 = 0)
   end
 end
 
+function solversolution(solver::Kaczmarz)
+  if solver.regMatrix !== nothing
+    return solver.x .* (1 ./ sqrt.(solver.regMatrix))
+  end
+  return solver.x
+end
+solverconvergence(solver::Kaczmarz) = (; :residual => norm(solver.vl))
+
 function iterate(solver::Kaczmarz, iteration::Int=0)
   if done(solver,iteration)
     # backtransformation of solution with Tikhonov matrix
