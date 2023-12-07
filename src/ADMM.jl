@@ -66,7 +66,7 @@ creates an `ADMM` object for the forward operator `A` or normal operator `AHA`.
 
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
-ADMM(; AHA = A'*A, kwargs...) = ADMM(nothing; kwargs..., AHA = AHA)
+ADMM(; AHA, kwargs...) = ADMM(nothing; kwargs..., AHA = AHA)
 
 function ADMM(A
             ; AHA = A'*A

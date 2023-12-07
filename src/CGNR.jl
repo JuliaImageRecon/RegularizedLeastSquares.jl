@@ -40,7 +40,7 @@ creates an `CGNR` object for the forward operator `A` or normal operator `AHA`.
 
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
-CGNR(; AHA = A'*A, kwargs...) = CGNR(nothing; AHA = AHA, kwargs...)
+CGNR(; AHA, kwargs...) = CGNR(nothing; AHA = AHA, kwargs...)
 
 function CGNR(A
             ; AHA = A'*A

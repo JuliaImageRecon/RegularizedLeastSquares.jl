@@ -65,7 +65,7 @@ Creates a `SplitBregman` object for the forward operator `A`.
 
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
-SplitBregman(; AHA = A'*A, kwargs...) = SplitBregman(nothing; kwargs..., AHA = AHA)
+SplitBregman(; AHA, kwargs...) = SplitBregman(nothing; kwargs..., AHA = AHA)
 
 function SplitBregman(A
                     ; AHA = A'*A

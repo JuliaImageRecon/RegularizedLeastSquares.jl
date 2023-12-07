@@ -67,7 +67,7 @@ Creates a `POGM` object for the forward operator `A` or normal operator `AHA`. P
 
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
-POGM(; AHA = A'*A, kwargs...) = POGM(nothing; kwargs..., AHA = AHA)
+POGM(; AHA, kwargs...) = POGM(nothing; kwargs..., AHA = AHA)
 
 function POGM(A
             ; AHA = A'*A
