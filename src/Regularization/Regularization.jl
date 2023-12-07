@@ -33,13 +33,13 @@ norm(reg::AbstractParameterizedRegularization, x::AbstractArray{Tc}, λ) where {
 
 """
     prox!(regType::Type{<:AbstractParameterizedRegularization}, x, λ; kwargs...)
-  
+
 construct a regularization term of type `regType` with given `λ` and `kwargs` and apply its `prox!` on `x`
 """
 prox!(regType::Type{<:AbstractParameterizedRegularization}, x, λ; kwargs...) = prox!(regType(λ; kwargs...), x, λ)
 """
     norm(regType::Type{<:AbstractParameterizedRegularization}, x, λ; kwargs...)
-  
+
 construct a regularization term of type `regType` with given `λ` and `kwargs` and apply its `norm` on `x`
 """
 norm(regType::Type{<:AbstractParameterizedRegularization}, x, λ; kwargs...) = norm(regType(λ; kwargs...), x, λ)
@@ -49,13 +49,13 @@ abstract type AbstractProjectionRegularization <: AbstractRegularization end
 
 """
     prox!(regType::Type{<:AbstractProjectionRegularization}, x; kwargs...)
-  
+
 construct a regularization term of type `regType` with given `kwargs` and apply its `prox!` on `x`
 """
 prox!(regType::Type{<:AbstractProjectionRegularization}, x; kwargs...) = prox!(regType(;kwargs...), x)
 """
     norm(regType::Type{<:AbstractProjectionRegularization}, x; kwargs...)
-  
+
 construct a regularization term of type `regType` with given `kwargs` and apply its `norm` on `x`
 """
 norm(regType::Type{<:AbstractProjectionRegularization}, x; kwargs...) = norm(regType(;kwargs...), x)
@@ -69,7 +69,7 @@ include("ConstraintTransformedRegularization.jl")
 include("PlugAndPlayRegularization.jl")
 
 
-function findfirst(::Type{S}, reg::AbstractRegularization) where S <: AbstractRegularization 
+function findfirst(::Type{S}, reg::AbstractRegularization) where S <: AbstractRegularization
   regs = collect(reg)
   idx = findfirst(x->x isa S, regs)
   isnothing(idx) ? nothing : regs[idx]
@@ -89,7 +89,7 @@ findsinks(::Type{S}, reg::Vector{<:AbstractRegularization}) where S <: AbstractR
 
 
 Base.vec(reg::AbstractRegularization) = AbstractRegularization[reg]
-Base.vec(reg::Vector{AbstractRegularization}) = reg
+Base.vec(reg::AbstractVector{AbstractRegularization}) = reg
 
 """
     RegularizationList()

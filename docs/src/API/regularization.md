@@ -1,17 +1,7 @@
-# API
+# API for Regularizers
 This page contains documentation of the public API of the RegularizedLeastSquares. In the Julia
 REPL one can access this documentation by entering the help mode with `?`
 
-## General
-```@docs
-RegularizedLeastSquares.prox!(::AbstractParameterizedRegularization, ::AbstractArray)
-RegularizedLeastSquares.norm(::AbstractParameterizedRegularization, ::AbstractArray)
-RegularizedLeastSquares.λ(::AbstractParameterizedRegularization)
-RegularizedLeastSquares.prox!(::Type{<:AbstractParameterizedRegularization}, ::Any, ::Any)
-RegularizedLeastSquares.norm(::Type{<:AbstractParameterizedRegularization}, ::Any, ::Any)
-```
-
-## Parameterized Regularization
 ```@docs
 RegularizedLeastSquares.L1Regularization
 RegularizedLeastSquares.L2Regularization
@@ -51,4 +41,13 @@ RegularizedLeastSquares.MaskedRegularization
 RegularizedLeastSquares.TransformedRegularization
 RegularizedLeastSquares.ConstraintTransformedRegularization
 RegularizedLeastSquares.PlugAndPlayRegularization
+```
+
+## Miscellaneous Functions
+```@docs
+RegularizedLeastSquares.prox!(::AbstractParameterizedRegularization, ::AbstractArray)
+RegularizedLeastSquares.prox!(::Type{<:AbstractParameterizedRegularization}, ::Any, ::Any)
+RegularizedLeastSquares.norm(::AbstractParameterizedRegularization, ::AbstractArray)
+RegularizedLeastSquares.λ(::AbstractParameterizedRegularization)
+RegularizedLeastSquares.norm(::Type{<:AbstractParameterizedRegularization}, ::Any, ::Any)
 ```

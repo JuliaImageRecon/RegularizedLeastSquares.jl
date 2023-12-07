@@ -2,7 +2,7 @@ export optista, OptISTA
 
 mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA, R, RN} <: AbstractProximalGradientSolver
   A::matA
-  AᴴA::matAHA
+  AHA::matAHA
   reg::R
   proj::Vector{RN}
   x::vecT
@@ -27,56 +27,59 @@ mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVec
 end
 
 """
-    OptISTA(A, x; kwargs...)
+    OptISTA(A; AHA=A'*A, reg=L1Regularization(zero(eltype(AHA))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, verbose = false)
+    OptISTA( ; AHA=,     reg=L1Regularization(zero(eltype(AHA))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, verbose = false)
 
-creates a `OptISTA` object for the system matrix `A`.
-OptISTA has a 2x better worst-case bound than FISTA, but actual performance varies by application.
-It stores 2 extra intermediate variables the size of the image compared to FISTA
+creates a `OptISTA` object for the forward operator `A` or normal operator `AHA`. OptISTA has a 2x better worst-case bound than FISTA, but actual performance varies by application. It stores 2 extra intermediate variables the size of the image compared to FISTA.
 
 Reference:
-- Uijeong Jang, Shuvomoy Das Gupta, Ernest K. Ryu,
-    "Computer-Assisted Design of Accelerated Composite
-    Optimization Methods: OptISTA," arXiv:2305.15704, 2023,
-    [https://arxiv.org/abs/2305.15704]
+- Uijeong Jang, Shuvomoy Das Gupta, Ernest K. Ryu, "Computer-Assisted Design of Accelerated Composite Optimization Methods: OptISTA," arXiv:2305.15704, 2023, [https://arxiv.org/abs/2305.15704]
 
-# Arguments
-* `A`                     - system matrix
-* `x::vecT`               - array with the same type and size as the solution
+# Required Arguments
+* `A`                                                 - forward operator
+OR
+* `AHA`                                               - normal operator (as a keyword argument)
 
-# Keywords
-* `reg`                   - regularization term vector
-* `normalizeReg`          - regularization normalization scheme
-* `AᴴA=A'*A`              - specialized normal operator, default is `A'*A`
-* `ρ=0.95`                - step size for gradient step
-* `normalize_ρ=true`      - normalize step size by the maximum eigenvalue of `AᴴA`
-* `θ=1.0`                 - parameter for predictor-corrector step
-* `relTol::Float64=1.e-5` - tolerance for stopping criterion
-* `iterations::Int64=50`  - maximum number of iterations
+# Optional Keyword Arguments
+* `AHA`                                               - normal operator is optional if `A` is supplied
+* `reg::AbstractParameterizedRegularization`          - regularization term
+* `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; options are `NoNormalization()`, `MeasurementBasedNormalization()`, `SystemMatrixBasedNormalization()`
+* `rho::Real`                                         - step size for gradient step
+* `normalize_rho::Bool`                               - normalize step size by the largest eigenvalue of `AHA`
+* `theta::Real`                                       - parameter for predictor-corrector step
+* `relTol::Real`                                      - tolerance for stopping criterion
+* `iterations::Int`                                   - maximum number of iterations
+* `verbose::Bool`                                     - print residual in each iteration
 
-See also [`createLinearSolver`](@ref), [`solve`](@ref).
+See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
-function OptISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1Regularization(zero(T))
-              , normalizeReg=NoNormalization()
-              , AᴴA=A'*A
-              , ρ=0.95
-              , normalize_ρ=true
-              , θ=1
-              , relTol=eps(real(T))
-              , iterations=50
-              , verbose = false
-              , kargs...) where {T}
+OptISTA(; AHA, reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, relTol = eps(real(eltype(AHA))), iterations = 50, verbose = false) = OptISTA(nothing; AHA, reg, normalizeReg, rho, normalize_rho, theta, relTol, iterations, verbose)
 
+function OptISTA(A
+               ; AHA = A'*A
+               , reg = L1Regularization(zero(eltype(AHA)))
+               , normalizeReg = NoNormalization()
+               , rho = 0.95
+               , normalize_rho = true
+               , theta = 1
+               , relTol = eps(real(eltype(AHA)))
+               , iterations = 50
+               , verbose = false
+               )
+
+  T  = eltype(AHA)
   rT = real(T)
 
-  x₀ = similar(x)
-  y = similar(x)
-  z = similar(x)
+  x    = Vector{T}(undef,size(AHA,2))
+  x₀   = similar(x)
+  y    = similar(x)
+  z    = similar(x)
   zᵒˡᵈ = similar(x)
   res  = similar(x)
   res[1] = Inf # avoid spurious convergence in first iterations
 
-  if normalize_ρ
-    ρ /= abs(power_iterations(AᴴA))
+  if normalize_rho
+    rho /= abs(power_iterations(AHA))
   end
   θn = 1
   for _ = 1:(iterations-1)
@@ -95,7 +98,7 @@ function OptISTA(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg
   other = identity.(other)
   reg = normalize(OptISTA, normalizeReg, reg, A, nothing)
 
-  return OptISTA(A, AᴴA, reg[1], other, x, x₀, y, z, zᵒˡᵈ, res, rT(ρ),rT(θ),rT(θ),rT(θn),rT(0),rT(1),rT(1),
+  return OptISTA(A, AHA, reg[1], other, x, x₀, y, z, zᵒˡᵈ, res, rT(rho),rT(theta),rT(theta),rT(θn),rT(0),rT(1),rT(1),
     iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose)
 end
 
@@ -107,19 +110,16 @@ end
 
 (re-) initializes the OptISTA iterator
 """
-function init!(solver::OptISTA{rT,vecT,matA,matAHA}, b::vecT
-              ; x::vecT=similar(b,0)
-              , θ=1
-              ) where {rT,vecT,matA,matAHA}
+function init!(solver::OptISTA, b; x0=0, θ=1)
+  if solver.A === nothing
+    solver.x₀ .= b
+  else
+    mul!(solver.x₀, adjoint(solver.A), b)
+  end
 
-  solver.x₀ .= adjoint(solver.A) * b
   solver.norm_x₀ = norm(solver.x₀)
 
-  if isempty(x)
-    solver.x .= 0
-  else
-    solver.x .= x
-  end
+  solver.x .= x0
   solver.y .= solver.x
   solver.z .= solver.x
   solver.zᵒˡᵈ .= solver.x
@@ -136,36 +136,6 @@ function init!(solver::OptISTA{rT,vecT,matA,matAHA}, b::vecT
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
 end
 
-"""
-    solve(solver::OptISTA, b::Vector; kwargs...)
-
-solves an inverse problem using OptISTA.
-
-# Arguments
-* `solver::OptISTA`                     - the solver containing both system matrix and regularizer
-* `b::vecT`                           - data vector
-
-# Keywords
-* `A=solver.A`                        - operator for the data-term of the problem
-* `startVector::vecT=similar(b,0)`  - initial guess for the solution
-* `solverInfo=nothing`              - solverInfo object
-
-when a `SolverInfo` objects is passed, the residuals are stored in `solverInfo.convMeas`.
-"""
-function solve(solver::OptISTA, b; A=solver.A, startVector=similar(b,0), solverInfo=nothing, kargs...)
-  # initialize solver parameters
-  init!(solver, b; x=startVector)
-
-  # log solver information
-  solverInfo !== nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
-
-  # perform OptISTA iterations
-  for (iteration, item) = enumerate(solver)
-    solverInfo !== nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
-  end
-
-  return solver.x
-end
 
 """
   iterate(it::OptISTA, iteration::Int=0)
@@ -187,10 +157,10 @@ function iterate(solver::OptISTA, iteration::Int=0)
   solver.β = solver.θᵒˡᵈ / solver.θ
 
   # calculate residuum and do gradient step
-  # solver.y .-= solver.ρ * solver.γ .* (solver.AᴴA * solver.x .- solver.x₀)
+  # solver.y .-= solver.ρ * solver.γ .* (solver.AHA * solver.x .- solver.x₀)
   solver.zᵒˡᵈ .= solver.z #store this for inertia step
   solver.z .= solver.y #save yᵒˡᵈ in the variable z
-  mul!(solver.res, solver.AᴴA, solver.x)
+  mul!(solver.res, solver.AHA, solver.x)
   solver.res .-= solver.x₀
   solver.y .-= solver.ρ * solver.γ .* solver.res
 
