@@ -140,12 +140,12 @@ function init!(solver::Kaczmarz, b; x0 = 0)
   end
 end
 
-function solve!(solver::Kaczmarz, b; x0 = 0, f_trace = (_, _) -> nothing)
+function solve!(solver::Kaczmarz, b; x0 = 0, callback = (_, _) -> nothing)
   init!(solver, b; x0)
-  f_trace(solver, 0)
+  callback(solver, 0)
 
   for (iteration, _) = enumerate(solver)
-    f_trace(solver, iteration)
+    callback(solver, iteration)
   end
 
   # backtransformation of solution with Tikhonov matrix

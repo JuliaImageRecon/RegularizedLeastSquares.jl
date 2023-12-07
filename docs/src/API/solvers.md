@@ -46,7 +46,6 @@ RegularizedLeastSquares.SplitBregman
 ```@docs
 RegularizedLeastSquares.linearSolverList
 RegularizedLeastSquares.createLinearSolver
-RegularizedLeastSquares.SolverInfo
 RegularizedLeastSquares.applicableSolverList
 RegularizedLeastSquares.isapplicable
 ```
