@@ -47,7 +47,7 @@ creates a `FISTA` object for the forward operator `A` or normal operator `AHA`.
 
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
-FISTA(; AHA = A'*A, reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false) = FISTA(nothing; AHA, reg, normalizeReg, rho, normalize_rho, theta, relTol, iterations, restart, verbose)
+FISTA(; AHA = A'*A, kwargs...) = FISTA(nothing; AHA = AHA, kwargs...)
 
 function FISTA(A
              ; AHA = A'*A

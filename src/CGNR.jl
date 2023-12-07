@@ -40,7 +40,7 @@ creates an `CGNR` object for the forward operator `A` or normal operator `AHA`.
 
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
-CGNR(; AHA = A'*A, reg = L2Regularization(zero(real(eltype(AHA)))), normalizeReg::AbstractRegularizationNormalization = NoNormalization(), weights::AbstractVector = similar(AHA, 0), iterations::Int = 10, relTol::Real = eps(real(eltype(AHA)))) = CGNR(nothing; AHA, reg, normalizeReg, weights, iterations, relTol)
+CGNR(; AHA = A'*A, kwargs...) = CGNR(nothing; AHA = AHA, kwargs...)
 
 function CGNR(A
             ; AHA = A'*A

@@ -66,7 +66,7 @@ creates an `ADMM` object for the forward operator `A` or normal operator `AHA`.
 
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
-ADMM(; AHA = A'*A, precon = Identity(), reg = L1Regularization(zero(eltype(AHA))), normalizeReg::AbstractRegularizationNormalization = NoNormalization(), rho = 1e-1, vary_rho::Symbol = :none, iterations::Int = 50, iterationsCG::Int = 10, absTol::Real = eps(real(eltype(AHA))), relTol::Real = eps(real(eltype(AHA))), tolInner::Real = 1e-5, verbose = false) = ADMM(nothing; AHA, precon, reg, normalizeReg, rho, vary_rho, iterations, iterationsCG, absTol, relTol, tolInner, verbose)
+ADMM(; AHA = A'*A, kwargs...) = ADMM(nothing; kwargs..., AHA = AHA)
 
 function ADMM(A
             ; AHA = A'*A

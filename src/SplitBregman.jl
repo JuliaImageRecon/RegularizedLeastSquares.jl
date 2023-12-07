@@ -65,7 +65,7 @@ Creates a `SplitBregman` object for the forward operator `A`.
 
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
-SplitBregman(; AHA = A'*A, reg = L1Regularization(zero(eltype(AHA))), normalizeReg::AbstractRegularizationNormalization = NoNormalization(), precon = Identity(), rho = 1.e2, absTol = eps(), relTol = eps(), tolInner = 1.e-6, iterations::Int = 10, iterationsInner::Int = 50, iterationsCG::Int = 10, verbose = false) = SplitBregman(nothing; AHA, reg, normalizeReg, precon, rho, absTol, relTol, tolInner, iterations, iterationsInner, iterationsCG, verbose)
+SplitBregman(; AHA = A'*A, kwargs...) = SplitBregman(nothing; kwargs..., AHA = AHA)
 
 function SplitBregman(A
                     ; AHA = A'*A

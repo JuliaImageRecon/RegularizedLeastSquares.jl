@@ -53,7 +53,7 @@ OR
 
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
-OptISTA(; AHA, reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, relTol = eps(real(eltype(AHA))), iterations = 50, verbose = false) = OptISTA(nothing; AHA, reg, normalizeReg, rho, normalize_rho, theta, relTol, iterations, verbose)
+OptISTA(; AHA, kwargs...) = OptISTA(nothing; AHA = AHA, kwargs...)
 
 function OptISTA(A
                ; AHA = A'*A
