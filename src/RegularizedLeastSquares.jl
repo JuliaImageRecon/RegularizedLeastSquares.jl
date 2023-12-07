@@ -114,6 +114,20 @@ function solve!(solver::AbstractLinearSolver, b; x0 = 0, callbacks = (_, _) -> n
   return solver.x
 end
 
+"""
+    solve!(cb, solver, b; kwargs...)
+
+Pass `cb` as the callback to `solve!`
+
+# Examples
+```julia 
+julia> x_approx = solve!(solver, b) do solver, iteration
+  println(iteration)
+end
+```
+"""
+solve!(cb, solver::AbstractLinearSolver, b; kwargs...) = solve!(solver, b; kwargs..., callbacks = cb)
+
 
 
 export AbstractRowActionSolver
@@ -138,6 +152,7 @@ include("Transforms.jl")
 include("Regularization/Regularization.jl")
 include("proximalMaps/ProximalMaps.jl")
 
+export solversolution, solverconvergence
 """
     solversolution(solver::AbstractLinearSolver)
 
