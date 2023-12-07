@@ -51,7 +51,7 @@ OR
 * `iterations::Int`                                   - maximum number of iterations
 * `verbose::Bool`                                     - print residual in each iteration
 
-See also [`createLinearSolver`](@ref), [`solve`](@ref).
+See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
 OptISTA(; AHA, reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, relTol = eps(real(eltype(AHA))), iterations = 50, verbose = false) = OptISTA(nothing; AHA, reg, normalizeReg, rho, normalize_rho, theta, relTol, iterations, verbose)
 

@@ -2,9 +2,9 @@
 This page contains documentation of the public API of the RegularizedLeastSquares. In the Julia
 REPL one can access this documentation by entering the help mode with `?`
 
-## solve
+## solve!
 ```@docs
-RegularizedLeastSquares.solve(::AbstractLinearSolver, ::Any)
+RegularizedLeastSquares.solve!(::AbstractLinearSolver, ::Any)
 ```
 
 ## ADMM
@@ -46,7 +46,6 @@ RegularizedLeastSquares.SplitBregman
 ```@docs
 RegularizedLeastSquares.linearSolverList
 RegularizedLeastSquares.createLinearSolver
-RegularizedLeastSquares.SolverInfo
 RegularizedLeastSquares.applicableSolverList
 RegularizedLeastSquares.isapplicable
 ```

@@ -9,7 +9,7 @@ Random.seed!(12345)
 
     for solver in solvers
         S = createLinearSolver(solver, A, iterations = 200)
-        x_approx = solve(S, b)
+        x_approx = solve!(S, b)
         @info "Testing solver $solver: $x ≈ $x_approx"
         @test x_approx ≈ x rtol = 0.1
     end
@@ -24,7 +24,7 @@ end
 
     for solver in solvers
         S = createLinearSolver(solver, A, iterations = 100)
-        x_approx = solve(S, b)
+        x_approx = solve!(S, b)
         @info "Testing solver $solver: $x ≈ $x_approx"
         @test x_approx ≈ x rtol = 0.1
     end
@@ -40,7 +40,7 @@ end
 
     for solver in solvers
         S = createLinearSolver(solver, nothing; AHA=AHA, iterations = 100)
-        x_approx = solve(S, b)
+        x_approx = solve!(S, b)
         @info "Testing solver $solver: $x ≈ $x_approx"
         @test x_approx ≈ x rtol = 0.1
     end
@@ -71,7 +71,7 @@ end
             iterations = 200,
             normalizeReg = NoNormalization(),
         )
-        x_approx = solve(S, b)
+        x_approx = solve!(S, b)
         @info "Testing solver $solver w/o restart: relative error = $(norm(x - x_approx) / norm(x))"
         @test x ≈ x_approx rtol = 0.1
 
@@ -85,7 +85,7 @@ end
                 normalizeReg = NoNormalization(),
                 restart = :gradient,
             )
-            x_approx = solve(S, b)
+            x_approx = solve!(S, b)
             @info "Testing solver $solver w/ gradient restart: relative error = $(norm(x - x_approx) / norm(x))"
             @test x ≈ x_approx rtol = 0.1
         end
@@ -100,7 +100,7 @@ end
             iterations = 200,
             normalizeReg = MeasurementBasedNormalization(),
         )
-        x_approx = solve(S, b)
+        x_approx = solve!(S, b)
         x_approx .*= scale_F
         @info "Testing solver $solver w/o restart and after re-scaling: relative error = $(norm(x - x_approx) / norm(x))"
         @test x ≈ x_approx rtol = 0.1
@@ -119,7 +119,7 @@ end
         vary_rho = :balance,
         verbose = false,
     )
-    x_approx = solve(S, b)
+    x_approx = solve!(S, b)
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol = 0.1
 
@@ -133,7 +133,7 @@ end
         vary_rho = :balance,
         verbose = false,
     )
-    x_approx = solve(S, b)
+    x_approx = solve!(S, b)
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol = 0.1
 
@@ -148,7 +148,7 @@ end
         vary_rho = :PnP,
         verbose = false,
     )
-    x_approx = solve(S, b)
+    x_approx = solve!(S, b)
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol = 0.1
 
@@ -164,7 +164,7 @@ end
         rho = 1.0,
         normalizeReg = NoNormalization(),
     )
-    x_approx = solve(S, b)
+    x_approx = solve!(S, b)
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol = 0.1
 
@@ -178,7 +178,7 @@ end
         rho = 1.0,
         normalizeReg = MeasurementBasedNormalization(),
     )
-    x_approx = solve(S, b)
+    x_approx = solve!(S, b)
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol = 0.1
 
@@ -193,7 +193,7 @@ end
         reg = reg,
         iterations = 1000,
     )
-    x_approx = solve(S, bR)
+    x_approx = solve!(S, bR)
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol = 0.1
 end

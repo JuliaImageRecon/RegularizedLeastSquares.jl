@@ -43,7 +43,7 @@ end
 
   solver = Kaczmarz
   S = createLinearSolver(solver, A, iterations=200, regMatrix=regMatrix)
-  x_approx = solve(S,b)
+  x_approx = solve!(S,b)
   #@info "Testing solver $solver ...: $x  == $x_approx"
   @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
 
@@ -60,11 +60,11 @@ end
 
   # use regularization matrix
   S = createLinearSolver(solver, A, iterations=100, regMatrix=regMatrix)
-  x_matrix = solve(S,b)
+  x_matrix = solve!(S,b)
 
   # use standard reconstruction
   S = createLinearSolver(solver, A * Diagonal(1 ./ sqrt.(regMatrix)), iterations=100)
-  x_approx = solve(S,b) ./ sqrt.(regMatrix)
+  x_approx = solve!(S,b) ./ sqrt.(regMatrix)
 
   # test
   #@info "Testing solver $solver ...: $x_matrix  == $x_approx"
@@ -82,15 +82,15 @@ end
 
   solver = Kaczmarz
   S = createLinearSolver(solver, A, iterations=200)
-  x_approx = solve(S,b)
+  x_approx = solve!(S,b)
   @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
 
   S = createLinearSolver(solver, A, iterations=200, shuffleRows=true)
-  x_approx = solve(S,b)
+  x_approx = solve!(S,b)
   @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
 
   S = createLinearSolver(solver, A, iterations=2000, randomized=true)
-  x_approx = solve(S,b)
+  x_approx = solve!(S,b)
   @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
 end
 

@@ -40,7 +40,7 @@ Creates an `DaxKaczmarz` object for the forward operator `A`. Solves a unconstra
   * `iterations::Int`                                   - maximum number of (outer) ADMM iterations
   * `iterationsInner::Int`                              - max number of (inner) dax iterations
 
-See also [`createLinearSolver`](@ref), [`solve`](@ref).
+See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
 function DaxKaczmarz(A
                    ; b=nothing

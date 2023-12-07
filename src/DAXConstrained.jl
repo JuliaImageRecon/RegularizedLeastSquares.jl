@@ -40,7 +40,7 @@ Creates an `DaxConstrained` object for the forward operator `A`. Solves a constr
   * `iterations::Int`                                   - maximum number of (outer) ADMM iterations
   * `iterationsInner::Int`                              - max number of (inner) dax iterations
 
-See also [`createLinearSolver`](@ref), [`solve`](@ref).
+See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
 function DaxConstrained(A
                       ; b=nothing

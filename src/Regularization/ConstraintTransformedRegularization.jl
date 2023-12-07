@@ -12,7 +12,7 @@ Nested regularization term that associates the `nested` regularization term with
 struct ConstraintTransformedRegularization{S, R<:AbstractRegularization, TR} <: AbstractNestedRegularization{S}
   reg::R
   trafo::TR
-  ConstraintTransformedRegularization(reg::AbstractRegularization, trafo::TR) where TR = new{R, R, TR}(reg, trafo)
+  ConstraintTransformedRegularization(reg::R, trafo::TR) where {R<:AbstractRegularization, TR} = new{R, R, TR}(reg, trafo)
   ConstraintTransformedRegularization(reg::R, trafo::TR) where {S, R<:AbstractNestedRegularization{S}, TR} = new{S,R, TR}(reg, trafo)
 end
 innerreg(reg::ConstraintTransformedRegularization) = reg.reg

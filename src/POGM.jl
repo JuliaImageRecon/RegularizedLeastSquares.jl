@@ -65,7 +65,7 @@ Creates a `POGM` object for the forward operator `A` or normal operator `AHA`. P
   * `restart::Symbol`                                   - `:none`, `:gradient` options for restarting
   * `verbose::Bool`                                     - print residual in each iteration
 
-See also [`createLinearSolver`](@ref), [`solve`](@ref).
+See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
 POGM(; AHA = A'*A, reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false) = POGM(nothing; AHA, reg, normalizeReg, rho, normalize_rho, theta, sigma_fac, relTol, iterations, restart, verbose)
 

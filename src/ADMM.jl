@@ -21,7 +21,7 @@ mutable struct ADMM{rT,matT,opT,R,ropT,P,vecT,rvecT,preconT} <: AbstractPrimalDu
   precon::preconT
   ρ::rvecT # TODO: Switch all these vectors to Tuple
   iterations::Int64
-  iterationsInner::Int64
+  iterationsCG::Int64
   # state variables for CG
   cgStateVars::CGStateVariables
   # convergence parameters
@@ -40,8 +40,8 @@ mutable struct ADMM{rT,matT,opT,R,ropT,P,vecT,rvecT,preconT} <: AbstractPrimalDu
 end
 
 """
-    ADMM(A; AHA = A'*A, precon = Identity(), reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 1e-1, vary_rho = :none, iterations = 50, iterationsInner = 10, absTol = eps(real(eltype(AHA))), relTol = eps(real(eltype(AHA))), tolInner = 1e-5, verbose = false)
-    ADMM( ; AHA = ,     precon = Identity(), reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 1e-1, vary_rho = :none, iterations = 50, iterationsInner = 10, absTol = eps(real(eltype(AHA))), relTol = eps(real(eltype(AHA))), tolInner = 1e-5, verbose = false)
+    ADMM(A; AHA = A'*A, precon = Identity(), reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 1e-1, vary_rho = :none, iterations = 50, iterationsCG = 10, absTol = eps(real(eltype(AHA))), relTol = eps(real(eltype(AHA))), tolInner = 1e-5, verbose = false)
+    ADMM( ; AHA = ,     precon = Identity(), reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 1e-1, vary_rho = :none, iterations = 50, iterationsCG = 10, absTol = eps(real(eltype(AHA))), relTol = eps(real(eltype(AHA))), tolInner = 1e-5, verbose = false)
 
 creates an `ADMM` object for the forward operator `A` or normal operator `AHA`.
 
@@ -58,15 +58,15 @@ creates an `ADMM` object for the forward operator `A` or normal operator `AHA`.
   * `rho::Real`                                         - penalty of the augmented Lagrangian
   * `vary_rho::Symbol`                                  - vary rho to balance primal and dual feasibility; options `:none`, `:balance`, `:PnP`
   * `iterations::Int`                                   - maximum number of (outer) ADMM iterations
-  * `iterationsInner::Int`                              - max number of (inner) CG iterations
+  * `iterationsCG::Int`                                 - max number of (inner) CG iterations
   * `absTol::Real`                                      - abs tolerance for stopping criterion
   * `relTol::Real`                                      - tolerance for stopping criterion
   * `tolInner::Real`                                    - rel tolerance for CG stopping criterion
   * `verbose::Bool`                                     - print residual in each iteration
 
-See also [`createLinearSolver`](@ref), [`solve`](@ref).
+See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
-ADMM(; AHA = A'*A, precon = Identity(), reg = L1Regularization(zero(eltype(AHA))), normalizeReg::AbstractRegularizationNormalization = NoNormalization(), rho = 1e-1, vary_rho::Symbol = :none, iterations::Int = 50, iterationsInner::Int = 10, absTol::Real = eps(real(eltype(AHA))), relTol::Real = eps(real(eltype(AHA))), tolInner::Real = 1e-5, verbose = false) = ADMM(nothing; AHA, precon, reg, normalizeReg, rho, vary_rho, iterations, iterationsInner, absTol, relTol, tolInner, verbose)
+ADMM(; AHA = A'*A, precon = Identity(), reg = L1Regularization(zero(eltype(AHA))), normalizeReg::AbstractRegularizationNormalization = NoNormalization(), rho = 1e-1, vary_rho::Symbol = :none, iterations::Int = 50, iterationsCG::Int = 10, absTol::Real = eps(real(eltype(AHA))), relTol::Real = eps(real(eltype(AHA))), tolInner::Real = 1e-5, verbose = false) = ADMM(nothing; AHA, precon, reg, normalizeReg, rho, vary_rho, iterations, iterationsCG, absTol, relTol, tolInner, verbose)
 
 function ADMM(A
             ; AHA = A'*A
@@ -76,7 +76,7 @@ function ADMM(A
             , rho = 1e-1
             , vary_rho::Symbol = :none
             , iterations::Int = 50
-            , iterationsInner::Int = 10
+            , iterationsCG::Int = 10
             , absTol::Real = eps(real(eltype(AHA)))
             , relTol::Real = eps(real(eltype(AHA)))
             , tolInner::Real = 1e-5
@@ -106,9 +106,9 @@ function ADMM(A
   regTrafo = identity.(regTrafo)
 
   if typeof(rho) <: Number
-    ρ_vec = [rT.(rho) for _ ∈ eachindex(reg)]
+    rho = [rT.(rho) for _ ∈ eachindex(reg)]
   else
-    ρ_vec = rT.(rho)
+    rho = rT.(rho)
   end
 
   x    = Vector{T}(undef,size(AHA,2))
@@ -125,7 +125,7 @@ function ADMM(A
 
   # statevariables for CG
   # we store them here to prevent CG from allocating new fields at each call
-  statevars = CGStateVariables(zero(x),similar(x),similar(x))
+  cgStateVars = CGStateVariables(zero(x),similar(x),similar(x))
 
   # convergence parameters
   rᵏ   = Array{rT}(undef, length(reg))
@@ -137,8 +137,8 @@ function ADMM(A
   # normalization parameters
   reg = normalize(ADMM, normalizeReg, reg, A, nothing)
 
-  return ADMM(A,reg,regTrafo,proj,AHA,β,β_y,x,xᵒˡᵈ,z,zᵒˡᵈ,u,uᵒˡᵈ,precon,ρ_vec,iterations
-              ,iterationsInner,statevars, rᵏ,sᵏ,ɛᵖʳⁱ,ɛᵈᵘᵃ,zero(rT),Δ,rT(absTol),rT(relTol),rT(tolInner)
+  return ADMM(A,reg,regTrafo,proj,AHA,β,β_y,x,xᵒˡᵈ,z,zᵒˡᵈ,u,uᵒˡᵈ,precon,rho,iterations
+              ,iterationsCG,cgStateVars, rᵏ,sᵏ,ɛᵖʳⁱ,ɛᵈᵘᵃ,zero(rT),Δ,rT(absTol),rT(relTol),rT(tolInner)
               ,normalizeReg, vary_rho, verbose)
 end
 
@@ -150,17 +150,17 @@ end
 function init!(solver::ADMM, b::AbstractVector{T}; x0=0) where T
   solver.x .= x0
 
-  # primal and dual variables
-  for i=1:length(solver.reg)
-    solver.z[i] .= solver.regTrafo[i]*solver.x
-    solver.u[i] .= 0
-  end
-
   # right hand side for the x-update
   if solver.A === nothing
     solver.β_y .= b
   else
     mul!(solver.β_y, adjoint(solver.A), b)
+  end
+
+  # primal and dual variables
+  for i=1:length(solver.reg)
+    solver.z[i] .= solver.regTrafo[i]*solver.x
+    solver.u[i] .= 0
   end
 
   # convergence parameter
@@ -173,7 +173,6 @@ function init!(solver::ADMM, b::AbstractVector{T}; x0=0) where T
 
   # normalization of regularization parameters
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
-
 end
 
 solverconvergence(solver::ADMM) = (; :primal => solver.rᵏ, :dual => norm(solver.sᵏ))
@@ -193,28 +192,35 @@ function iterate(solver::ADMM, iteration=0)
   solver.β .= solver.β_y
   AHA = solver.AHA
   for i ∈ eachindex(solver.reg)
-    solver.β .+= solver.ρ[i] * adjoint(solver.regTrafo[i]) * (solver.z[i].-solver.u[i])
+    mul!(solver.β, adjoint(solver.regTrafo[i]), solver.z[i],  solver.ρ[i], 1)
+    mul!(solver.β, adjoint(solver.regTrafo[i]), solver.u[i], -solver.ρ[i], 1)
     AHA       += solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
   end
   solver.verbose && println("conjugated gradients: ")
   solver.xᵒˡᵈ .= solver.x
-  cg!(solver.x, AHA, solver.β, Pl=solver.precon, maxiter=solver.iterationsInner, reltol=solver.tolInner, statevars=solver.cgStateVars, verbose = solver.verbose)
+  cg!(solver.x, AHA, solver.β, Pl=solver.precon, maxiter=solver.iterationsCG, reltol=solver.tolInner, statevars=solver.cgStateVars, verbose = solver.verbose)
 
   for proj in solver.proj
     prox!(proj, solver.x)
   end
 
-  for i=1:length(solver.reg)
+  for i ∈ eachindex(solver.reg)
+    # swap v and vᵒˡᵈ w/o copying data
+    tmp = solver.zᵒˡᵈ[i]
+    solver.zᵒˡᵈ[i] = solver.z[i]
+    solver.z[i] = tmp
+
     # 2. update z using the proximal map of 1/ρ*g(x)
-    solver.zᵒˡᵈ[i] .= solver.z[i]
-    solver.z[i] .= solver.regTrafo[i]*solver.x .+ solver.u[i]
+    mul!(solver.z[i], solver.regTrafo[i], solver.x)
+    solver.z[i] .+= solver.u[i]
     if solver.ρ[i] != 0
       prox!(solver.reg[i], solver.z[i], λ(solver.reg[i])/solver.ρ[i])
     end
 
     # 3. update u
     solver.uᵒˡᵈ[i] .= solver.u[i]
-    solver.u[i] .+= solver.regTrafo[i]*solver.x .- solver.z[i]
+    mul!(solver.u[i], solver.regTrafo[i], solver.x, 1, 1)
+    solver.u[i] .-= solver.z[i]
 
     # update convergence measures (one for each constraint)
     solver.rᵏ[i] = norm(solver.regTrafo[i]*solver.x-solver.z[i])  # primal residual (x-z)
