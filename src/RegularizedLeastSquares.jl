@@ -30,7 +30,7 @@ Solves an inverse problem for the data vector `b` using `solver`.
 
 # Optional Keyword Arguments
   * `x0::AbstractVector`              - initial guess for the solution; default is zero
-  * `callback::Function`               - function that takes the two arguments `callback(solver, iteration)` and, e.g., stores, prints, or plots the intermediate solutions or convergence parameters. Be sure not to modify `solver` or `iteration` in the callback function as this would japaridze convergence.
+  * `callback::Function`              - function that takes the two arguments `callback(solver, iteration)` and, e.g., stores, prints, or plots the intermediate solutions or convergence parameters. Be sure not to modify `solver` or `iteration` in the callback function as this would japaridze convergence. The default does nothing.
 
 
 # Examples
