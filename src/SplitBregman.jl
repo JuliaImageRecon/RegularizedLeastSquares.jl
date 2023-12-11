@@ -72,7 +72,7 @@ function SplitBregman(A
                     , reg = L1Regularization(zero(eltype(AHA)))
                     , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
                     , precon = Identity()
-                    , rho = 1.e2
+                    , rho = 1e-1
                     , absTol = eps()
                     , relTol = eps()
                     , tolInner = 1.e-6
@@ -98,7 +98,7 @@ function SplitBregman(A
     if isnothing(trafoReg)
       push!(regTrafo, opEye(T,size(AHA,2)))
     else
-      push!(regTrafo, trafoReg)
+      push!(regTrafo, trafoReg.trafo)
     end
   end
   regTrafo = identity.(regTrafo)
@@ -115,9 +115,9 @@ function SplitBregman(A
   β_y = similar(x)
 
   # fields for primal & dual variables
-  z    = [similar(x, size(AHA,2)) for i ∈ eachindex(vec(reg))]
-  zᵒˡᵈ = [similar(z[i])           for i ∈ eachindex(vec(reg))]
-  u    = [similar(z[i])           for i ∈ eachindex(vec(reg))]
+  z    = [similar(x, size(regTrafo[i],1)) for i ∈ eachindex(vec(reg))]
+  zᵒˡᵈ = [similar(z[i])                   for i ∈ eachindex(vec(reg))]
+  u    = [similar(z[i])                   for i ∈ eachindex(vec(reg))]
 
   # statevariables for CG
   # we store them here to prevent CG from allocating new fields at each call
@@ -174,21 +174,25 @@ solverconvergence(solver::SplitBregman) = (; :primal => solver.rk, :dual => norm
 
 function iterate(solver::SplitBregman, iteration=1)
   if done(solver, iteration) return nothing end
+  solver.verbose && println("SplitBregman Iteration #$iteration – Outer iteration $(solver.iter_cnt)")
 
   # update x
   solver.β .= solver.β_y
   AHA = solver.AHA
   for i ∈ eachindex(solver.reg)
-    mul!(solver.β, adjoint(solver.regTrafo[i]), solver.z[i],  solver.ρ[i], 1)
-    mul!(solver.β, adjoint(solver.regTrafo[i]), solver.u[i], -solver.ρ[i], 1)
-    AHA += solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
+    mul!(solver.β, adjoint(solver.regTrafo[i]), solver.z[i],  solver.ρ[i]/λ(solver.reg[i]), 1)
+    mul!(solver.β, adjoint(solver.regTrafo[i]), solver.u[i], -solver.ρ[i]/λ(solver.reg[i]), 1)
+    AHA += solver.ρ[i]/λ(solver.reg[i]) * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
   end
   solver.verbose && println("conjugated gradients: ")
-  cg!(solver.x, AHA, solver.β, Pl = solver.precon, maxiter = solver.iterationsInner, reltol=solver.tolInner, statevars=solver.cgStateVars, verbose = solver.verbose)
+  cg!(solver.x, AHA, solver.β, Pl = solver.precon, maxiter = solver.iterationsCG, reltol=solver.tolInner, statevars=solver.cgStateVars, verbose = solver.verbose)
 
   for proj in solver.proj
     prox!(proj, solver.x)
   end
+
+  solver.sk .= 0
+  solver.eps_dt .= 0
 
   #  proximal map for regularization terms
   for i ∈ eachindex(solver.reg)
@@ -212,18 +216,21 @@ function iterate(solver::SplitBregman, iteration=1)
     # primal residuals norms (one for each constraint)
     solver.rk[i] = norm(solver.regTrafo[i] * solver.x - solver.z[i])
     solver.eps_pri[i] = solver.σᵃᵇˢ + solver.relTol * max(norm(solver.regTrafo[i]*solver.x), norm(solver.z[i]))
-  end
 
-  # accumulated dual residual
-  # effectively this corresponds to combining all constraints into one larger constraint.
-  solver.sk .= 0
-  solver.eps_dt .= 0
-  for i ∈ eachindex(solver.reg)
+    if solver.verbose
+      println("rᵏ[$i]   = $(solver.rk[i])")
+      println("ɛᵖʳⁱ[$i] = $(solver.eps_pri[i])")
+      flush(stdout)
+    end
+
+    # dual residual; effectively this corresponds to combining all constraints into one larger constraint.
     mul!(solver.sk,     adjoint(solver.regTrafo[i]), solver.z[i],     solver.ρ[i], 1)
     mul!(solver.sk,     adjoint(solver.regTrafo[i]), solver.zᵒˡᵈ[i], -solver.ρ[i], 1)
     mul!(solver.eps_dt, adjoint(solver.regTrafo[i]), solver.u[i],     solver.ρ[i], 1)
   end
 
+  solver.verbose && println("||sk||_2     = $(norm(solver.sk))")
+  solver.verbose && println("||eps_dt||_2 = $(norm(solver.eps_dt))")
 
   if converged(solver) || iteration >= solver.iterationsInner
     solver.β_y .+= solver.y
@@ -241,7 +248,7 @@ function iterate(solver::SplitBregman, iteration=1)
 end
 
 function converged(solver::SplitBregman)
-  if norm(solver.sk) >= solver.σᵃᵇˢ+solver.relTol*norm(solver.eps_dt)
+  if norm(solver.sk) >= solver.σᵃᵇˢ + solver.relTol * norm(solver.eps_dt)
     return false
   else
     for i=1:length(solver.reg)
