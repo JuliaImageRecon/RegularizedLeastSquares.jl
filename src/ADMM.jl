@@ -212,7 +212,7 @@ function iterate(solver::ADMM, iteration=1)
     mul!(solver.z[i], solver.regTrafo[i], solver.x)
     solver.z[i] .+= solver.u[i]
     if solver.ρ[i] != 0
-      prox!(solver.reg[i], solver.z[i], λ(solver.reg[i])/solver.ρ[i])
+      prox!(solver.reg[i], solver.z[i], λ(solver.reg[i])/2solver.ρ[i]) # λ is divided by 2 to match the ISTA-type algorithms
     end
 
     # 3. update u
