@@ -242,14 +242,10 @@ function iterate(solver::ADMM, iteration=1)
     end
 
     if solver.verbose
-      println("rᵏ[$i]   = $(solver.rᵏ[i])")
-      println("sᵏ[$i]   = $(solver.sᵏ[i])")
-      println("ɛᵖʳⁱ[$i] = $(solver.ɛᵖʳⁱ[i])")
-      println("ɛᵈᵘᵃ[$i] = $(solver.ɛᵈᵘᵃ[i])")
-      println("Δᵒˡᵈ = $(Δᵒˡᵈ)")
-      println("Δ[$i] = $(solver.Δ[i])")
-      println("Δ/Δᵒˡᵈ = $(solver.Δ[i]/Δᵒˡᵈ)")
-      println("current ρ[$i] = $(solver.ρ[i])")
+      println("rᵏ[$i]/ɛᵖʳⁱ[$i] = $(solver.rᵏ[i]/solver.ɛᵖʳⁱ[i])")
+      println("sᵏ[$i]/ɛᵈᵘᵃ[$i] = $(solver.sᵏ[i]/solver.ɛᵈᵘᵃ[i])")
+      println("Δ[$i]/Δᵒˡᵈ[$i]  = $(solver.Δ[i]/Δᵒˡᵈ)")
+      println("new ρ[$i]      = $(solver.ρ[i])")
       flush(stdout)
     end
   end

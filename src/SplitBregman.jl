@@ -185,9 +185,9 @@ function iterate(solver::SplitBregman, iteration=1)
   solver.β .= solver.β_y
   AHA = solver.AHA
   for i ∈ eachindex(solver.reg)
-    mul!(solver.β, adjoint(solver.regTrafo[i]), solver.z[i],  solver.ρ[i]/λ(solver.reg[i]), 1)
-    mul!(solver.β, adjoint(solver.regTrafo[i]), solver.u[i], -solver.ρ[i]/λ(solver.reg[i]), 1)
-    AHA += solver.ρ[i]/λ(solver.reg[i]) * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
+    mul!(solver.β, adjoint(solver.regTrafo[i]), solver.z[i],  solver.ρ[i], 1)
+    mul!(solver.β, adjoint(solver.regTrafo[i]), solver.u[i], -solver.ρ[i], 1)
+    AHA += solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
   end
   solver.verbose && println("conjugated gradients: ")
   cg!(solver.x, AHA, solver.β, Pl = solver.precon, maxiter = solver.iterationsCG, reltol = solver.tolInner, statevars = solver.cgStateVars, verbose = solver.verbose)
@@ -222,10 +222,8 @@ function iterate(solver::SplitBregman, iteration=1)
     solver.ɛᵈᵘᵃ[i] = norm(solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.u[i])
 
     if solver.verbose
-      println("rᵏ[$i]   = $(solver.rᵏ[i])")
-      println("sᵏ[$i]   = $(solver.sᵏ[i])")
-      println("ɛᵖʳⁱ[$i] = $(solver.ɛᵖʳⁱ[i])")
-      println("ɛᵈᵘᵃ[$i] = $(solver.ɛᵈᵘᵃ[i])")
+      println("rᵏ[$i]/ɛᵖʳⁱ[$i] = $(solver.rᵏ[i]/solver.ɛᵖʳⁱ[i])")
+      println("sᵏ[$i]/ɛᵈᵘᵃ[$i] = $(solver.sᵏ[i]/solver.ɛᵈᵘᵃ[i])")
       flush(stdout)
     end
   end
