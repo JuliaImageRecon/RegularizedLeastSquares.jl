@@ -62,7 +62,7 @@ function CGNR(A
   ζl = zero(T)        #temporary scalar
 
   # Prepare regularization terms
-  reg = vec(reg)
+  reg = isa(reg, AbstractVector) ? reg : [reg]
   reg = normalize(CGNR, normalizeReg, reg, A, nothing)
   idx = findsink(L2Regularization, reg)
   if isnothing(idx)

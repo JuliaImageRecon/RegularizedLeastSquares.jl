@@ -66,7 +66,7 @@ function Kaczmarz(A
   end
 
   # Prepare regularization terms
-  reg = vec(reg)
+  reg = isa(reg, AbstractVector) ? reg : [reg]
   reg = normalize(Kaczmarz, normalizeReg, reg, A, nothing)
   idx = findsink(L2Regularization, reg)
   if isnothing(idx)

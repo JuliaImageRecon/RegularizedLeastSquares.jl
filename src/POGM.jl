@@ -99,7 +99,7 @@ function POGM(A
     rho /= abs(power_iterations(AHA))
   end
 
-  reg = vec(reg)
+  reg = isa(reg, AbstractVector) ? reg : [reg]
   indices = findsinks(AbstractProjectionRegularization, reg)
   other = [reg[i] for i in indices]
   deleteat!(reg, indices)

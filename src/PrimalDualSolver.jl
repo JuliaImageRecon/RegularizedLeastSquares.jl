@@ -50,9 +50,11 @@ function PrimalDualSolver(A::Matrix{T}
                         ) where T
   M,N = size(A)
 
-  if (reg isa Vector && reg[1] isa L1Regularization) || reg isa L1Regularization
+  reg = isa(reg, AbstractVector) ? reg : [reg]
+
+  if reg[1] isa L1Regularization
     gradientOp = opEye(T,N) #UniformScaling(one(T))
-  elseif (reg isa Vector && reg[1] isa TVRegularization) || reg isa TVRegularization
+  elseif reg[1] isa TVRegularization
     gradientOp = gradientOperator(T,shape)
   end
 
@@ -63,9 +65,9 @@ function PrimalDualSolver(A::Matrix{T}
   y2 = zeros(T,size(gradientOp*x,1))
 
   # normalization parameters
-  reg = normalize(PrimalDualSolver, normalizeReg, vec(reg), A, nothing)
+  reg = normalize(PrimalDualSolver, normalizeReg, reg, A, nothing)
 
-  return PrimalDualSolver(A,vec(reg),gradientOp,u,x,cO,y1,y2,T(σ),T(τ),T(ϵ),T(PrimalDualGap),enforceReal,enforcePositive,iterations,shape,
+  return PrimalDualSolver(A,reg,gradientOp,u,x,cO,y1,y2,T(σ),T(τ),T(ϵ),T(PrimalDualGap),enforceReal,enforcePositive,iterations,shape,
   normalizeReg)
 end
 
