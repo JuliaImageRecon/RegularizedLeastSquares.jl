@@ -154,7 +154,7 @@ end
 
     ##
     solver = SplitBregman
-    reg = L1Regularization(1.e-3)
+    reg = L1Regularization(2e-3)
     S = createLinearSolver(
         solver,
         F;

@@ -44,6 +44,9 @@ RegularizedLeastSquares.SplitBregman
 
 ## Miscellaneous Functions
 ```@docs
+RegularizedLeastSquares.StoreSolutionCallback
+RegularizedLeastSquares.StoreConvergenceCallback
+RegularizedLeastSquares.CompareSolutionCallback
 RegularizedLeastSquares.linearSolverList
 RegularizedLeastSquares.createLinearSolver
 RegularizedLeastSquares.applicableSolverList
