@@ -58,7 +58,7 @@ end
   λ = rand(1)
   regMatrix = rand(N)
 
-  @show A, x, regMatrix
+  # @show A, x, regMatrix
   # use regularization matrix
 
   S = createLinearSolver(solver, A, iterations=100, regMatrix=regMatrix)

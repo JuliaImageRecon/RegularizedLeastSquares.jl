@@ -31,8 +31,8 @@ mutable struct POGM{rT<:Real,vecT<:Union{AbstractVector{rT},AbstractVector{Compl
 end
 
 """
-    POGM(A; AHA = A'*A, reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false)
-    POGM( ; AHA = ,     reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false)
+    POGM(A; AHA = A'*A, reg = L1Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false)
+    POGM( ; AHA = ,     reg = L1Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false)
 
 Creates a `POGM` object for the forward operator `A` or normal operator `AHA`. POGM has a 2x better worst-case bound than FISTA, but actual performance varies by application. It stores 3 extra intermediate variables the size of the image compared to FISTA. Only gradient restart scheme is implemented for now.
 
@@ -71,7 +71,7 @@ POGM(; AHA, kwargs...) = POGM(nothing; kwargs..., AHA = AHA)
 
 function POGM(A
             ; AHA = A'*A
-            , reg = L1Regularization(zero(eltype(AHA)))
+            , reg = L1Regularization(zero(real(eltype(AHA))))
             , normalizeReg = NoNormalization()
             , rho = 0.95
             , normalize_rho = true

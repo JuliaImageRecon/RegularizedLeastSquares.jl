@@ -40,8 +40,8 @@ mutable struct SplitBregman{matT,opT,R,ropT,P,vecT,rvecT,preconT,rT} <: Abstract
 end
 
 """
-    SplitBregman(A; AHA = A'*A, precon = Identity(), reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 1e-1, iterations = 1, iterationsInner = 10, iterationsCG = 10, absTol = eps(real(eltype(AHA))), relTol = eps(real(eltype(AHA))), tolInner = 1e-5, verbose = false)
-    SplitBregman( ; AHA = ,     precon = Identity(), reg = L1Regularization(zero(eltype(AHA))), normalizeReg = NoNormalization(), rho = 1e-1, iterations = 1, iterationsInner = 10, iterationsCG = 10, absTol = eps(real(eltype(AHA))), relTol = eps(real(eltype(AHA))), tolInner = 1e-5, verbose = false)
+    SplitBregman(A; AHA = A'*A, precon = Identity(), reg = L1Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), rho = 1e-1, iterations = 1, iterationsInner = 10, iterationsCG = 10, absTol = eps(real(eltype(AHA))), relTol = eps(real(eltype(AHA))), tolInner = 1e-5, verbose = false)
+    SplitBregman( ; AHA = ,     precon = Identity(), reg = L1Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), rho = 1e-1, iterations = 1, iterationsInner = 10, iterationsCG = 10, absTol = eps(real(eltype(AHA))), relTol = eps(real(eltype(AHA))), tolInner = 1e-5, verbose = false)
 
 Creates a `SplitBregman` object for the forward operator `A` or normal operator `AHA`.
 
@@ -71,7 +71,7 @@ SplitBregman(; AHA, kwargs...) = SplitBregman(nothing; kwargs..., AHA = AHA)
 function SplitBregman(A
                     ; AHA = A'*A
                     , precon = Identity()
-                    , reg = L1Regularization(zero(eltype(AHA)))
+                    , reg = L1Regularization(zero(real(eltype(AHA))))
                     , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
                     , rho = 1e-1
                     , iterations::Int = 1

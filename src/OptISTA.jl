@@ -27,8 +27,8 @@ mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVec
 end
 
 """
-    OptISTA(A; AHA=A'*A, reg=L1Regularization(zero(eltype(AHA))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, verbose = false)
-    OptISTA( ; AHA=,     reg=L1Regularization(zero(eltype(AHA))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, verbose = false)
+    OptISTA(A; AHA=A'*A, reg=L1Regularization(zero(real(eltype(AHA)))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, verbose = false)
+    OptISTA( ; AHA=,     reg=L1Regularization(zero(real(eltype(AHA)))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, verbose = false)
 
 creates a `OptISTA` object for the forward operator `A` or normal operator `AHA`. OptISTA has a 2x better worst-case bound than FISTA, but actual performance varies by application. It stores 2 extra intermediate variables the size of the image compared to FISTA.
 
@@ -57,7 +57,7 @@ OptISTA(; AHA, kwargs...) = OptISTA(nothing; AHA = AHA, kwargs...)
 
 function OptISTA(A
                ; AHA = A'*A
-               , reg = L1Regularization(zero(eltype(AHA)))
+               , reg = L1Regularization(zero(real(eltype(AHA))))
                , normalizeReg = NoNormalization()
                , rho = 0.95
                , normalize_rho = true

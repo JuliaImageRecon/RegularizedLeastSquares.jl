@@ -22,8 +22,8 @@ mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVecto
 end
 
 """
-    FISTA(A; AHA=A'*A, reg=L1Regularization(zero(eltype(AHA))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, restart = :none, verbose = false)
-    FISTA( ; AHA=,     reg=L1Regularization(zero(eltype(AHA))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, restart = :none, verbose = false)
+    FISTA(A; AHA=A'*A, reg=L1Regularization(zero(real(eltype(AHA)))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, restart = :none, verbose = false)
+    FISTA( ; AHA=,     reg=L1Regularization(zero(real(eltype(AHA)))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, restart = :none, verbose = false)
 
 creates a `FISTA` object for the forward operator `A` or normal operator `AHA`.
 
@@ -51,7 +51,7 @@ FISTA(; AHA, kwargs...) = FISTA(nothing; AHA = AHA, kwargs...)
 
 function FISTA(A
              ; AHA = A'*A
-             , reg = L1Regularization(zero(eltype(AHA)))
+             , reg = L1Regularization(zero(real(eltype(AHA))))
              , normalizeReg = NoNormalization()
              , rho = 0.95
              , normalize_rho = true
