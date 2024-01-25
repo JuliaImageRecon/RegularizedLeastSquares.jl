@@ -1,7 +1,8 @@
 export DaxKaczmarz
 
-mutable struct DaxKaczmarz{matT,T,U} <: AbstractRowActionSolver
+mutable struct DaxKaczmarz{matT,N,T,U} <: AbstractRowActionSolver
   A::matT
+  shape::NTuple{N, Int64}
   u::Vector{T}
   reg::Vector{<:AbstractRegularization}
   λ::Float64
@@ -51,6 +52,7 @@ function DaxKaczmarz(A
                    , enforcePositive::Bool=false
                    , iterations::Int=3
                    , iterationsInner::Int=2
+                   , shape = (size(A, 1),)
                    )
 
   # setup denom and rowindex
@@ -80,7 +82,7 @@ function DaxKaczmarz(A
   if !isempty(reg) && !isnothing(sparseTrafo)
     reg = map(r -> TransformedRegularization(r, sparseTrafo), reg)
   end
-  return DaxKaczmarz(A,u,reg, Float64(λ), denom,rowindex,sumrowweights,x,bk,xl,yl,εw,τl,αl
+  return DaxKaczmarz(A,shape,u,reg, Float64(λ), denom,rowindex,sumrowweights,x,bk,xl,yl,εw,τl,αl
                   ,T.(weights) ,iterations,iterationsInner)
 end
 
@@ -103,7 +105,7 @@ end
 function iterate(solver::DaxKaczmarz, iteration::Int=0)
   if done(solver,iteration)
     for r in solver.reg
-      prox!(r, solver.x)
+      prox!(r, reshape(solver.x, solver.shape))
     end
     return nothing
   end

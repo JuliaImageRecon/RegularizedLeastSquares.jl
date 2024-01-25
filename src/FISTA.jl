@@ -1,8 +1,9 @@
 export FISTA
 
-mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA, R, RN} <: AbstractProximalGradientSolver
+mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, N, matAHA, R, RN} <: AbstractProximalGradientSolver
   A::matA
   AHA::matAHA
+  shape::NTuple{N, Int64}
   reg::R
   proj::Vector{RN}
   x::vecT
@@ -60,6 +61,7 @@ function FISTA(A
              , iterations = 50
              , restart = :none
              , verbose = false
+             , shape = (size(AHA, 2),)
              )
 
   T  = eltype(AHA)
@@ -87,7 +89,7 @@ function FISTA(A
   reg = normalize(FISTA, normalizeReg, reg, A, nothing)
 
 
-  return FISTA(A, AHA, reg[1], other, x, x₀, xᵒˡᵈ, res, rT(rho),rT(theta),rT(theta),iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose,restart)
+  return FISTA(A, AHA, shape, reg[1], other, x, x₀, xᵒˡᵈ, res, rT(rho),rT(theta),rT(theta),iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose,restart)
 end
 
 """
@@ -146,10 +148,10 @@ function iterate(solver::FISTA, iteration::Int=0)
   # solver.x .+= solver.ρ .* solver.x₀
 
   # proximal map
-  prox!(solver.reg, solver.x, solver.ρ * λ(solver.reg))
+  prox!(solver.reg, reshape(solver.x, solver.shape), solver.ρ * λ(solver.reg))
 
   for proj in solver.proj
-    prox!(proj, solver.x)
+    prox!(proj, reshape(solver.x, solver.shape))
   end
 
   # gradient restart conditions

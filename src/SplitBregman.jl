@@ -1,8 +1,9 @@
 export SplitBregman
 
-mutable struct SplitBregman{matT,opT,R,ropT,P,vecT,rvecT,preconT,rT} <: AbstractPrimalDualSolver
+mutable struct SplitBregman{matT,N,opT,R,ropT,P,vecT,rvecT,preconT,rT} <: AbstractPrimalDualSolver
   # operators and regularization
   A::matT
+  shape::NTuple{N, Int64}
   reg::Vector{R}
   regTrafo::Vector{ropT}
   proj::Vector{P}
@@ -81,6 +82,7 @@ function SplitBregman(A
                     , relTol::Real = eps(real(eltype(AHA)))
                     , tolInner::Real = 1e-5
                     , verbose = false
+                    , shape = (size(AHA, 2),)
                     )
 
   T  = eltype(AHA)
@@ -136,7 +138,7 @@ function SplitBregman(A
   # normalization parameters
   reg = normalize(SplitBregman, normalizeReg, reg, A, nothing)
 
-  return SplitBregman(A,reg,regTrafo,proj,y,AHA,β,β_y,x,z,zᵒˡᵈ,u,precon,rho,iterations,iterationsInner,iterationsCG,cgStateVars,rᵏ,sᵏ,ɛᵖʳⁱ,ɛᵈᵘᵃ,rT(0),rT(absTol),rT(relTol),rT(tolInner),iter_cnt,normalizeReg,verbose)
+  return SplitBregman(A, shape, reg,regTrafo,proj,y,AHA,β,β_y,x,z,zᵒˡᵈ,u,precon,rho,iterations,iterationsInner,iterationsCG,cgStateVars,rᵏ,sᵏ,ɛᵖʳⁱ,ɛᵈᵘᵃ,rT(0),rT(absTol),rT(relTol),rT(tolInner),iter_cnt,normalizeReg,verbose)
 end
 
 """
@@ -193,7 +195,7 @@ function iterate(solver::SplitBregman, iteration=1)
   cg!(solver.x, AHA, solver.β, Pl = solver.precon, maxiter = solver.iterationsCG, reltol = solver.tolInner, statevars = solver.cgStateVars, verbose = solver.verbose)
 
   for proj in solver.proj
-    prox!(proj, solver.x)
+    prox!(proj, reshape(solver.x, solver.shape))
   end
 
   #  proximal map for regularization terms
@@ -207,7 +209,7 @@ function iterate(solver::SplitBregman, iteration=1)
     mul!(solver.z[i], solver.regTrafo[i], solver.x)
     solver.z[i] .+= solver.u[i]
     if solver.ρ[i] != 0
-      prox!(solver.reg[i], solver.z[i], λ(solver.reg[i])/2solver.ρ[i]) # λ is divided by 2 to match the ISTA-type algorithms
+      prox!(solver.reg[i], reshape(solver.z[i], solver.shape), λ(solver.reg[i])/2solver.ρ[i]) # λ is divided by 2 to match the ISTA-type algorithms
     end
 
     # 3. update u

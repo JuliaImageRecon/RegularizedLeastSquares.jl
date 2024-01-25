@@ -1,8 +1,9 @@
 export optista, OptISTA
 
-mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA, R, RN} <: AbstractProximalGradientSolver
+mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, N, matA, matAHA, R, RN} <: AbstractProximalGradientSolver
   A::matA
   AHA::matAHA
+  shape::NTuple{N, Int64}
   reg::R
   proj::Vector{RN}
   x::vecT
@@ -65,6 +66,7 @@ function OptISTA(A
                , relTol = eps(real(eltype(AHA)))
                , iterations = 50
                , verbose = false
+               , shape = (size(AHA, 2),)
                )
 
   T  = eltype(AHA)
@@ -98,7 +100,7 @@ function OptISTA(A
   other = identity.(other)
   reg = normalize(OptISTA, normalizeReg, reg, A, nothing)
 
-  return OptISTA(A, AHA, reg[1], other, x, x₀, y, z, zᵒˡᵈ, res, rT(rho),rT(theta),rT(theta),rT(θn),rT(0),rT(1),rT(1),
+  return OptISTA(A, AHA, shape, reg[1], other, x, x₀, y, z, zᵒˡᵈ, res, rT(rho),rT(theta),rT(theta),rT(θn),rT(0),rT(1),rT(1),
     iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose)
 end
 
@@ -169,7 +171,7 @@ function iterate(solver::OptISTA, iteration::Int=0)
   solver.verbose && println("Iteration $iteration; rel. residual = $(solver.rel_res_norm)")
 
   # proximal map
-  prox!(solver.reg, solver.y, solver.ρ * solver.γ * λ(solver.reg))
+  prox!(solver.reg, reshape(solver.y, solver.shape), solver.ρ * solver.γ * λ(solver.reg))
 
   # inertia steps
   # z = x + (y - yᵒˡᵈ) / γ

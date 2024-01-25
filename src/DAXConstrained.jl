@@ -1,7 +1,8 @@
 export DaxConstrained
 
-mutable struct DaxConstrained{matT,T,Tsparse,U} <: AbstractRowActionSolver
+mutable struct DaxConstrained{matT,N,T,Tsparse,U} <: AbstractRowActionSolver
   A::matT
+  shape::NTuple{N, Int64}
   u::Vector{T}
   λ::Float64
   B::Tsparse
@@ -49,6 +50,7 @@ function DaxConstrained(A
                       , sparseTrafo=nothing
                       , iterations::Int=3
                       , iterationsInner::Int=2
+                      , shape = (size(A, 1),)
                       )
 
   T = eltype(A)
@@ -79,7 +81,7 @@ function DaxConstrained(A
   τl = zero(T)
   αl = zero(T)
 
-  return DaxConstrained(A,u,Float64(λ),B,Bnorm²,denom,rowindex,x,bk,bc,xl,yl,yc,δc,εw,τl,αl
+  return DaxConstrained(A,shape,u,Float64(λ),B,Bnorm²,denom,rowindex,x,bk,bc,xl,yl,yc,δc,εw,τl,αl
                   ,rT.(weights),iterations,iterationsInner)
 end
 

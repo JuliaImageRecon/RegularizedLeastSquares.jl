@@ -1,8 +1,9 @@
 export ADMM
 
-mutable struct ADMM{matT,opT,R,ropT,P,vecT,rvecT,preconT,rT} <: AbstractPrimalDualSolver where {vecT <: AbstractVector{Union{rT, Complex{rT}}}, rvecT <: AbstractVector{rT}}
+mutable struct ADMM{matT,N,opT,R,ropT,P,vecT,rvecT,preconT,rT} <: AbstractPrimalDualSolver where {vecT <: AbstractVector{Union{rT, Complex{rT}}}, rvecT <: AbstractVector{rT}}
   # operators and regularization
   A::matT
+  shape::NTuple{N, Int64}
   reg::Vector{R}
   regTrafo::Vector{ropT}
   proj::Vector{P}
@@ -81,6 +82,7 @@ function ADMM(A
             , relTol::Real = eps(real(eltype(AHA)))
             , tolInner::Real = 1e-5
             , verbose = false
+            , shape = (size(AHA, 2),)
             )
 
   T  = eltype(AHA)
@@ -135,7 +137,7 @@ function ADMM(A
   # normalization parameters
   reg = normalize(ADMM, normalizeReg, reg, A, nothing)
 
-  return ADMM(A,reg,regTrafo,proj,AHA,β,β_y,x,xᵒˡᵈ,z,zᵒˡᵈ,u,uᵒˡᵈ,precon,rho,iterations
+  return ADMM(A,shape,reg,regTrafo,proj,AHA,β,β_y,x,xᵒˡᵈ,z,zᵒˡᵈ,u,uᵒˡᵈ,precon,rho,iterations
               ,iterationsCG,cgStateVars,rᵏ,sᵏ,ɛᵖʳⁱ,ɛᵈᵘᵃ,rT(0),Δ,rT(absTol),rT(relTol),rT(tolInner),normalizeReg,vary_rho,verbose)
 end
 
@@ -198,7 +200,7 @@ function iterate(solver::ADMM, iteration=1)
   cg!(solver.x, AHA, solver.β, Pl = solver.precon, maxiter = solver.iterationsCG, reltol = solver.tolInner, statevars = solver.cgStateVars, verbose = solver.verbose)
 
   for proj in solver.proj
-    prox!(proj, solver.x)
+    prox!(proj, reshape(solver.x, solver.shape))
   end
 
   #  proximal map for regularization terms
@@ -212,7 +214,7 @@ function iterate(solver::ADMM, iteration=1)
     mul!(solver.z[i], solver.regTrafo[i], solver.x)
     solver.z[i] .+= solver.u[i]
     if solver.ρ[i] != 0
-      prox!(solver.reg[i], solver.z[i], λ(solver.reg[i])/2solver.ρ[i]) # λ is divided by 2 to match the ISTA-type algorithms
+      prox!(solver.reg[i], reshape(solver.z[i], solver.shape), λ(solver.reg[i])/2solver.ρ[i]) # λ is divided by 2 to match the ISTA-type algorithms
     end
 
     # 3. update u

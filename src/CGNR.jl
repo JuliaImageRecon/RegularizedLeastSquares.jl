@@ -1,8 +1,9 @@
 export cgnr, CGNR
 
-mutable struct CGNR{matT,opT,vecT,T,R,PR} <: AbstractKrylovSolver
+mutable struct CGNR{matT,opT, N,vecT,T,R,PR} <: AbstractKrylovSolver
   A::matT
   AHA::opT
+  shape::NTuple{N, Int64}
   L2::R
   constr::PR
   x::vecT
@@ -49,6 +50,7 @@ function CGNR(A
             , weights::AbstractVector = similar(AHA, 0)
             , iterations::Int = 10
             , relTol::Real = eps(real(eltype(AHA)))
+            , shape = (size(AHA, 2),)
             )
 
   T = eltype(AHA)
@@ -82,7 +84,7 @@ function CGNR(A
   other = identity.(other)
 
 
-  return CGNR(A, AHA,
+  return CGNR(A, AHA, shape, 
     L2, other, x, x₀, pl, vl, αl, βl, ζl, weights, iterations, relTol, 0.0, normalizeReg)
 end
 
@@ -134,7 +136,7 @@ performs one CGNR iteration.
 function iterate(solver::CGNR, iteration::Int=0)
   if done(solver, iteration)
     for r in solver.constr
-      prox!(r, solver.x)
+      prox!(r, reshape(solver.x, solver.shape))
     end
     return nothing
   end

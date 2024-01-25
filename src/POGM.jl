@@ -1,8 +1,9 @@
 export pogm, POGM
 
-mutable struct POGM{rT<:Real,vecT<:Union{AbstractVector{rT},AbstractVector{Complex{rT}}},matA,matAHA,R,RN} <: AbstractProximalGradientSolver
+mutable struct POGM{rT<:Real,vecT<:Union{AbstractVector{rT},AbstractVector{Complex{rT}}},matA,matAHA,N,R,RN} <: AbstractProximalGradientSolver
   A::matA
   AHA::matAHA
+  shape::NTuple{N, Int64}
   reg::R
   proj::Vector{RN}
   x::vecT
@@ -81,6 +82,7 @@ function POGM(A
             , iterations = 50
             , restart = :none
             , verbose = false
+            , shape = (size(AHA, 2),)
 )
 
   T = eltype(AHA)
@@ -109,7 +111,7 @@ function POGM(A
   other = identity.(other)
   reg = normalize(POGM, normalizeReg, reg, A, nothing)
 
-  return POGM(A, AHA, reg[1], other, x, x₀, xᵒˡᵈ, y, z, w, res, rT(rho), rT(theta), rT(theta), rT(0), rT(1), rT(1), rT(1), rT(1), rT(sigma_fac),
+  return POGM(A, AHA, shape, reg[1], other, x, x₀, xᵒˡᵈ, y, z, w, res, rT(rho), rT(theta), rT(theta), rT(0), rT(1), rT(1), rT(1), rT(1), rT(sigma_fac),
     iterations, rT(relTol), normalizeReg, one(rT), rT(Inf), verbose, restart)
 end
 
@@ -192,9 +194,9 @@ function iterate(solver::POGM, iteration::Int=0)
   solver.z .= solver.x #store this for next iteration and GR
 
   # proximal map
-  prox!(solver.reg, solver.x, solver.γ * λ(solver.reg))
+  prox!(solver.reg, reshape(solver.x, solver.shape), solver.γ * λ(solver.reg))
   for proj in solver.proj
-    prox!(proj, solver.x)
+    prox!(proj, reshape(solver.x, solver.shape))
   end
 
   # gradient restart conditions

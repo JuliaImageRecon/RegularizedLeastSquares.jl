@@ -1,8 +1,9 @@
 export kaczmarz
 export Kaczmarz
 
-mutable struct Kaczmarz{matT,T,U,R,RN} <: AbstractRowActionSolver
+mutable struct Kaczmarz{matT,N,T,U,R,RN} <: AbstractRowActionSolver
   A::matT
+  shape::NTuple{N, Int64}
   u::Vector{T}
   L2::R
   reg::Vector{RN}
@@ -55,6 +56,7 @@ function Kaczmarz(A
                 , seed::Int = 1234
                 , iterations::Int = 10
                 , regMatrix = nothing
+                , shape = (size(A, 1),)
                 )
 
   T = real(eltype(A))
@@ -105,7 +107,7 @@ function Kaczmarz(A
   τl = zero(eltype(A))
   αl = zero(eltype(A))
 
-  return Kaczmarz(A, u, L2, other, denom, rowindex, rowIndexCycle, x, vl, εw, τl, αl,
+  return Kaczmarz(A, shape, u, L2, other, denom, rowindex, rowIndexCycle, x, vl, εw, τl, αl,
                   T.(w), randomized, subMatrixSize, probabilities, shuffleRows,
                   Int64(seed), iterations, regMatrix,
                   normalizeReg)
@@ -167,7 +169,7 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
   end
 
   for r in solver.reg
-    prox!(r, solver.x)
+    prox!(r, reshape(solver.x, solver.shape))
   end
 
   return solver.vl, iteration+1
