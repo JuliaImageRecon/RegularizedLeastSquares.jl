@@ -120,7 +120,7 @@ end
 Pass `cb` as the callback to `solve!`
 
 # Examples
-```julia 
+```julia
 julia> x_approx = solve!(solver, b) do solver, iteration
   println(iteration)
 end
@@ -180,6 +180,8 @@ include("SplitBregman.jl")
 include("PrimalDualSolver.jl")
 
 include("Callbacks.jl")
+
+include("deprecated.jl")
 
 """
 Return a list of all available linear solvers
@@ -258,7 +260,5 @@ function createLinearSolver(solver::Type{T}; AHA, kargs...) where {T<:AbstractLi
   filtered = filter(in(keywords), keys(kargs))
   return solver(; [key=>kargs[key] for key in filtered]..., AHA = AHA)
 end
-
-@deprecate createLinearSolver(solver, A, x; kargs...) createLinearSolver(solver, A; kargs...)
 
 end

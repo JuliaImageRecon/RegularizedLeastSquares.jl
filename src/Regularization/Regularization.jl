@@ -65,7 +65,6 @@ include("ScaledRegularization.jl")
 include("NormalizedRegularization.jl")
 include("TransformedRegularization.jl")
 include("MaskedRegularization.jl")
-include("ConstraintTransformedRegularization.jl")
 include("PlugAndPlayRegularization.jl")
 
 
@@ -87,9 +86,6 @@ end
 
 findsinks(::Type{S}, reg::Vector{<:AbstractRegularization}) where S <: AbstractRegularization = findall(x -> sinktype(x) <: S, reg)
 
-
-Base.vec(reg::AbstractRegularization) = AbstractRegularization[reg]
-Base.vec(reg::AbstractVector{AbstractRegularization}) = reg
 
 """
     RegularizationList()

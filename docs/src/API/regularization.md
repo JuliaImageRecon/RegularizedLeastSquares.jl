@@ -39,7 +39,6 @@ RegularizedLeastSquares.FixedParameterRegularization
 ```@docs
 RegularizedLeastSquares.MaskedRegularization
 RegularizedLeastSquares.TransformedRegularization
-RegularizedLeastSquares.ConstraintTransformedRegularization
 RegularizedLeastSquares.PlugAndPlayRegularization
 ```
 
