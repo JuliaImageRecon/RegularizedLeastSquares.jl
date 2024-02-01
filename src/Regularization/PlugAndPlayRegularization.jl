@@ -11,18 +11,16 @@ The actual regularization term is indirectly defined by the learned proximal map
 
 # Keywords
 * `model`       - model applied to the image
-* `shape`       - dimensions of the image
 * `input_transform` - transform of image before `model`
 """
 struct PlugAndPlayRegularization{T, M, I} <: AbstractParameterizedRegularization{T}
     model::M
     λ::T
-    shape::Vector{Int}
     input_transform::I
     ignoreIm::Bool
-    PlugAndPlayRegularization(λ::T; model::M, shape, input_transform::I=RegularizedLeastSquares.MinMaxTransform, ignoreIm = false, kargs...) where {T, M, I} = new{T, M, I}(model, λ, shape, input_transform, ignoreIm)
+    PlugAndPlayRegularization(λ::T; model::M, input_transform::I=RegularizedLeastSquares.MinMaxTransform, ignoreIm = false, kargs...) where {T<:Number, M, I} = new{T, M, I}(model, λ, input_transform, ignoreIm)
 end
-PlugAndPlayRegularization(model, shape; kwargs...) = PlugAndPlayRegularization(one(Float32); kwargs..., model = model, shape = shape)
+PlugAndPlayRegularization(model; kwargs...) = PlugAndPlayRegularization(one(Float32); kwargs..., model = model)
 
 function prox!(self::PlugAndPlayRegularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: Complex{T}}
     out = real.(x)
@@ -43,8 +41,6 @@ function prox!(self::PlugAndPlayRegularization, x::AbstractArray{T}, λ::T) wher
       end
 
     out = copy(x)
-    out = reshape(out, self.shape...)
-
     tf = self.input_transform(out)
 
     out = RegularizedLeastSquares.transform(tf, out)

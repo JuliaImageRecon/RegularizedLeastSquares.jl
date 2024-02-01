@@ -15,13 +15,13 @@ Regularization term implementing the proximal map for locally low rank (LLR) reg
 """
 struct LLRRegularization{T, N, TI} <: AbstractParameterizedRegularization{T} where {N, TI<:Integer}
   λ::T
-  shape::NTuple{N,TI}
+  dims::Union{TI, NTuple{N, TI}}
   blockSize::NTuple{N,TI}
   randshift::Bool
   L::Int64
 end
-LLRRegularization(λ;  shape::NTuple{N,TI}, blockSize::NTuple{N,TI} = ntuple(_ -> 2, N), randshift::Bool = true, L::Int64 = 1, kargs...) where {N,TI<:Integer} =
- LLRRegularization(λ, shape, blockSize, randshift, L)
+LLRRegularization(λ; dims, blockSize::NTuple{N,TI} = ntuple(_ -> 2, N), randshift::Bool = true, L::Int64 = 1, kargs...) where {N,TI<:Integer} =
+ LLRRegularization(λ, dims, blockSize, randshift, L)
 
 """
     prox!(reg::LLRRegularization, x, λ)
@@ -29,7 +29,7 @@ LLRRegularization(λ;  shape::NTuple{N,TI}, blockSize::NTuple{N,TI} = ntuple(_ -
 performs the proximal map for LLR regularization using singular-value-thresholding
 """
 function prox!(reg::LLRRegularization{TR, N, TI}, x::AbstractArray{Tc}, λ::T) where {TR, N, TI, T, Tc <: Union{T, Complex{T}}}
-    shape = reg.shape
+    shape = size(x)
     blockSize = reg.blockSize
     randshift = reg.randshift
     x = reshape(x, tuple(shape..., length(x) ÷ prod(shape)))
@@ -92,8 +92,8 @@ end
 
 returns the value of the LLR-regularization term.
 """
-function norm(reg::LLRRegularization, x::Vector{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
-    shape = reg.shape
+function norm(reg::LLRRegularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
+    shape = size(x)
     blockSize = reg.blockSize
     randshift = reg.randshift
     L = reg.L

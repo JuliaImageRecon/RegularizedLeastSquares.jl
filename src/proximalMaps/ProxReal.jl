@@ -13,7 +13,7 @@ end
 
 enforce realness of solution `x`.
 """
-function prox!(::RealRegularization, x::Vector{T}) where T
+function prox!(::RealRegularization, x::AbstractArray{T}) where T
   enfReal!(x)
   return x
 end
@@ -23,7 +23,7 @@ end
 
 returns the value of the characteristic function of real, Real numbers.
 """
-function norm(reg::RealRegularization, x::Vector{T}) where T
+function norm(reg::RealRegularization, x::AbstractArray{T}) where T
   y = copy(x)
   prox!(reg, y)
   if y != x

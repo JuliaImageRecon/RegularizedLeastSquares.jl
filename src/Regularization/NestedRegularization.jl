@@ -26,5 +26,5 @@ sinktype(::AbstractNestedRegularization{S}) where S = S
 prox!(reg::AbstractNestedRegularization{S}, x) where S <: AbstractParameterizedRegularization = prox!(reg, x, λ(reg))
 norm(reg::AbstractNestedRegularization{S}, x) where S <: AbstractParameterizedRegularization = norm(reg, x, λ(reg))
 
-prox!(reg::AbstractNestedRegularization, x, args...) = prox!(innerreg(reg), x, args...)
-norm(reg::AbstractNestedRegularization, x, args...) = norm(innerreg(reg), x, args...)
+#prox!(reg::AbstractNestedRegularization, x, args...) = prox!(innerreg(reg), x, args...)
+#norm(reg::AbstractNestedRegularization, x, args...) = norm(innerreg(reg), x, args...)
