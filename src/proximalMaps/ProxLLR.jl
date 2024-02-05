@@ -15,7 +15,7 @@ Regularization term implementing the proximal map for locally low rank (LLR) reg
 """
 struct LLRRegularization{T, N, TI} <: AbstractParameterizedRegularization{T} where {N, TI<:Integer}
   λ::T
-  dims::Union{TI, NTuple{N, TI}}
+  dims::Union{TI}
   blockSize::NTuple{N,TI}
   randshift::Bool
   L::Int64
@@ -29,16 +29,21 @@ LLRRegularization(λ; dims, blockSize::NTuple{N,TI} = ntuple(_ -> 2, N), randshi
 performs the proximal map for LLR regularization using singular-value-thresholding
 """
 function prox!(reg::LLRRegularization{TR, N, TI}, x::AbstractArray{Tc}, λ::T) where {TR, N, TI, T, Tc <: Union{T, Complex{T}}}
-    shape = size(x)
+    dims = reg.dims
+    otherdims = filter(dim -> dim != dims, 1:ndims(x))
+    shape = size(x)[otherdims]
     blockSize = reg.blockSize
     randshift = reg.randshift
-    x = reshape(x, tuple(shape..., length(x) ÷ prod(shape)))
 
-    block_idx = CartesianIndices(blockSize)
-    K = size(x)[end]
+    K = size(x)[dims]
+    blocks = zeros(Int64, ndims(x))
+    blocks[otherdims] .= blockSize
+    blocks[dims] = K
+    block_idx = CartesianIndices(Tuple(blockSize))
 
     if randshift
         # Random.seed!(1234)
+        # TODO block_idx was changed
         shift_idx = (Tuple(rand(block_idx))..., 0)
         xs = circshift(x, shift_idx)
     else
@@ -48,7 +53,10 @@ function prox!(reg::LLRRegularization{TR, N, TI}, x::AbstractArray{Tc}, λ::T) w
     ext = mod.(shape, blockSize)
     pad = mod.(blockSize .- ext, blockSize)
     if any(pad .!= 0)
-        xp = zeros(Tc, (shape .+ pad)..., K)
+        paddedSize = zeros(Int64, ndims(x))
+        paddedSize[dims] = K
+        paddedSize[otherdims] .= shape .+ pad 
+        xp = zeros(Tc, paddedSize...)
         xp[CartesianIndices(x)] .= xs
     else
         xp = xs
@@ -59,15 +67,18 @@ function prox!(reg::LLRRegularization{TR, N, TI}, x::AbstractArray{Tc}, λ::T) w
         BLAS.set_num_threads(1)
         xᴸᴸᴿ = [Array{Tc}(undef, prod(blockSize), K) for _ = 1:Threads.nthreads()]
         let xp = xp # Avoid boxing error
-            @floop for i ∈ CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
-                @views xᴸᴸᴿ[Threads.threadid()] .= reshape(xp[i.+block_idx, :], :, K)
+            ranges = fill(StepRange(TI(0), 1, 1), ndims(x))
+            ranges[otherdims] .= StepRange.(TI(0), blockSize, shape .- 1)
+            ranges[dims] = StepRange(1, 1, 1)
+            @floop for i ∈ CartesianIndices(Tuple(ranges))
+                xᴸᴸᴿ[Threads.threadid()] .= reshape(view(xp, i.+block_idx), :, K) # TODO unsure about this reshape if dims != end
                 ub = sqrt(norm(xᴸᴸᴿ[Threads.threadid()]' * xᴸᴸᴿ[Threads.threadid()], Inf)) #upper bound on singular values given by matrix infinity norm
                 if λ >= ub #save time by skipping the SVT as recommended by Ong/Lustig, IEEE 2016
-                    xp[i.+block_idx, :] .= 0
+                    xp[i.+block_idx] .= 0
                 else # threshold singular values
                     SVDec = svd!(xᴸᴸᴿ[Threads.threadid()])
                     prox!(L1Regularization, SVDec.S, λ)
-                    xp[i.+block_idx, :] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
+                    xp[i.+block_idx] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
                 end
             end
         end
