@@ -5,13 +5,13 @@ This function computes the 2-norm² of a rows of S for dense matrices.
 """
 function rownorm²(B::Transpose{T,S},row::Int) where {T,S<:DenseMatrix}
   A = B.parent
-  U = typeof(real(A[1]))
+  U = real(eltype(A))
   res::U = BLAS.nrm2(size(A,1), pointer(A,(LinearIndices(size(A)))[1,row]), 1)^2
   return res
 end
 
 function rownorm²(A::AbstractMatrix,row::Int)
-  T = typeof(real(A[1]))
+  T = real(eltype(A))
   res = zero(T)
   @simd for n=1:size(A,2)
     res += abs2(A[row,n])
@@ -19,12 +19,14 @@ function rownorm²(A::AbstractMatrix,row::Int)
   return res
 end
 
+rownorm²(A::AbstractLinearOperator,row::Int) = rownorm²(Matrix(A[row, :]), 1)
+
 """
-This function computes the 2-norm² of a rows of S for dense matrices.
+This function computes the 2-norm² of a rows of S for sparse matrices.
 """
 function rownorm²(B::Transpose{T,S},row::Int) where {T,S<:SparseMatrixCSC}
   A = B.parent
-  U = typeof(real(A[1]))
+  U = real(eltype(A))
   res::U = BLAS.nrm2(A.colptr[row+1]-A.colptr[row], pointer(A.nzval,A.colptr[row]), 1)^2
   return res
 end
@@ -89,6 +91,7 @@ function dot_with_matrix_row(B::Transpose{T,S},
   end
   tmp
 end
+
 
 
 

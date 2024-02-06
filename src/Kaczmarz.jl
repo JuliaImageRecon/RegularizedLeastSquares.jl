@@ -159,11 +159,8 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
   end
 
   for i in usedIndices
-    j = solver.rowindex[i]
-    solver.τl = dot_with_matrix_row(solver.A,solver.x,j)
-    solver.αl = solver.denom[i]*(solver.u[j]-solver.τl-solver.ɛw[i]*solver.vl[j])
-    kaczmarz_update!(solver.A,solver.x,j,solver.αl)
-    solver.vl[j] += solver.αl*solver.ɛw[i]
+    row = solver.rowindex[i]
+    iterate_row_index(solver, row, i)
   end
 
   for r in solver.reg
@@ -171,6 +168,21 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
   end
 
   return solver.vl, iteration+1
+end
+
+function iterate_row_index(solver::Kaczmarz, row, index)
+  solver.τl = dot_with_matrix_row(solver.A,solver.x,row)
+  solver.αl = solver.denom[index]*(solver.u[row]-solver.τl-solver.ɛw[index]*solver.vl[row])
+  kaczmarz_update!(solver.A,solver.x,row,solver.αl)
+  solver.vl[row] += solver.αl*solver.ɛw[index]
+end
+
+function iterate_row_index(solver::Kaczmarz{<:AbstractLinearOperator}, row, index)
+  A = Matrix(solver.A[row, :])
+  solver.τl = dot_with_matrix_row(A,solver.x,1)
+  solver.αl = solver.denom[index]*(solver.u[row]-solver.τl-solver.ɛw[index]*solver.vl[row])
+  kaczmarz_update!(A,solver.x,1,solver.αl)
+  solver.vl[row] += solver.αl*solver.ɛw[index]
 end
 
 @inline done(solver::Kaczmarz,iteration::Int) = iteration>=solver.iterations
@@ -192,6 +204,8 @@ function rowProbabilities(A::AbstractMatrix, rowindex)
   return p
 end
 
+rowProbabilities(A::AbstractLinearOperator, rowindex) = rowProbabilities(Matrix(A[rowindex, :]), 1:length(rowindex))
+
 ### initkaczmarz ###
 
 """
@@ -200,8 +214,8 @@ end
 This function saves the denominators to compute αl in denom and the rowindices,
 which lead to an update of x in rowindex.
 """
-function initkaczmarz(A::AbstractMatrix,λ,weights::Vector)
-  T = typeof(real(A[1]))
+function initkaczmarz(A,λ,weights::Vector)
+  T = real(eltype(A))
   denom = T[]
   rowindex = Int64[]
 
