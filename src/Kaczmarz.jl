@@ -14,7 +14,6 @@ mutable struct Kaczmarz{matT,T,U,R,RN} <: AbstractRowActionSolver
   εw::Vector{T}
   τl::T
   αl::T
-  weights::Vector{U}
   randomized::Bool
   subMatrixSize::Int64
   probabilities::Vector{U}
@@ -36,7 +35,6 @@ Creates a Kaczmarz object for the forward operator `A`.
 # Optional Keyword Arguments
   * `reg::AbstractParameterizedRegularization`          - regularization term
   * `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; options are `NoNormalization()`, `MeasurementBasedNormalization()`, `SystemMatrixBasedNormalization()`
-  * `weights::AbstractVector`                             - weights for the data term
   * `randomized::Bool`                                    - randomize Kacmarz algorithm
   * `subMatrixFraction::Real`                             - fraction of rows used in randomized Kaczmarz algorithm
   * `shuffleRows::Bool`                                   - randomize Kacmarz algorithm
@@ -48,7 +46,6 @@ See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 function Kaczmarz(A
                 ; reg = L2Regularization(0)
                 , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
-                , weights = nothing
                 , randomized::Bool = false
                 , subMatrixFraction::Real = 0.15
                 , shuffleRows::Bool = false
@@ -86,12 +83,8 @@ function Kaczmarz(A
   end
   other = identity.(other)
 
-
-  # make sure weights are not empty
-  w = (weights!=nothing ? weights : ones(T,size(A,1)))
-
   # setup denom and rowindex
-  denom, rowindex = initkaczmarz(A, λ(L2), w)
+  denom, rowindex = initkaczmarz(A, λ(L2))
   rowIndexCycle = collect(1:length(rowindex))
   probabilities = T.(rowProbabilities(A, rowindex))
 
@@ -106,7 +99,7 @@ function Kaczmarz(A
   αl = zero(eltype(A))
 
   return Kaczmarz(A, u, L2, other, denom, rowindex, rowIndexCycle, x, vl, εw, τl, αl,
-                  T.(w), randomized, subMatrixSize, probabilities, shuffleRows,
+                  randomized, subMatrixSize, probabilities, shuffleRows,
                   Int64(seed), iterations, regMatrix,
                   normalizeReg)
 end
@@ -117,10 +110,18 @@ end
 (re-) initializes the Kacmarz iterator
 """
 function init!(solver::Kaczmarz, b; x0 = 0)
+  λ_prev = λ(solver.L2)
   solver.L2  = normalize(solver, solver.normalizeReg, solver.L2,  solver.A, b)
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
 
   λ_ = λ(solver.L2)
+
+  # λ changed => recompute denoms
+  if λ_ != λ_prev
+    solver.denom, solver.rowindex = initkaczmarz(solver.A, λ_)
+    solver.rowIndexCycle = collect(1:length(rowindex))
+    solver.probabilities = T.(rowProbabilities(solver.A, rowindex))  
+  end
 
   if solver.shuffleRows || solver.randomized
     Random.seed!(solver.seed)
@@ -134,11 +135,13 @@ function init!(solver::Kaczmarz, b; x0 = 0)
   solver.x .= x0
   solver.vl .= 0
 
-  for i=1:length(solver.rowindex)
-    j = solver.rowindex[i]
-    solver.ɛw[i] = sqrt(λ_) / solver.weights[j]
+  weights = solverweights(solver)
+  for (i, weight) = enumerate(weights[solver.rowindex])
+    solver.ɛw[i] = sqrt(λ_) / weight
   end
 end
+
+solverweights(::Type{<:Kaczmarz}, A::ProdOp{T, <:WeightingOp, matT}) where {T, matT} = A.A.weights
 
 function solversolution(solver::Kaczmarz)
   # backtransformation of solution with Tikhonov matrix
@@ -160,7 +163,7 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
 
   for i in usedIndices
     row = solver.rowindex[i]
-    iterate_row_index(solver, row, i)
+    iterate_row_index(solver, solver.A, row, i)
   end
 
   for r in solver.reg
@@ -170,18 +173,12 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
   return solver.vl, iteration+1
 end
 
-function iterate_row_index(solver::Kaczmarz, row, index)
-  solver.τl = dot_with_matrix_row(solver.A,solver.x,row)
+iterate_row_index(solver::Kaczmarz, A::ProdOp{T, <:WeightingOp, matT}, row, index) where {T, matT} = iterate_row_index(solver, A.B, row, index) # Weighting is considered in solver.ɛw already
+iterate_row_index(solver::Kaczmarz, A::AbstractLinearSolver, row, index) = iterate_row_index(solver, Matrix(A[row, :]), row, index) 
+function iterate_row_index(solver::Kaczmarz, A, row, index)
+  solver.τl = dot_with_matrix_row(A,solver.x,row)
   solver.αl = solver.denom[index]*(solver.u[row]-solver.τl-solver.ɛw[index]*solver.vl[row])
-  kaczmarz_update!(solver.A,solver.x,row,solver.αl)
-  solver.vl[row] += solver.αl*solver.ɛw[index]
-end
-
-function iterate_row_index(solver::Kaczmarz{<:AbstractLinearOperator}, row, index)
-  A = Matrix(solver.A[row, :])
-  solver.τl = dot_with_matrix_row(A,solver.x,1)
-  solver.αl = solver.denom[index]*(solver.u[row]-solver.τl-solver.ɛw[index]*solver.vl[row])
-  kaczmarz_update!(A,solver.x,1,solver.αl)
+  kaczmarz_update!(A,solver.x,row,solver.αl)
   solver.vl[row] += solver.αl*solver.ɛw[index]
 end
 
@@ -205,6 +202,7 @@ function rowProbabilities(A::AbstractMatrix, rowindex)
 end
 
 rowProbabilities(A::AbstractLinearOperator, rowindex) = rowProbabilities(Matrix(A[rowindex, :]), 1:length(rowindex))
+rowProbabilities(A::ProdOp{T, <:WeightingOp, matT}, rowindex) where {T, matT} = rowProbabilities(A.B, rowindex)
 
 ### initkaczmarz ###
 
@@ -214,15 +212,16 @@ rowProbabilities(A::AbstractLinearOperator, rowindex) = rowProbabilities(Matrix(
 This function saves the denominators to compute αl in denom and the rowindices,
 which lead to an update of x in rowindex.
 """
-function initkaczmarz(A,λ,weights::Vector)
+function initkaczmarz(A,λ)
   T = real(eltype(A))
   denom = T[]
   rowindex = Int64[]
 
-  for i=1:size(A,1)
-    s² = rownorm²(A,i)*weights[i]^2
+  weights = solverweights(Kaczmarz, A)
+  for (i, weight) in enumerate(weights)
+    s² = rownorm²(A,i)*weight^2
     if s²>0
-      push!(denom,weights[i]^2/(s²+λ))
+      push!(denom,weight^2/(s²+λ))
       push!(rowindex,i)
     end
   end

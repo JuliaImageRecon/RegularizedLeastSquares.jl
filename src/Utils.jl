@@ -19,7 +19,8 @@ function rownorm²(A::AbstractMatrix,row::Int)
   return res
 end
 
-rownorm²(A::AbstractLinearOperator,row::Int) = rownorm²(Matrix(A[row, :]), 1)
+rownorm²(A::AbstractLinearOperator,row) = rownorm²(Matrix(A[row, :]), 1)
+rownorm²(A::ProdOp{T, <:WeightingOp, matT}, row) where {T, matT} = rownorm²(A.B, row)
 
 """
 This function computes the 2-norm² of a rows of S for sparse matrices.
@@ -32,7 +33,8 @@ function rownorm²(B::Transpose{T,S},row::Int) where {T,S<:SparseMatrixCSC}
 end
 
 
-
+solverweights(solver::S) where S <: AbstractLinearSolver = solverweights(S, solver.A) 
+solverweights(::Type{<:AbstractLinearSolver}, A) = ones(real(eltype(A)), size(A, 1))
 
 ### dot_with_matrix_row ###
 
