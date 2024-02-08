@@ -53,7 +53,21 @@ function normalize(::SystemMatrixBasedNormalization, A::AbstractArray{T}, b) whe
   end
 
   trace = norm(energy)^2/N
-  # TODO where setlamda? here we dont know λ
+  return trace
+end
+# Normalization for weighted SM
+function normalize(::SystemMatrixBasedNormalization, prod::ProdOp{T, <:WeightingOp, matT}, b) where {T, matT}
+  weights = prod.A.weights
+  B = prod.B
+  M = size(B, 1)
+  N = size(B, 2)
+
+  energy = zeros(T, M)
+  for m=1:M
+    energy[m] = sqrt(rownorm²(B,m))*weights[m]
+  end
+
+  trace = norm(energy)^2/N
   return trace
 end
 normalize(::NoNormalization, A, b) = nothing
