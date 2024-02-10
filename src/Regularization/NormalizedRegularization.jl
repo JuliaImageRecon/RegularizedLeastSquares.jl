@@ -64,7 +64,7 @@ function normalize(::SystemMatrixBasedNormalization, prod::ProdOp{T, <:Weighting
 
   energy = zeros(T, M)
   for m=1:M
-    energy[m] = sqrt(rownorm²(B,m))*weights[m]
+    energy[m] = sqrt(rownorm²(B,m))*weights[m] # Due to norm property we can pull out weights here
   end
 
   trace = norm(energy)^2/N

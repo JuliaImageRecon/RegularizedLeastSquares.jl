@@ -44,7 +44,7 @@ Creates a Kaczmarz object for the forward operator `A`.
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
 function Kaczmarz(A
-                ; reg = L2Regularization(0)
+                ; reg = L2Regularization(zero(real(eltype(A))))
                 , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
                 , randomized::Bool = false
                 , subMatrixFraction::Real = 0.15
@@ -173,7 +173,6 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
   return solver.vl, iteration+1
 end
 
-iterate_row_index(solver::Kaczmarz, A::ProdOp{T, <:WeightingOp, matT}, row, index) where {T, matT} = iterate_row_index(solver, A.B, row, index) # Weighting is considered in solver.ɛw already
 iterate_row_index(solver::Kaczmarz, A::AbstractLinearSolver, row, index) = iterate_row_index(solver, Matrix(A[row, :]), row, index) 
 function iterate_row_index(solver::Kaczmarz, A, row, index)
   solver.τl = dot_with_matrix_row(A,solver.x,row)
@@ -221,7 +220,7 @@ function initkaczmarz(A,λ)
   for (i, weight) in enumerate(weights)
     s² = rownorm²(A,i)*weight^2
     if s²>0
-      push!(denom,weight^2/(s²+λ))
+      push!(denom,1/(s²+(λ/weight)))
       push!(rowindex,i)
     end
   end
@@ -253,6 +252,11 @@ function kaczmarz_update!(B::Transpose{T,S}, x::Vector,
   @inbounds @simd for n=1:size(A,1)
       x[n] += beta*conj(A[n,k])
   end
+end
+
+function kaczmarz_update!(prod::ProdOp{Tc, WeightingOp{T}, matT}, x::Vector, k, beta) where {T, Tc<:Union{T, Complex{T}}, matT}
+  weight = prod.A.weights[k]
+  kaczmarz_update!(prod.B, x, k, weight*beta) # only for real weights
 end
 
 # kaczmarz_update! with manual simd optimization
