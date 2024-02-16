@@ -129,13 +129,13 @@ function init!(solver::Kaczmarz, b; x0 = 0)
   if solver.shuffleRows
     shuffle!(solver.rowIndexCycle)
   end
-  solver.u .= b
 
   # start vector
   solver.x .= x0
   solver.vl .= 0
 
   weights = solverweights(solver)
+  solver.u .= b ./(weights)
   for (i, weight) = enumerate(weights[solver.rowindex])
     solver.ɛw[i] = sqrt(λ_) / weight
   end
@@ -174,6 +174,7 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
 end
 
 iterate_row_index(solver::Kaczmarz, A::AbstractLinearSolver, row, index) = iterate_row_index(solver, Matrix(A[row, :]), row, index) 
+iterate_row_index(solver::Kaczmarz, A::ProdOp{T, <:WeightingOp, matT}, row, index) where {T, matT} = iterate_row_index(solver, A.B, row, index)
 function iterate_row_index(solver::Kaczmarz, A, row, index)
   solver.τl = dot_with_matrix_row(A,solver.x,row)
   solver.αl = solver.denom[index]*(solver.u[row]-solver.τl-solver.ɛw[index]*solver.vl[row])
@@ -220,7 +221,7 @@ function initkaczmarz(A,λ)
   for (i, weight) in enumerate(weights)
     s² = rownorm²(A,i)*weight^2
     if s²>0
-      push!(denom,1/(s²+(λ/weight)))
+      push!(denom,1/(s²+(λ/weight^2)))
       push!(rowindex,i)
     end
   end
