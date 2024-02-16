@@ -67,6 +67,8 @@ include("TransformedRegularization.jl")
 include("MaskedRegularization.jl")
 include("PlugAndPlayRegularization.jl")
 
+export ProximalCoreAdapter
+abstract type ProximalCoreAdapter{T, F}  <: AbstractParameterizedRegularization{T} where F end 
 
 function findfirst(::Type{S}, reg::AbstractRegularization) where S <: AbstractRegularization
   regs = collect(reg)
