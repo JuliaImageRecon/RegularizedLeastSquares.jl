@@ -186,11 +186,11 @@ This function calculates the probabilities of the rows of the system matrix
 
 function rowProbabilities(A::AbstractMatrix, rowindex)
   M,N = size(A)
-  normS = norm(A)
+  normS = norm(A)^2
   p = zeros(length(rowindex))
   for i=1:length(rowindex)
     j = rowindex[i]
-    p[i] = (norm(A[j,:]))^2 / (normS)^2
+    p[i] = (norm(A[j,:]))^2 / (normS)
   end
 
   return p
@@ -212,7 +212,7 @@ function initkaczmarz(A,λ)
   denom = T[]
   rowindex = Int64[]
 
-  for i in size(A, 1)
+  for i in 1:size(A, 1)
     s² = rownorm²(A,i)
     if s²>0
       push!(denom,1/(s²+λ))
