@@ -11,7 +11,7 @@ mutable struct Kaczmarz{matT,T,U,R,RN} <: AbstractRowActionSolver
   rowIndexCycle::Vector{Int64}
   x::Vector{T}
   vl::Vector{T}
-  εw::Vector{T}
+  εw::T
   τl::T
   αl::T
   randomized::Bool
@@ -94,7 +94,7 @@ function Kaczmarz(A
   u  = zeros(eltype(A),M)
   x = zeros(eltype(A),N)
   vl = zeros(eltype(A),M)
-  εw = zeros(eltype(A),length(rowindex))
+  εw = zero(eltype(A))
   τl = zero(eltype(A))
   αl = zero(eltype(A))
 
@@ -134,14 +134,10 @@ function init!(solver::Kaczmarz, b; x0 = 0)
   solver.x .= x0
   solver.vl .= 0
 
-  weights = solverweights(solver)
   solver.u .= b
-  for (i, weight) = enumerate(weights[solver.rowindex])
-    solver.ɛw[i] = sqrt(λ_)
-  end
+  solver.ɛw = sqrt(λ_)
 end
 
-solverweights(::Type{<:Kaczmarz}, A::ProdOp{T, <:WeightingOp, matT}) where {T, matT} = A.A.weights
 
 function solversolution(solver::Kaczmarz)
   # backtransformation of solution with Tikhonov matrix
@@ -176,9 +172,9 @@ end
 iterate_row_index(solver::Kaczmarz, A::AbstractLinearSolver, row, index) = iterate_row_index(solver, Matrix(A[row, :]), row, index) 
 function iterate_row_index(solver::Kaczmarz, A, row, index)
   solver.τl = dot_with_matrix_row(A,solver.x,row)
-  solver.αl = solver.denom[index]*(solver.u[row]-solver.τl-solver.ɛw[index]*solver.vl[row])
+  solver.αl = solver.denom[index]*(solver.u[row]-solver.τl-solver.ɛw*solver.vl[row])
   kaczmarz_update!(A,solver.x,row,solver.αl)
-  solver.vl[row] += solver.αl*solver.ɛw[index]
+  solver.vl[row] += solver.αl*solver.ɛw
 end
 
 @inline done(solver::Kaczmarz,iteration::Int) = iteration>=solver.iterations
@@ -216,9 +212,8 @@ function initkaczmarz(A,λ)
   denom = T[]
   rowindex = Int64[]
 
-  weights = solverweights(Kaczmarz, A)
-  for (i, weight) in enumerate(weights)
-    s² = rownorm²(A,i)*weight^2
+  for i in size(A, 1)
+    s² = rownorm²(A,i)
     if s²>0
       push!(denom,1/(s²+λ))
       push!(rowindex,i)
