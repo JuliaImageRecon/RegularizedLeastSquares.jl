@@ -86,7 +86,10 @@ function Kaczmarz(A
   # setup denom and rowindex
   denom, rowindex = initkaczmarz(A, λ(L2))
   rowIndexCycle = collect(1:length(rowindex))
-  probabilities = T.(rowProbabilities(A, rowindex))
+  probabilities = eltype(denom)[]
+  if randomized
+    probabilities = T.(rowProbabilities(A, rowindex))
+  end
 
   M,N = size(A)
   subMatrixSize = round(Int, subMatrixFraction*M)
@@ -120,7 +123,9 @@ function init!(solver::Kaczmarz, b; x0 = 0)
   if λ_ != λ_prev
     solver.denom, solver.rowindex = initkaczmarz(solver.A, λ_)
     solver.rowIndexCycle = collect(1:length(rowindex))
-    solver.probabilities = T.(rowProbabilities(solver.A, rowindex))  
+    if solver.randomized
+      solver.probabilities = T.(rowProbabilities(solver.A, rowindex))
+    end
   end
 
   if solver.shuffleRows || solver.randomized
@@ -184,20 +189,16 @@ end
 This function calculates the probabilities of the rows of the system matrix
 """
 
-function rowProbabilities(A::AbstractMatrix, rowindex)
-  M,N = size(A)
-  normS = norm(A)^2
+function rowProbabilities(A, rowindex)
+  normA² = rownorm²(A, 1:size(A, 1))
   p = zeros(length(rowindex))
   for i=1:length(rowindex)
     j = rowindex[i]
-    p[i] = (norm(A[j,:]))^2 / (normS)
+    p[i] = rownorm²(A, j) / (normA²)
   end
-
   return p
 end
 
-rowProbabilities(A::AbstractLinearOperator, rowindex) = rowProbabilities(Matrix(A[rowindex, :]), 1:length(rowindex))
-rowProbabilities(A::ProdOp{T, <:WeightingOp, matT}, rowindex) where {T, matT} = rowProbabilities(A.B, rowindex)
 
 ### initkaczmarz ###
 
