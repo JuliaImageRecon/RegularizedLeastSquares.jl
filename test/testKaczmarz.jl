@@ -73,6 +73,26 @@ end
   @test norm(x_approx - x_matrix) / norm(x_approx) ≈ 0 atol=0.1
 end
 
+@testset "Kaczmarz Weighting Matrix" begin
+  M = 12
+  N = 8
+  A = rand(M,N)+im*rand(M,N)
+  x = rand(N)+im*rand(N)
+  b = A*x
+  w = WeightingOp(rand(M))
+  d = diagm(w.weights)
+
+  reg = L2Regularization(rand())
+
+  solver = Kaczmarz
+  S = createLinearSolver(solver, d*A, iterations=200, reg = reg)
+  S_weighted = createLinearSolver(solver, *(ProdOp, w, A), iterations=200, reg = reg)
+  x_approx = solve!(S, d*b)
+  x_weighted = solve!(S_weighted, d*b)
+  #@info "Testing solver $solver ...: $x  == $x_approx"
+  @test isapprox(x_approx, x_weighted)
+end
+
 
 # Test Kaczmarz parameters
 @testset "Kaczmarz parameters" begin
