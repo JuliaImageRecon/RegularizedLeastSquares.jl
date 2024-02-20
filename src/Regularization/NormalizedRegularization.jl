@@ -43,28 +43,13 @@ normalize(::MeasurementBasedNormalization, A, b::Nothing) = one(real(eltype(A)))
 
 normalize(::SystemMatrixBasedNormalization, ::Nothing, _) = error("SystemMatrixBasedNormalization requires supplying A to the constructor of the solver")
 
-function normalize(::SystemMatrixBasedNormalization, A::AbstractArray{T}, b) where {T}
+function normalize(::SystemMatrixBasedNormalization, A, b)
   M = size(A, 1)
   N = size(A, 2)
 
-  energy = zeros(T, M)
+  energy = zeros(real(eltype(A)), M)
   for m=1:M
     energy[m] = sqrt(rownorm²(A,m))
-  end
-
-  trace = norm(energy)^2/N
-  return trace
-end
-# Normalization for weighted SM
-function normalize(::SystemMatrixBasedNormalization, prod::ProdOp{T, <:WeightingOp, matT}, b) where {T, matT}
-  weights = prod.A.weights
-  B = prod.B
-  M = size(B, 1)
-  N = size(B, 2)
-
-  energy = zeros(T, M)
-  for m=1:M
-    energy[m] = sqrt(rownorm²(B,m))*weights[m] # Due to norm property we can pull out weights here
   end
 
   trace = norm(energy)^2/N
