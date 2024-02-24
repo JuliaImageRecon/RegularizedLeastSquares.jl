@@ -1,7 +1,7 @@
 export kaczmarz
 export Kaczmarz
 
-mutable struct Kaczmarz{matT,T,U,R,RN} <: AbstractRowActionSolver
+mutable struct Kaczmarz{matT,R,T,U,RN} <: AbstractRowActionSolver
   A::matT
   u::Vector{T}
   L2::R
@@ -97,7 +97,7 @@ function Kaczmarz(A
   u  = zeros(eltype(A),M)
   x = zeros(eltype(A),N)
   vl = zeros(eltype(A),M)
-  εw = zero(eltype(A))
+  εw = zeros(eltype(A), length(rowindex))
   τl = zero(eltype(A))
   αl = zero(eltype(A))
 
