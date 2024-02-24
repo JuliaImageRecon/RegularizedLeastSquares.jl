@@ -202,7 +202,7 @@ isapplicable(::Type{T}, reg::Vector{<:AbstractRegularization}) where T <: Abstra
 function isapplicable(::Type{T}, reg::Vector{<:AbstractRegularization}) where T <: AbstractRowActionSolver
   applicable = true
   applicable &= length(findsinks(AbstractParameterizedRegularization, reg)) <= 2
-  applicable &= length(findsinks(L2Regularization, reg)) == 1
+  applicable &= length(findsinks(SqrL2Regularization, reg)) == 1
   return applicable
 end
 

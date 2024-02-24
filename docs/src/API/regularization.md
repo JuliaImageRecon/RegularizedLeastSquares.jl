@@ -4,7 +4,7 @@ REPL one can access this documentation by entering the help mode with `?`
 
 ```@docs
 RegularizedLeastSquares.L1Regularization
-RegularizedLeastSquares.L2Regularization
+RegularizedLeastSquares.SqrL2Regularization
 RegularizedLeastSquares.L21Regularization
 RegularizedLeastSquares.LLRRegularization
 RegularizedLeastSquares.NuclearRegularization

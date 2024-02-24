@@ -26,7 +26,7 @@ mutable struct Kaczmarz{matT,T,U,R,RN} <: AbstractRowActionSolver
 end
 
 """
-    Kaczmarz(A; reg = L2Regularization(0), normalizeReg = NoNormalization(), weights=nothing, randomized=false, subMatrixFraction=0.15, shuffleRows=false, seed=1234, iterations=10, regMatrix=nothing)
+    Kaczmarz(A; reg = SqrL2Regularization(0), normalizeReg = NoNormalization(), weights=nothing, randomized=false, subMatrixFraction=0.15, shuffleRows=false, seed=1234, iterations=10, regMatrix=nothing)
 
 Creates a Kaczmarz object for the forward operator `A`.
 
@@ -46,7 +46,7 @@ Creates a Kaczmarz object for the forward operator `A`.
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
 function Kaczmarz(A
-                ; reg = L2Regularization(0)
+                ; reg = SqrL2Regularization(0)
                 , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
                 , weights = nothing
                 , randomized::Bool = false
@@ -68,9 +68,9 @@ function Kaczmarz(A
   # Prepare regularization terms
   reg = isa(reg, AbstractVector) ? reg : [reg]
   reg = normalize(Kaczmarz, normalizeReg, reg, A, nothing)
-  idx = findsink(L2Regularization, reg)
+  idx = findsink(SqrL2Regularization, reg)
   if isnothing(idx)
-    L2 = L2Regularization(zero(T))
+    L2 = SqrL2Regularization(zero(T))
   else
     L2 = reg[idx]
     deleteat!(reg, idx)

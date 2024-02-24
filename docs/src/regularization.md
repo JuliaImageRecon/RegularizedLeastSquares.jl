@@ -26,8 +26,8 @@ This group of regularization terms features a regularization parameter `λ` that
 These terms are constructed by supplying a `λ` and optionally term specific keyword arguments:
 
 ```jldoctest l2
-julia> l2 = L2Regularization(0.3)
-L2Regularization{Float64}(0.3)
+julia> l2 = SqrL2Regularization(0.3)
+SqrL2Regularization{Float64}(0.3)
 ```
 Parameterized regularization terms implement:
 ```julia

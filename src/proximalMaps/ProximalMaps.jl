@@ -1,5 +1,6 @@
 include("ProxL1.jl")
 include("ProxL2.jl")
+include("ProxSqrL2.jl")
 include("ProxL21.jl")
 include("ProxLLR.jl")
 # includes/ProxSLR.jl")
