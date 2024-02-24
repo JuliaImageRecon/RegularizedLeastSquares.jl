@@ -12,11 +12,11 @@ mutable struct DirectSolver{matT,vecT, R, PR}  <: AbstractDirectSolver
   proj::Vector{PR}
 end
 
-function DirectSolver(A; reg::Vector{<:AbstractRegularization} = [L2Regularization(zero(real(eltype(A))))], normalizeReg::AbstractRegularizationNormalization = NoNormalization())
+function DirectSolver(A; reg::Vector{<:AbstractRegularization} = [SqrL2Regularization(zero(real(eltype(A))))], normalizeReg::AbstractRegularizationNormalization = NoNormalization())
   reg = normalize(DirectSolver, normalizeReg, reg, A, nothing)
-  idx = findsink(L2Regularization, reg)
+  idx = findsink(SqrL2Regularization, reg)
   if isnothing(idx)
-    L2 = L2Regularization(zero(T))
+    L2 = SqrL2Regularization(zero(T))
   else
     L2 = reg[idx]
     deleteat!(reg, idx)
@@ -98,11 +98,11 @@ mutable struct PseudoInverse{R, vecT, PR}  <: AbstractDirectSolver
   proj::Vector{PR}
 end
 
-function PseudoInverse(A; reg::Vector{<:AbstractRegularization} = [L2Regularization(zero(real(eltype(A))))], normalizeReg::AbstractRegularizationNormalization = NoNormalization())
+function PseudoInverse(A; reg::Vector{<:AbstractRegularization} = [SqrL2Regularization(zero(real(eltype(A))))], normalizeReg::AbstractRegularizationNormalization = NoNormalization())
   reg = normalize(PseudoInverse, normalizeReg, reg, A, nothing)
-  idx = findsink(L2Regularization, reg)
+  idx = findsink(SqrL2Regularization, reg)
   if isnothing(idx)
-    L2 = L2Regularization(zero(T))
+    L2 = SqrL2Regularization(zero(T))
   else
     L2 = reg[idx]
     deleteat!(reg, idx)
