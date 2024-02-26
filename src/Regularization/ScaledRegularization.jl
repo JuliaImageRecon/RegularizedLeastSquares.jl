@@ -6,7 +6,7 @@ Nested regularization term that applies a `scalefactor` to the regularization pa
 
 See also [`scalefactor`](@ref), [`λ`](@ref), [`innerreg`](@ref).
 """
-abstract type AbstractScaledRegularization{T, S<:AbstractParameterizedRegularization{T}} <: AbstractNestedRegularization{S} end
+abstract type AbstractScaledRegularization{T, S<:AbstractParameterizedRegularization{<:Union{T, <:AbstractArray{T}}}} <: AbstractNestedRegularization{S} end
 """
     scalescalefactor(reg::AbstractScaledRegularization)
 

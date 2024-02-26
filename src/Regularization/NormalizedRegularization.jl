@@ -30,6 +30,7 @@ Nested regularization term that scales `λ` according to normalization scheme. T
 struct NormalizedRegularization{T, S, R} <: AbstractScaledRegularization{T, S}
   reg::R
   factor::T
+  NormalizedRegularization(reg::R, factor) where {T, R <: AbstractParameterizedRegularization{<:AbstractArray{T}}} = new{T, R, R}(reg, factor)
   NormalizedRegularization(reg::R, factor) where {T, R <: AbstractParameterizedRegularization{T}} = new{T, R, R}(reg, factor)
   NormalizedRegularization(reg::R, factor) where {T, RN <: AbstractParameterizedRegularization{T}, R<:AbstractNestedRegularization{RN}} = new{T, RN, R}(reg, factor)
 end

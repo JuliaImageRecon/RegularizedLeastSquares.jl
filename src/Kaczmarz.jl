@@ -11,7 +11,7 @@ mutable struct Kaczmarz{matT,R,T,U,RN} <: AbstractRowActionSolver
   rowIndexCycle::Vector{Int64}
   x::Vector{T}
   vl::Vector{T}
-  εw::T
+  εw::Vector{T}
   τl::T
   αl::T
   randomized::Bool
@@ -140,7 +140,7 @@ function init!(solver::Kaczmarz, b; x0 = 0)
   solver.vl .= 0
 
   solver.u .= b
-  solver.ɛw = sqrt(λ_)
+  solver.ɛw .= sqrt.(λ_)
 end
 
 
@@ -177,9 +177,9 @@ end
 iterate_row_index(solver::Kaczmarz, A::AbstractLinearSolver, row, index) = iterate_row_index(solver, Matrix(A[row, :]), row, index) 
 function iterate_row_index(solver::Kaczmarz, A, row, index)
   solver.τl = dot_with_matrix_row(A,solver.x,row)
-  solver.αl = solver.denom[index]*(solver.u[row]-solver.τl-solver.ɛw*solver.vl[row])
+  solver.αl = solver.denom[index]*(solver.u[row]-solver.τl-solver.ɛw[index]*solver.vl[row])
   kaczmarz_update!(A,solver.x,row,solver.αl)
-  solver.vl[row] += solver.αl*solver.ɛw
+  solver.vl[row] += solver.αl*solver.ɛw[index]
 end
 
 @inline done(solver::Kaczmarz,iteration::Int) = iteration>=solver.iterations
@@ -203,20 +203,22 @@ end
 ### initkaczmarz ###
 
 """
-    initkaczmarz(A::AbstractMatrix,λ,weights::Vector)
+    initkaczmarz(A::AbstractMatrix,λ)
 
 This function saves the denominators to compute αl in denom and the rowindices,
 which lead to an update of x in rowindex.
 """
+initkaczmarz(A, λ::Number) = initkaczmarz(A, Iterators.repeated(λ, size(A, 2)))
 function initkaczmarz(A,λ)
   T = real(eltype(A))
   denom = T[]
   rowindex = Int64[]
+  @assert length(λ) == size(A, 2)
 
-  for i in 1:size(A, 1)
+  for (i, λrow) in enumerate(λ)
     s² = rownorm²(A,i)
     if s²>0
-      push!(denom,1/(s²+λ))
+      push!(denom,1/(s²+λrow))
       push!(rowindex,i)
     end
   end
