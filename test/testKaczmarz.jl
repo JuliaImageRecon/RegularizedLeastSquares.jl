@@ -42,7 +42,7 @@ end
   regMatrix = rand(2) # Tikhonov matrix
 
   solver = Kaczmarz
-  S = createLinearSolver(solver, A, iterations=200, regMatrix=regMatrix)
+  S = createLinearSolver(solver, A, iterations=200, reg=[L2Regularization(regMatrix)])
   x_approx = solve!(S,b)
   #@info "Testing solver $solver ...: $x  == $x_approx"
   @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
@@ -61,7 +61,7 @@ end
   # @show A, x, regMatrix
   # use regularization matrix
 
-  S = createLinearSolver(solver, A, iterations=100, regMatrix=regMatrix)
+  S = createLinearSolver(solver, A, iterations=100, reg=[L2Regularization(regMatrix)])
   x_matrix = solve!(S,b)
 
   # use standard reconstruction
