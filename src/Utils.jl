@@ -3,15 +3,15 @@ export rownorm², nrmsd
 """
 This function computes the 2-norm² of a rows of S for dense matrices.
 """
-function rownorm²(B::Transpose{T,S},row::Int) where {T,S<:DenseMatrix}
+function rownorm²(B::Transpose{T,S},row::Int64) where {T,S<:DenseMatrix}
   A = B.parent
-  U = typeof(real(A[1]))
+  U = real(eltype(A))
   res::U = BLAS.nrm2(size(A,1), pointer(A,(LinearIndices(size(A)))[1,row]), 1)^2
   return res
 end
 
-function rownorm²(A::AbstractMatrix,row::Int)
-  T = typeof(real(A[1]))
+function rownorm²(A::AbstractMatrix,row::Int64)
+  T = real(eltype(A))
   res = zero(T)
   @simd for n=1:size(A,2)
     res += abs2(A[row,n])
@@ -19,17 +19,26 @@ function rownorm²(A::AbstractMatrix,row::Int)
   return res
 end
 
+rownorm²(A::AbstractLinearOperator,row::Int64) = rownorm²(Matrix(A[row, :]), 1)
+rownorm²(A::ProdOp{T, <:WeightingOp, matT}, row::Int64) where {T, matT} = A.A.weights[row]^2*rownorm²(A.B, row)
+
 """
-This function computes the 2-norm² of a rows of S for dense matrices.
+This function computes the 2-norm² of a rows of S for sparse matrices.
 """
-function rownorm²(B::Transpose{T,S},row::Int) where {T,S<:SparseMatrixCSC}
+function rownorm²(B::Transpose{T,S},row::Int64) where {T,S<:SparseMatrixCSC}
   A = B.parent
-  U = typeof(real(A[1]))
+  U = real(eltype(A))
   res::U = BLAS.nrm2(A.colptr[row+1]-A.colptr[row], pointer(A.nzval,A.colptr[row]), 1)^2
   return res
 end
 
-
+function rownorm²(A, rows)
+  res = zero(real(eltype(A)))
+  @simd for row in rows
+    res += rownorm²(A, row)
+  end
+  return res
+end
 
 
 ### dot_with_matrix_row ###
@@ -90,6 +99,10 @@ function dot_with_matrix_row(B::Transpose{T,S},
   tmp
 end
 
+function dot_with_matrix_row(prod::ProdOp{T, <:WeightingOp, matT}, x::Vector{T}, k) where {T, matT}
+  A = prod.B
+  return prod.A.weights[k]*dot_with_matrix_row(A, x, k)
+end
 
 
 

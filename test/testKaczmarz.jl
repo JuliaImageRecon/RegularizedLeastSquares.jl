@@ -42,7 +42,7 @@ end
   regMatrix = rand(2) # Tikhonov matrix
 
   solver = Kaczmarz
-  S = createLinearSolver(solver, A, iterations=200, regMatrix=regMatrix)
+  S = createLinearSolver(solver, A, iterations=200, reg=[L2Regularization(regMatrix)])
   x_approx = solve!(S,b)
   #@info "Testing solver $solver ...: $x  == $x_approx"
   @test norm(x - x_approx) / norm(x) ≈ 0 atol=0.1
@@ -61,7 +61,7 @@ end
   # @show A, x, regMatrix
   # use regularization matrix
 
-  S = createLinearSolver(solver, A, iterations=100, regMatrix=regMatrix)
+  S = createLinearSolver(solver, A, iterations=100, reg=[L2Regularization(regMatrix)])
   x_matrix = solve!(S,b)
 
   # use standard reconstruction
@@ -71,6 +71,26 @@ end
   # test
   #@info "Testing solver $solver ...: $x_matrix  == $x_approx"
   @test norm(x_approx - x_matrix) / norm(x_approx) ≈ 0 atol=0.1
+end
+
+@testset "Kaczmarz Weighting Matrix" begin
+  M = 12
+  N = 8
+  A = rand(M,N)+im*rand(M,N)
+  x = rand(N)+im*rand(N)
+  b = A*x
+  w = WeightingOp(rand(M))
+  d = diagm(w.weights)
+
+  reg = L2Regularization(rand())
+
+  solver = Kaczmarz
+  S = createLinearSolver(solver, d*A, iterations=200, reg = reg)
+  S_weighted = createLinearSolver(solver, *(ProdOp, w, A), iterations=200, reg = reg)
+  x_approx = solve!(S, d*b)
+  x_weighted = solve!(S_weighted, d*b)
+  #@info "Testing solver $solver ...: $x  == $x_approx"
+  @test isapprox(x_approx, x_weighted)
 end
 
 

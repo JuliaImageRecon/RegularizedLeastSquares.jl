@@ -12,7 +12,6 @@ mutable struct CGNR{matT,opT,vecT,T,R,PR} <: AbstractKrylovSolver
   αl::T
   βl::T
   ζl::T
-  weights::vecT
   iterations::Int64
   relTol::Float64
   z0::Float64
@@ -46,7 +45,6 @@ function CGNR(A
             ; AHA = A'*A
             , reg = L2Regularization(zero(real(eltype(AHA))))
             , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
-            , weights::AbstractVector = similar(AHA, 0)
             , iterations::Int = 10
             , relTol::Real = eps(real(eltype(AHA)))
             )
@@ -83,7 +81,7 @@ function CGNR(A
 
 
   return CGNR(A, AHA,
-    L2, other, x, x₀, pl, vl, αl, βl, ζl, weights, iterations, relTol, 0.0, normalizeReg)
+    L2, other, x, x₀, pl, vl, αl, βl, ζl, iterations, relTol, 0.0, normalizeReg)
 end
 
 """
@@ -106,16 +104,7 @@ function init!(solver::CGNR, b; x0 = 0)
   end
 
   #x₀ = Aᶜ*rl, where ᶜ denotes complex conjugation
-  if solver.A === nothing
-    !isempty(solver.weights) && @info "weights are being ignored if the backprojection is pre-computed"
-    solver.x₀ .= b
-  else
-    if isempty(solver.weights)
-      mul!(solver.x₀, adjoint(solver.A), b)
-    else
-      mul!(solver.x₀, adjoint(solver.A), b .* solver.weights)
-    end
-  end
+  initCGNR(solver.x₀, solver.A, b)
 
   solver.z0 = norm(solver.x₀)
   copyto!(solver.pl, solver.x₀)
@@ -123,6 +112,10 @@ function init!(solver::CGNR, b; x0 = 0)
   # normalization of regularization parameters
   solver.L2 = normalize(solver, solver.normalizeReg, solver.L2, solver.A, b)
 end
+
+initCGNR(x₀, A, b) = mul!(x₀, adjoint(A), b)
+initCGNR(x₀, prod::ProdOp{T, <:WeightingOp, matT}, b) where {T, matT} = mul!(x₀, adjoint(prod.B), b .* prod.A.weights)
+initCGNR(x₀, ::Nothing, b) = x₀ .= b
 
 solverconvergence(solver::CGNR) = (; :residual => norm(solver.x₀))
 

@@ -1,4 +1,4 @@
-using RegularizedLeastSquares, LinearAlgebra
+using RegularizedLeastSquares, LinearAlgebra, RegularizedLeastSquares.LinearOperatorCollection
 # Packages for testing only
 using Random, Test
 using FFTW
