@@ -6,3 +6,4 @@ using FFTW
 include("testKaczmarz.jl")
 include("testProxMaps.jl")
 include("testSolvers.jl")
+include("testRegularization.jl")

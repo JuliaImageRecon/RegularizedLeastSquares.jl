@@ -25,11 +25,10 @@ end
 PlugAndPlayRegularization(model, shape; kwargs...) = PlugAndPlayRegularization(one(Float32); kwargs..., model = model, shape = shape)
 
 function prox!(self::PlugAndPlayRegularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: Complex{T}}
-    out = real.(x)
     if self.ignoreIm
-        x[:] = prox!(self, out, λ) + imag(x) * imag(one(T))
+        x[:] = prox!(self, real.(x), λ) + imag.(x) * one(T)im
     else
-        x[:] = prox!(self, real.(x), λ) + prox!(self, imag.(x), λ) * imag(one(T))
+        x[:] = prox!(self, real.(x), λ) + prox!(self, imag.(x), λ) * one(T)im
     end
     return x
 end
