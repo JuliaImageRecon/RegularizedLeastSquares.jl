@@ -18,6 +18,7 @@ using InteractiveUtils
 export AbstractLinearSolver, createLinearSolver, init, deinit, solve!, linearSolverList, linearSolverListReal, applicableSolverList
 
 abstract type AbstractLinearSolver end
+abstract type AbstractSolverState{S} end
 
 """
     solve!(solver::AbstractLinearSolver, b; x0 = 0, callbacks = (_, _) -> nothing)

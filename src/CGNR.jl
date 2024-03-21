@@ -1,10 +1,15 @@
 export cgnr, CGNR
 
-mutable struct CGNR{matT,opT,vecT,T,R,PR} <: AbstractKrylovSolver
+mutable struct CGNR{matT,opT, R,PR} <: AbstractKrylovSolver
   A::matT
   AHA::opT
   L2::R
   constr::PR
+  normalizeReg::AbstractRegularizationNormalization
+  state::AbstractSolverState{<:CGNR}
+end
+
+mutable struct CGNRState{T, vecT} <: AbstractSolverState{CGNR} where {T, vecT<:AbstractArray{T}}
   x::vecT
   x₀::vecT
   pl::vecT
@@ -12,10 +17,10 @@ mutable struct CGNR{matT,opT,vecT,T,R,PR} <: AbstractKrylovSolver
   αl::T
   βl::T
   ζl::T
+  iteration::Int64
   iterations::Int64
-  relTol::Float64
-  z0::Float64
-  normalizeReg::AbstractRegularizationNormalization
+  relTol::T
+  z0::T
 end
 
 """
@@ -79,9 +84,23 @@ function CGNR(A
   end
   other = identity.(other)
 
+  state = CGNRState(x, x₀, pl, vl, αl, βl, ζl, 0, iterations, relTol, zero(real(T)))
 
-  return CGNR(A, AHA,
-    L2, other, x, x₀, pl, vl, αl, βl, ζl, iterations, relTol, 0.0, normalizeReg)
+  return CGNR(A, AHA, L2, other, normalizeReg, state)
+end
+
+init!(solver::CGNR, b; kwargs...) = init!(solver, solver.state, b; kwargs...)
+
+function init!(solver::CGNR, state, b; kwargs...)
+  @info "Conversion"
+  x = similar(b, size(state.x)...)
+  x₀ = similar(b, size(state.x₀)...)
+  pl = similar(b, size(state.pl)...)
+  vl = similar(b, size(state.vl)...)
+
+  state = CGNRState(x, x₀, pl, vl, state.αl, state.βl, state.ζl, state.iteration, state.iterations, state.relTol, state.z0)
+  solver.state = state
+  init!(solver, state, b; kwargs...)
 end
 
 """
@@ -89,25 +108,26 @@ end
 
 (re-) initializes the CGNR iterator
 """
-function init!(solver::CGNR, b; x0 = 0)
-  solver.pl .= 0     #temporary vector
-  solver.vl .= 0     #temporary vector
-  solver.αl  = 0     #temporary scalar
-  solver.βl  = 0     #temporary scalar
-  solver.ζl  = 0     #temporary scalar
+function init!(solver::CGNR, state::CGNRState{T, vecT}, b::vecT; x0 = 0) where {T, vecT <: AbstractVector{T}}
+  state.pl .= 0     #temporary vector
+  state.vl .= 0     #temporary vector
+  state.αl  = 0     #temporary scalar
+  state.βl  = 0     #temporary scalar
+  state.ζl  = 0     #temporary scalar
+  state.iteration = 0
   if all(x0 .== 0)
-    solver.x .= 0
+    state.x .= 0
   else
     solver.A === nothing && error("providing x0 requires solver.A to be defined")
-    solver.x .= x0
+    state.x .= x0
     mul!(b, solver.A, solver.x, -1, 1)
   end
 
   #x₀ = Aᶜ*rl, where ᶜ denotes complex conjugation
-  initCGNR(solver.x₀, solver.A, b)
+  initCGNR(state.x₀, solver.A, b)
 
-  solver.z0 = norm(solver.x₀)
-  copyto!(solver.pl, solver.x₀)
+  state.z0 = norm(state.x₀)
+  copyto!(state.pl, state.x₀)
 
   # normalization of regularization parameters
   solver.L2 = normalize(solver, solver.normalizeReg, solver.L2, solver.A, b)
@@ -124,44 +144,53 @@ solverconvergence(solver::CGNR) = (; :residual => norm(solver.x₀))
 
 performs one CGNR iteration.
 """
-function iterate(solver::CGNR, iteration::Int=0)
-  if done(solver, iteration)
+function iterate(solver::CGNR, state=solver.state)
+  if done(solver, state)
     for r in solver.constr
-      prox!(r, solver.x)
+      prox!(r, state.x)
     end
     return nothing
   end
 
-  mul!(solver.vl, solver.AHA, solver.pl)
+  mul!(state.vl, solver.AHA, state.pl)
 
-  solver.ζl = norm(solver.x₀)^2
-  normvl = dot(solver.pl, solver.vl)
+  state.ζl = norm(state.x₀)^2
+  normvl = dot(state.pl, state.vl)
 
   λ_ = λ(solver.L2)
   if λ_ > 0
-    solver.αl = solver.ζl / (normvl + λ_ * norm(solver.pl)^2)
+    state.αl = state.ζl / (normvl + λ_ * norm(state.pl)^2)
   else
-    solver.αl = solver.ζl / normvl
+    state.αl = state.ζl / normvl
   end
 
-  BLAS.axpy!(solver.αl, solver.pl, solver.x)
+  #BLAS.axpy!(state.αl, state.pl, state.x)
+  state.x .+= state.pl .* state.αl
 
-  BLAS.axpy!(-solver.αl, solver.vl, solver.x₀)
+  #BLAS.axpy!(-state.αl, state.vl, state.x₀)
+  state.x₀ .+= state.vl .* -state.αl
 
   if λ_ > 0
-    BLAS.axpy!(-λ_ * solver.αl, solver.pl, solver.x₀)
+    #BLAS.axpy!(-λ_ * state.αl, state.pl, state.x₀)
+    state.x₀ .+= state.pl .* -λ_ * state.αl
   end
 
-  solver.βl = dot(solver.x₀, solver.x₀) / solver.ζl
+  state.βl = dot(state.x₀, state.x₀) / state.ζl
 
-  rmul!(solver.pl, solver.βl)
-  BLAS.axpy!(one(eltype(solver.AHA)), solver.x₀, solver.pl)
-  return solver.x₀, iteration + 1
+  rmul!(state.pl, state.βl)
+  #BLAS.axpy!(one(eltype(solver.AHA)), state.x₀, state.pl)
+  state.pl .+= state.x₀
+
+  state.iteration += 1
+  return state.x₀, state
 end
 
 
 function converged(solver::CGNR)
-  return norm(solver.x₀) / solver.z0 <= solver.relTol
+  state = solver.state
+  return norm(state.x₀) / state.z0 <= state.relTol
 end
 
-@inline done(solver::CGNR, iteration::Int) = converged(solver) || iteration >= min(solver.iterations, size(solver.AHA, 2))
+@inline done(solver::CGNR, state) = converged(solver) || state.iteration >= min(state.iterations, size(solver.AHA, 2))
+
+solversolution(solver::CGNR) = solver.state.x 
