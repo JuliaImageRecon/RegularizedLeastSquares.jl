@@ -1,3 +1,6 @@
+using ProgressMeter
+
+
 export CompareSolutionCallback
 mutable struct CompareSolutionCallback{T, F}
   ref::Vector{T}
@@ -48,5 +51,34 @@ function (cb::StoreConvergenceCallback)(solver::AbstractLinearSolver, _)
     values = get(cb.convMeas, key, Vector{typeof(meas[key])}())
     push!(values, meas[key])
     cb.convMeas[key] = values
+  end
+end
+
+
+export ProgressBarCallback
+"""
+    ProgressBarCallback()
+
+Callback that displays a progress bar for a solver.
+"""
+Base.@kwdef mutable struct ProgressBarCallback
+  meter::Union{Progress,Nothing} = nothing
+end
+ProgressBarCallback(solver::AbstractLinearSolver) = ProgressBarCallback(Progress(solver.iterations))
+ProgressBarCallback(iterations::Int) = ProgressBarCallback(Progress(iterations))
+
+"""
+  (self::ProgressBarCallback)(solver::AbstractLinearSolver, iter_n::Int)
+
+Initializes the callback when `iter_n` is zero, then updates the progress bar.
+"""
+function (self::ProgressBarCallback)(solver::AbstractLinearSolver, iter_n::Int)
+  if iter_n != 0
+    next!(self.meter)
+  end
+
+  # lazy init for iter_n = 0
+  if iter_n == 0 && isnothing(self.meter)
+    self.meter = Progress(solver.iterations)
   end
 end
