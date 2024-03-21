@@ -1,10 +1,15 @@
 using Documenter, RegularizedLeastSquares, LinearOperatorCollection, Wavelets
 
 makedocs(
-    format = Documenter.HTML(prettyurls = false),
+    format = Documenter.HTML(;
+        prettyurls=get(ENV, "CI", "false") == "true",
+        canonical="https://github.com/JuliaImageRecon/RegularizedLeastSquares.jl",
+        assets=String[],
+    ),
+    repo="https://github.com/JuliaImageRecon/RegularizedLeastSquares.jl/blob/{commit}{path}#{line}",
     modules = [RegularizedLeastSquares],
     sitename = "RegularizedLeastSquares.jl",
-    authors = "Tobias Knopp, Mirco Grosser, Martin Möddel, Niklas Hackelberg",
+    authors = "Tobias Knopp, Mirco Grosser, Martin Möddel, Niklas Hackelberg, Andrew Mao, Jakob Assländer",
     pages = [
         "Home" => "index.md",
         "Getting Started" => "gettingStarted.md",
@@ -15,7 +20,9 @@ makedocs(
 
     ],
     pagesonly = true,
-    checkdocs = :none
-)
+    checkdocs = :none,
+    doctest   = true,
+    doctestfilters = [r"(\d*)\.(\d{4})\d+"]
+    )
 
-deploydocs(repo   = "github.com/JuliaImageRecon/RegularizedLeastSquares.jl.git")
+deploydocs(repo   = "github.com/JuliaImageRecon/RegularizedLeastSquares.jl.git", push_preview = true)

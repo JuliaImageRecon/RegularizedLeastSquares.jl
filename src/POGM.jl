@@ -1,8 +1,8 @@
 export pogm, POGM
 
-mutable struct POGM{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA, R, RN} <: AbstractProximalGradientSolver
+mutable struct POGM{rT<:Real,vecT<:Union{AbstractVector{rT},AbstractVector{Complex{rT}}},matA,matAHA,R,RN} <: AbstractProximalGradientSolver
   A::matA
-  AᴴA::matAHA
+  AHA::matAHA
   reg::R
   proj::Vector{RN}
   x::vecT
@@ -13,8 +13,8 @@ mutable struct POGM{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector
   w::vecT
   res::vecT
   ρ::rT
-  t::rT
-  tᵒˡᵈ::rT
+  theta::rT
+  thetaᵒˡᵈ::rT
   α::rT
   β::rT
   γ::rT
@@ -31,14 +31,12 @@ mutable struct POGM{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector
 end
 
 """
-    POGM(A, x; kwargs...)
+    POGM(A; AHA = A'*A, reg = L1Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false)
+    POGM( ; AHA = ,     reg = L1Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false)
 
-creates a `POGM` object for the system matrix `A`.
-POGM has a 2x better worst-case bound than FISTA, but actual performance varies by application.
-It stores 3 extra intermediate variables the size of the image compared to FISTA
-Only gradient restart scheme is implemented for now
+Creates a `POGM` object for the forward operator `A` or normal operator `AHA`. POGM has a 2x better worst-case bound than FISTA, but actual performance varies by application. It stores 3 extra intermediate variables the size of the image compared to FISTA. Only gradient restart scheme is implemented for now.
 
-References:
+# References:
 - A.B. Taylor, J.M. Hendrickx, F. Glineur,
     "Exact worst-case performance of first-order algorithms
     for composite convex optimization," Arxiv:1512.07516, 2015,
@@ -49,53 +47,59 @@ References:
     Journal of Optimization Theory and Applications, 178(1), 240–263.
     [https://doi.org/10.1007/s10957-018-1287-4]
 
-# Arguments
-* `A`                     - system matrix
-* `x::vecT`               - array with the same type and size as the solution
+  # Required Arguments
+  * `A`                                                 - forward operator
+  OR
+  * `AHA`                                               - normal operator (as a keyword argument)
 
-# Keywords
-* `reg`                   - regularization term vector
-* `normalizeReg`          - regularization normalization scheme
-* `AᴴA=A'*A`              - specialized normal operator, default is `A'*A`
-* `ρ=0.95`                - step size for gradient step
-* `normalize_ρ=true`      - normalize step size by the maximum eigenvalue of `AᴴA`
-* `t=1`                   - parameter for predictor-corrector step
-* `σ_fac=1`               - parameter for decreasing γ-momentum ∈ [0,1]
-* `relTol::=eps(real(T))` - tolerance for stopping criterion
-* `iterations::Int64=50`  - maximum number of iterations
-* `restart::Symbol=:none` - `:none`, `:gradient` options for restarting
-* `verbose::Bool=false`   - print residual norm in each iteration
+  # Optional Keyword Arguments
+  * `AHA`                                               - normal operator is optional if `A` is supplied
+  * `reg::AbstractParameterizedRegularization`          - regularization term
+  * `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; options are `NoNormalization()`, `MeasurementBasedNormalization()`, `SystemMatrixBasedNormalization()`
+  * `rho::Real`                                         - step size for gradient step
+  * `normalize_rho::Bool`                               - normalize step size by the largest eigenvalue of `AHA`
+  * `theta::Real`                                       - parameter for predictor-corrector step
+  * `sigma_fac::Real`                                   - parameter for decreasing γ-momentum ∈ [0,1]
+  * `relTol::Real`                                      - tolerance for stopping criterion
+  * `iterations::Int`                                   - maximum number of iterations
+  * `restart::Symbol`                                   - `:none`, `:gradient` options for restarting
+  * `verbose::Bool`                                     - print residual in each iteration
 
-See also [`createLinearSolver`](@ref), [`solve`](@ref).
+See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
-function POGM(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1Regularization(zero(T))
-              , normalizeReg=NoNormalization()
-              , AᴴA=A'*A
-              , ρ=0.95
-              , normalize_ρ=true
-              , t=1
-              , σ_fac=1
-              , relTol=eps(real(T))
-              , iterations=50
-              , restart = :none
-              , verbose = false
-              , kargs...) where {T}
+POGM(; AHA, kwargs...) = POGM(nothing; kwargs..., AHA = AHA)
 
+function POGM(A
+            ; AHA = A'*A
+            , reg = L1Regularization(zero(real(eltype(AHA))))
+            , normalizeReg = NoNormalization()
+            , rho = 0.95
+            , normalize_rho = true
+            , theta = 1
+            , sigma_fac = 1
+            , relTol = eps(real(eltype(AHA)))
+            , iterations = 50
+            , restart = :none
+            , verbose = false
+)
+
+  T = eltype(AHA)
   rT = real(T)
 
+  x = Vector{T}(undef, size(AHA, 2))
   x₀ = similar(x)
   xᵒˡᵈ = similar(x)
   y = similar(x)
   z = similar(x)
   w = similar(x)
-  res  = similar(x)
+  res = similar(x)
   res[1] = Inf # avoid spurious convergence in first iterations
 
-  if normalize_ρ
-    ρ /= abs(power_iterations(AᴴA))
+  if normalize_rho
+    rho /= abs(power_iterations(AHA))
   end
 
-  reg = vec(reg)
+  reg = isa(reg, AbstractVector) ? reg : [reg]
   indices = findsinks(AbstractProjectionRegularization, reg)
   other = [reg[i] for i in indices]
   deleteat!(reg, indices)
@@ -105,31 +109,25 @@ function POGM(A, x::AbstractVector{T}=Vector{eltype(A)}(undef,size(A,2)); reg=L1
   other = identity.(other)
   reg = normalize(POGM, normalizeReg, reg, A, nothing)
 
-  return POGM(A, AᴴA, reg[1], other, x, x₀, xᵒˡᵈ, y, z, w, res, rT(ρ),rT(t),rT(t),rT(0),rT(1),rT(1),rT(1),rT(1),rT(σ_fac),
-    iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose,restart)
+  return POGM(A, AHA, reg[1], other, x, x₀, xᵒˡᵈ, y, z, w, res, rT(rho), rT(theta), rT(theta), rT(0), rT(1), rT(1), rT(1), rT(1), rT(sigma_fac),
+    iterations, rT(relTol), normalizeReg, one(rT), rT(Inf), verbose, restart)
 end
 
 """
-    init!(it::POGM, b::vecT
-              ; A=solver.A
-              , x::vecT=similar(b,0)
-              , t::Float64=1.0) where T
+    init!(it::POGM, b::vecT, x::vecT=similar(b,0), theta::Number=1)
 
 (re-) initializes the POGM iterator
 """
-function init!(solver::POGM{rT,vecT,matA,matAHA}, b::vecT
-              ; x::vecT=similar(b,0)
-              , t=1
-              ) where {rT,vecT,matA,matAHA}
+function init!(solver::POGM, b; x0=0, theta=1)
+  if solver.A === nothing
+    solver.x₀ .= b
+  else
+    mul!(solver.x₀, adjoint(solver.A), b)
+  end
 
-  solver.x₀ .= adjoint(solver.A) * b
   solver.norm_x₀ = norm(solver.x₀)
 
-  if isempty(x)
-    solver.x .= 0
-  else
-    solver.x .= x
-  end
+  solver.x .= x0
   solver.xᵒˡᵈ .= 0 # makes no difference in 1st iteration what this is set to
   solver.y .= 0
   solver.z .= 0
@@ -137,43 +135,14 @@ function init!(solver::POGM{rT,vecT,matA,matAHA}, b::vecT
     solver.w .= 0
   end
 
-  solver.t = t
-  solver.tᵒˡᵈ = t
+  solver.theta = theta
+  solver.thetaᵒˡᵈ = theta
   solver.σ = 1
   # normalization of regularization parameters
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
 end
 
-"""
-    solve(solver::POGM, b::Vector)
-
-solves an inverse problem using POGM.
-
-# Arguments
-* `solver::POGM`                     - the solver containing both system matrix and regularizer
-* `b::vecT`                           - data vector
-
-# Keywords
-* `A=solver.A`                        - operator for the data-term of the problem
-* `startVector::vecT=similar(b,0)`  - initial guess for the solution
-* `solverInfo=nothing`              - solverInfo object
-
-when a `SolverInfo` objects is passed, the residuals are stored in `solverInfo.convMeas`.
-"""
-function solve(solver::POGM, b; A=solver.A, startVector=similar(b,0), solverInfo=nothing, kargs...)
-  # initialize solver parameters
-  init!(solver, b; x=startVector)
-
-  # log solver information
-  solverInfo !== nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
-
-  # perform POGM iterations
-  for (iteration, item) = enumerate(solver)
-    solverInfo !== nothing && storeInfo(solverInfo,solver.x,norm(solver.res))
-  end
-
-  return solver.x
-end
+solverconvergence(solver::POGM) = (; :residual => norm(solver.res))
 
 """
   iterate(it::POGM, iteration::Int=0)
@@ -181,12 +150,14 @@ end
 performs one POGM iteration.
 """
 function iterate(solver::POGM, iteration::Int=0)
-  if done(solver, iteration) return nothing end
+  if done(solver, iteration)
+    return nothing
+  end
 
   # calculate residuum and do gradient step
-  # solver.x .-= solver.ρ .* (solver.AᴴA * solver.x .- solver.x₀)
+  # solver.x .-= solver.ρ .* (solver.AHA * solver.x .- solver.x₀)
   solver.xᵒˡᵈ .= solver.x #save this for inertia step later
-  mul!(solver.res, solver.AᴴA, solver.x)
+  mul!(solver.res, solver.AHA, solver.x)
   solver.res .-= solver.x₀
   solver.x .-= solver.ρ .* solver.res
 
@@ -194,19 +165,19 @@ function iterate(solver::POGM, iteration::Int=0)
   solver.verbose && println("Iteration $iteration; rel. residual = $(solver.rel_res_norm)")
 
   # inertial parameters
-  solver.tᵒˡᵈ = solver.t
+  solver.thetaᵒˡᵈ = solver.theta
   if iteration == solver.iterations - 1 && solver.restart != :none #the convergence rate depends on choice of # iterations!
-    solver.t = (1 + sqrt(1 + 8 * solver.tᵒˡᵈ^2)) / 2
+    solver.theta = (1 + sqrt(1 + 8 * solver.thetaᵒˡᵈ^2)) / 2
   else
-    solver.t = (1 + sqrt(1 + 4 * solver.tᵒˡᵈ^2)) / 2
+    solver.theta = (1 + sqrt(1 + 4 * solver.thetaᵒˡᵈ^2)) / 2
   end
-  solver.α = (solver.tᵒˡᵈ - 1) / solver.t
-  solver.β = solver.σ * solver.tᵒˡᵈ / solver.t
+  solver.α = (solver.thetaᵒˡᵈ - 1) / solver.theta
+  solver.β = solver.σ * solver.thetaᵒˡᵈ / solver.theta
   solver.γᵒˡᵈ = solver.γ
   if solver.restart == :gradient
     solver.γ = solver.ρ * (1 + solver.α + solver.β)
   else
-    solver.γ = solver.ρ * (2solver.tᵒˡᵈ + solver.t - 1) / solver.t
+    solver.γ = solver.ρ * (2solver.thetaᵒˡᵈ + solver.theta - 1) / solver.theta
   end
 
   # inertia steps
@@ -232,7 +203,7 @@ function iterate(solver::POGM, iteration::Int=0)
     if real((solver.w ⋅ solver.x - solver.w ⋅ solver.z) / solver.γ - solver.w ⋅ solver.res) < 0
       solver.verbose && println("Gradient restart at iter $iteration")
       solver.σ = 1
-      solver.t = 1
+      solver.theta = 1
     else # decreasing γ
       solver.σ *= solver.σ_fac
     end
@@ -240,9 +211,9 @@ function iterate(solver::POGM, iteration::Int=0)
   end
 
   # return the residual-norm as item and iteration number as state
-  return solver, iteration+1
+  return solver, iteration + 1
 end
 
 @inline converged(solver::POGM) = (solver.rel_res_norm < solver.relTol)
 
-@inline done(solver::POGM,iteration) = converged(solver) || iteration>=solver.iterations
+@inline done(solver::POGM, iteration) = converged(solver) || iteration >= solver.iterations

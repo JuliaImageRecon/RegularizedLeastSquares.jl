@@ -3,7 +3,7 @@ export TVRegularization
 """
     TVRegularization
 
-Regularization term implementing the proximal map for TV regularization. Calculated with the Condat algorithm if the TV is calculated only along one dimension and with the Fast Gradient Projection algorithm otherwise.
+Regularization term implementing the proximal map for TV regularization. Calculated with the Condat algorithm if the TV is calculated only along one real-valued dimension and with the Fast Gradient Projection algorithm otherwise.
 
 Reference for the Condat algorithm:
 https://lcondat.github.io/publis/Condat-fast_TV-SPL-2013.pdf

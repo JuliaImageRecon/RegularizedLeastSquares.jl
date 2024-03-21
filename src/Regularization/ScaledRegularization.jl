@@ -2,25 +2,25 @@ export AbstractScaledRegularization
 """
     AbstractScaledRegularization
 
-Nested regularization term that applies a `factor` to the regularization parameter `λ` of its `inner` term.
+Nested regularization term that applies a `scalefactor` to the regularization parameter `λ` of its `inner` term.
 
-See also [`factor`](@ref), [`λ`](@ref), [`innerreg`](@ref).
+See also [`scalefactor`](@ref), [`λ`](@ref), [`innerreg`](@ref).
 """
-abstract type AbstractScaledRegularization{T, S<:AbstractParameterizedRegularization{T}} <: AbstractNestedRegularization{S} end
+abstract type AbstractScaledRegularization{T, S<:AbstractParameterizedRegularization{<:Union{T, <:AbstractArray{T}}}} <: AbstractNestedRegularization{S} end
 """
-    scalefactor(reg::AbstractScaledRegularization)
+    scalescalefactor(reg::AbstractScaledRegularization)
 
-return the scaling `factor` for `λ`
+return the scaling `scalefactor` for `λ`
 """
-scalefactor(::R) where R <: AbstractScaledRegularization = error("Scaled regularization term $R must implement factor")
+scalefactor(::R) where R <: AbstractScaledRegularization = error("Scaled regularization term $R must implement scalefactor")
 """
     λ(reg::AbstractScaledRegularization)
 
 return `λ` of `inner` regularization term scaled by `scalefactor(reg)`.
 
-See also [`factor`](@ref), [`innerreg`](@ref).
+See also [`scalefactor`](@ref), [`innerreg`](@ref).
 """
-λ(reg::AbstractScaledRegularization) = λ(innerreg(reg)) * scalefactor(reg)
+λ(reg::AbstractScaledRegularization) = λ(innerreg(reg)) .* scalefactor(reg)
 
 export FixedScaledRegularization
 struct FixedScaledRegularization{T, S, R} <: AbstractScaledRegularization{T, S}
@@ -36,7 +36,7 @@ export FixedParameterRegularization
 """
     FixedParameterRegularization
 
-Nested regularization term that discards any `λ` passed to it and instead uses `λ` from its inner regularization term. This can be used to selectively disallow normalization. 
+Nested regularization term that discards any `λ` passed to it and instead uses `λ` from its inner regularization term. This can be used to selectively disallow normalization.
 """
 struct FixedParameterRegularization{T, S, R} <: AbstractScaledRegularization{T, S}
   reg::R
@@ -61,16 +61,16 @@ innerreg(reg::AutoScaledRegularization) = reg.reg
 # A bit hacky: Factor can only be computed once x is seen, therefore hide factor in λ and silently add it in prox!/norm calls
 scalefactor(reg::AutoScaledRegularization) = isnothing(reg.factor) ? 1.0 : reg.factor
 function prox!(reg::AutoScaledRegularization, x, λ)
-  if isnothing(reg.factor) 
-    initFactor!(reg, x) 
+  if isnothing(reg.factor)
+    initFactor!(reg, x)
     return prox!(reg.reg, x, λ * reg.factor)
   else
     return prox!(reg.reg, x, λ)
   end
 end
 function norm(reg::AutoScaledRegularization, x, λ)
-  if isnothing(reg.factor) 
-    initFactor!(reg, x) 
+  if isnothing(reg.factor)
+    initFactor!(reg, x)
     return norm(reg.reg, x, λ * reg.factor)
   else
     return norm(reg.reg, x, λ)

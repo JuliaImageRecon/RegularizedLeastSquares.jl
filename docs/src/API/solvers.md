@@ -1,57 +1,54 @@
-# API
+# API for Solvers
 This page contains documentation of the public API of the RegularizedLeastSquares. In the Julia
 REPL one can access this documentation by entering the help mode with `?`
 
-## General
+## solve!
 ```@docs
-RegularizedLeastSquares.linearSolverList
-RegularizedLeastSquares.createLinearSolver
-RegularizedLeastSquares.solve(::AbstractLinearSolver, ::Any)
-RegularizedLeastSquares.SolverInfo
-RegularizedLeastSquares.applicableSolverList
-RegularizedLeastSquares.isapplicable
+RegularizedLeastSquares.solve!(::AbstractLinearSolver, ::Any)
 ```
 
 ## ADMM
 ```@docs
 RegularizedLeastSquares.ADMM
-RegularizedLeastSquares.solve(::ADMM, ::Any)
 ```
 
 ## CGNR
 ```@docs
 RegularizedLeastSquares.CGNR
-RegularizedLeastSquares.solve(::CGNR, ::Any)
 ```
 
 ## Kaczmarz
 ```@docs
 RegularizedLeastSquares.Kaczmarz
-RegularizedLeastSquares.solve(::Kaczmarz, ::Vector{Any})
 ```
 
 ## FISTA
 ```@docs
 RegularizedLeastSquares.FISTA
-RegularizedLeastSquares.solve(::FISTA, ::Any)
 ```
 
 ## OptISTA
 ```@docs
 RegularizedLeastSquares.OptISTA
-RegularizedLeastSquares.solve(::OptISTA, ::Any)
 ```
 
 ## POGM
 ```@docs
 RegularizedLeastSquares.POGM
-RegularizedLeastSquares.solve(::POGM, ::Any)
 ```
 
 ## SplitBregman
 ```@docs
 RegularizedLeastSquares.SplitBregman
-RegularizedLeastSquares.solve(::SplitBregman, ::Any)
 ```
 
-## Direct
+## Miscellaneous Functions
+```@docs
+RegularizedLeastSquares.StoreSolutionCallback
+RegularizedLeastSquares.StoreConvergenceCallback
+RegularizedLeastSquares.CompareSolutionCallback
+RegularizedLeastSquares.linearSolverList
+RegularizedLeastSquares.createLinearSolver
+RegularizedLeastSquares.applicableSolverList
+RegularizedLeastSquares.isapplicable
+```

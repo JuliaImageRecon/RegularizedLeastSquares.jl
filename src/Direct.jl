@@ -3,14 +3,16 @@ export PseudoInverse, DirectSolver
 
 ### Direct Solver ###
 
-mutable struct DirectSolver{matT, R, PR}  <: AbstractDirectSolver
+mutable struct DirectSolver{matT,vecT, R, PR}  <: AbstractDirectSolver
   A::matT
+  x::vecT
+  b::vecT
   l2::R
   normalizeReg::AbstractRegularizationNormalization
   proj::Vector{PR}
 end
 
-function DirectSolver(A; reg::Vector{<:AbstractRegularization} = [L2Regularization(zero(real(eltype(A))))], normalizeReg::AbstractRegularizationNormalization = NoNormalization(), kargs...)
+function DirectSolver(A; reg::Vector{<:AbstractRegularization} = [L2Regularization(zero(real(eltype(A))))], normalizeReg::AbstractRegularizationNormalization = NoNormalization())
   reg = normalize(DirectSolver, normalizeReg, reg, A, nothing)
   idx = findsink(L2Regularization, reg)
   if isnothing(idx)
@@ -30,21 +32,29 @@ function DirectSolver(A; reg::Vector{<:AbstractRegularization} = [L2Regularizati
   end
   other = identity.(other)
 
-  return DirectSolver(A, L2, normalizeReg, other)
+  T = eltype(A)
+  x = Vector{T}(undef,size(A, 2))
+  b = zeros(T, size(A,1))
+
+  return DirectSolver(A, x, b, L2, normalizeReg, other)
 end
 
-function solve(solver::DirectSolver, b::AbstractVector)
+function init!(solver::DirectSolver, b; x0=0)
   solver.l2 = normalize(solver, solver.normalizeReg, solver.l2, solver.A, b)
+  solver.b .= b
+end
 
+function iterate(solver::DirectSolver, iteration=0)
   A = solver.A
   λ_ = λ(solver.l2)
   lufact = lu(Matrix(A'*A + λ_*opEye(size(A,2),size(A,2))))
-  x = \(lufact,A' * b)
+  x = \(lufact,A' * solver.b)
 
   for p in solver.proj
     prox!(p, x)
   end
-  return x
+  solver.x .= x
+  return nothing
 end
 
 #type for Gauß elimination
@@ -79,14 +89,16 @@ end
 
 ###  Pseudoinverse ###
 
-mutable struct PseudoInverse{R, PR}  <: AbstractDirectSolver
+mutable struct PseudoInverse{R, vecT, PR}  <: AbstractDirectSolver
   svd::SVD
+  x::vecT
+  b::vecT
   l2::R
   normalizeReg::AbstractRegularizationNormalization
   proj::Vector{PR}
 end
 
-function PseudoInverse(A; reg::Vector{<:AbstractRegularization} = [L2Regularization(zero(real(eltype(A))))], normalizeReg::AbstractRegularizationNormalization = NoNormalization(), kargs...)
+function PseudoInverse(A; reg::Vector{<:AbstractRegularization} = [L2Regularization(zero(real(eltype(A))))], normalizeReg::AbstractRegularizationNormalization = NoNormalization())
   reg = normalize(PseudoInverse, normalizeReg, reg, A, nothing)
   idx = findsink(L2Regularization, reg)
   if isnothing(idx)
@@ -106,17 +118,24 @@ function PseudoInverse(A; reg::Vector{<:AbstractRegularization} = [L2Regularizat
   end
   other = identity.(other)
 
-  return PseudoInverse(A, L2, normalizeReg, other)
+  T = eltype(A)
+  x = Vector{T}(undef,size(A, 2))
+  b = zeros(T, size(A,1))
+
+  return PseudoInverse(A, x, b, L2, normalizeReg, other)
 end
-function PseudoInverse(A::AbstractMatrix, l2, norm, proj)
+function PseudoInverse(A::AbstractMatrix, x, b, l2, norm, proj)
   u, s, v = svd(A)
   temp = SVD(u, s, v)
-  return PseudoInverse(temp, l2, norm, proj)
+  return PseudoInverse(temp, x, b, l2, norm, proj)
 end
 
-function solve(solver::PseudoInverse, b::AbstractVector{T}) where T
+function init!(solver::PseudoInverse, b; x0=0)
   solver.l2 = normalize(solver, solver.normalizeReg, solver.l2, solver.svd, b)
+  solver.b .= b
+end
 
+function iterate(solver::PseudoInverse, iteration=0)
   # Inversion by using the pseudoinverse of the SVD
   svd = solver.svd
 
@@ -124,12 +143,13 @@ function solve(solver::PseudoInverse, b::AbstractVector{T}) where T
   λ_ = λ(solver.l2)
   D = svd.S ./ (svd.S.*svd.S .+ λ_ )
 
-  tmp = adjoint(svd.U)*b
+  tmp = adjoint(svd.U)*solver.b
   tmp .*= D
-  c = svd.Vt * tmp
+  x = svd.Vt * tmp
 
   for p in solver.proj
-    prox!(p, c)
+    prox!(p, x)
   end
-  return c
+  solver.x = x
+  return nothing
 end

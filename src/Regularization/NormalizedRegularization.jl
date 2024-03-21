@@ -2,7 +2,7 @@ export AbstractRegularizationNormalization, NormalizedRegularization, NoNormaliz
 abstract type AbstractRegularizationNormalization end
 """
     NoNormalization
-  
+
 No normalization to `λ` is applied.
 """
 struct NoNormalization <: AbstractRegularizationNormalization end
@@ -30,6 +30,7 @@ Nested regularization term that scales `λ` according to normalization scheme. T
 struct NormalizedRegularization{T, S, R} <: AbstractScaledRegularization{T, S}
   reg::R
   factor::T
+  NormalizedRegularization(reg::R, factor) where {T, R <: AbstractParameterizedRegularization{<:AbstractArray{T}}} = new{T, R, R}(reg, factor)
   NormalizedRegularization(reg::R, factor) where {T, R <: AbstractParameterizedRegularization{T}} = new{T, R, R}(reg, factor)
   NormalizedRegularization(reg::R, factor) where {T, RN <: AbstractParameterizedRegularization{T}, R<:AbstractNestedRegularization{RN}} = new{T, RN, R}(reg, factor)
 end
@@ -40,17 +41,19 @@ function normalize(::MeasurementBasedNormalization, A, b::AbstractArray)
   return norm(b, 1)/length(b)
 end
 normalize(::MeasurementBasedNormalization, A, b::Nothing) = one(real(eltype(A)))
-function normalize(::SystemMatrixBasedNormalization, A::AbstractArray{T}, b) where {T}
+
+normalize(::SystemMatrixBasedNormalization, ::Nothing, _) = error("SystemMatrixBasedNormalization requires supplying A to the constructor of the solver")
+
+function normalize(::SystemMatrixBasedNormalization, A, b)
   M = size(A, 1)
   N = size(A, 2)
 
-  energy = zeros(T, M)
+  energy = zeros(real(eltype(A)), M)
   for m=1:M
     energy[m] = sqrt(rownorm²(A,m))
   end
 
   trace = norm(energy)^2/N
-  # TODO where setlamda? here we dont know λ
   return trace
 end
 normalize(::NoNormalization, A, b) = nothing
