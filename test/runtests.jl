@@ -3,6 +3,7 @@ using RegularizedLeastSquares, LinearAlgebra, RegularizedLeastSquares.LinearOper
 using Random, Test
 using FFTW
 
+include("testCreation.jl")
 include("testKaczmarz.jl")
 include("testProxMaps.jl")
 include("testSolvers.jl")
