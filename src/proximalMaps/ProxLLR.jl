@@ -153,22 +153,11 @@ end
 
 
 """
-proxLLROverlapping!(x::Vector{T}, λ=1e-6; kargs...) where T
+proxLLROverlapping!(reg::LLRRegularization, x, λ)
 
-proximal map for LLR regularization with fully overlapping blocks
-
-# Arguments
-* `x::Vector{T}`                - Vector to apply proximal map to
-* `λ`                           - regularization parameter
-* `shape::Tuple{Int}=[]`        - dimensions of the image
-* `blockSize::NTuple{Int}=ntuple(_ -> 2, N)` - size of patches to perform singular value thresholding on
+performs the proximal map for LLR regularization using singular-value-thresholding with fully overlapping blocks
 """
-function proxLLROverlapping!(
-        x::Vector{T},
-        λ;
-        shape::NTuple{N,TI},
-        blockSize::NTuple{N,TI} = ntuple(_ -> 2, N),
-    ) where {T,N,TI<:Integer}
+function proxLLROverlapping!(reg::LLRRegularization{TR, N, TI}, x::AbstractArray{Tc}, λ::T) where {TR, N, TI, T, Tc <: Union{T, Complex{T}}}
 
     x = reshape(x, tuple(shape..., length(x) ÷ prod(shape)))
 
@@ -178,7 +167,7 @@ function proxLLROverlapping!(
     ext = mod.(shape, blockSize)
     pad = mod.(blockSize .- ext, blockSize)
     if any(pad .!= 0)
-        xp = zeros(T, (shape .+ pad)..., K)
+        xp = zeros(Tc, (shape .+ pad)..., K)
         xp[CartesianIndices(x)] .= x
     else
         xp = copy(x)
@@ -189,7 +178,7 @@ function proxLLROverlapping!(
     bthreads = BLAS.get_num_threads()
     try
         BLAS.set_num_threads(1)
-        xᴸᴸᴿ = [Array{T}(undef, prod(blockSize), K) for _ = 1:Threads.nthreads()]
+        xᴸᴸᴿ = [Array{Tc}(undef, prod(blockSize), K) for _ = 1:Threads.nthreads()]
         for is ∈ block_idx
             shift_idx = (Tuple(is)..., 0)
             xs = circshift(xp, shift_idx)
