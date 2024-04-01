@@ -9,26 +9,37 @@ Regularization term implementing the proximal map for locally low rank (LLR) reg
 * `λ`                  - regularization paramter
 
 # Keywords
-* `shape::Tuple{Int}=[]`        - dimensions of the image
-* `blockSize::Tuple{Int}=[2;2]` - size of patches to perform singular value thresholding on
-* `randshift::Bool=true`        - randomly shifts the patches to ensure translation invariance
+* `shape::Tuple{Int}=[]`         - dimensions of the image
+* `blockSize::Tuple{Int}=[2;2]`  - size of patches to perform singular value thresholding on
+* `randshift::Bool=true`         - randomly shifts the patches to ensure translation invariance
+* `fullyOverlapping::Bool=false` - choose between fully overlapping block or non-overlapping blocks
 """
 struct LLRRegularization{T, N, TI} <: AbstractParameterizedRegularization{T} where {N, TI<:Integer}
   λ::T
   shape::NTuple{N,TI}
   blockSize::NTuple{N,TI}
   randshift::Bool
+  fullyOverlapping::Bool
   L::Int64
 end
-LLRRegularization(λ;  shape::NTuple{N,TI}, blockSize::NTuple{N,TI} = ntuple(_ -> 2, N), randshift::Bool = true, L::Int64 = 1, kargs...) where {N,TI<:Integer} =
+LLRRegularization(λ;  shape::NTuple{N,TI}, blockSize::NTuple{N,TI} = ntuple(_ -> 2, N), randshift::Bool = true, fullyOverlapping::Bool = false, L::Int64 = 1, kargs...) where {N,TI<:Integer} =
  LLRRegularization(λ, shape, blockSize, randshift, L)
 
 """
     prox!(reg::LLRRegularization, x, λ)
 
-performs the proximal map for LLR regularization using singular-value-thresholding
+wrapper function allowing the use of both non overlapping and fully overlapping blocks
 """
 function prox!(reg::LLRRegularization{TR, N, TI}, x::AbstractArray{Tc}, λ::T) where {TR, N, TI, T, Tc <: Union{T, Complex{T}}}
+    reg.fullyOverlapping ? proxLLROverlapping!(reg,x) : proxLLRNonOverlapping!(reg,x)
+end
+
+"""
+    proxLLRNonOverlapping!(reg::LLRRegularization, x, λ)
+
+performs the proximal map for LLR regularization using singular-value-thresholding
+"""
+function proxLLRNonOverlapping!(reg::LLRRegularization{TR, N, TI}, x::AbstractArray{Tc}, λ::T) where {TR, N, TI, T, Tc <: Union{T, Complex{T}}}
     shape = reg.shape
     blockSize = reg.blockSize
     randshift = reg.randshift
