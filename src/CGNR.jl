@@ -19,8 +19,8 @@ mutable struct CGNRState{T, Tc, vecTc} <: AbstractSolverState{CGNR} where {T, Tc
   ζl::Tc
   iteration::Int64
   iterations::Int64
-  relTol::Float64
-  z0::Float64
+  relTol::T
+  z0::T
 end
 
 """
