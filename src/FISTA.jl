@@ -1,10 +1,17 @@
 export FISTA
 
-mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, matA, matAHA, R, RN} <: AbstractProximalGradientSolver
+mutable struct FISTA{matA, matAHA, R, RN} <: AbstractProximalGradientSolver
   A::matA
   AHA::matAHA
   reg::R
   proj::Vector{RN}
+  normalizeReg::AbstractRegularizationNormalization
+  verbose::Bool
+  restart::Symbol
+  state::AbstractSolverState{<:FISTA}
+end
+
+mutable struct FISTAState{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}} <: AbstractSolverState{FISTA}
   x::vecT
   x₀::vecT
   xᵒˡᵈ::vecT
@@ -12,14 +19,13 @@ mutable struct FISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVecto
   ρ::rT
   theta::rT
   thetaᵒˡᵈ::rT
+  iteration::Int64
   iterations::Int64
   relTol::rT
-  normalizeReg::AbstractRegularizationNormalization
   norm_x₀::rT
   rel_res_norm::rT
-  verbose::Bool
-  restart::Symbol
 end
+
 
 """
     FISTA(A; AHA=A'*A, reg=L1Regularization(zero(real(eltype(AHA)))), normalizeReg=NoNormalization(), rho=0.95, normalize_rho=true, theta=1, relTol=eps(real(eltype(AHA))), iterations=50, restart = :none, verbose = false)
@@ -86,8 +92,22 @@ function FISTA(A
   other = identity.(other)
   reg = normalize(FISTA, normalizeReg, reg, A, nothing)
 
+  state = FISTAState(x, x₀, xᵒˡᵈ, res, rT(rho), rT(theta), rT(theta), 0, iterations, rT(relTol), one(rT), rT(Inf))
 
-  return FISTA(A, AHA, reg[1], other, x, x₀, xᵒˡᵈ, res, rT(rho),rT(theta),rT(theta),iterations,rT(relTol),normalizeReg,one(rT),rT(Inf),verbose,restart)
+  return FISTA(A, AHA, reg[1], other, normalizeReg, verbose, restart, state)
+end
+
+init!(solver::FISTA, b; kwargs...) = init!(solver, solver.state, b; kwargs...)
+
+function init!(solver::FISTA, state, b; kwargs...)
+  x = similar(b, size(state.x)...)
+  x₀ = similar(b, size(state.x₀)...)
+  xᵒˡᵈ = similar(b, size(state.xᵒˡᵈ)...)
+  res = similar(b, size(state.res)...)
+
+  state = FISTAState(x, x₀, xᵒˡᵈ, res, state.ρ, state.theta, state.theta, state.iteration, state.iterations, state.relTol, state.norm_x₀, state.rel_res_norm)
+  solver.state = state
+  init!(solver, state, b; kwargs...)
 end
 
 """
@@ -95,25 +115,25 @@ end
 
 (re-) initializes the FISTA iterator
 """
-function init!(solver::FISTA, b; x0 = 0, theta=1)
+function init!(solver::FISTA, state::FISTAState{rt, vecT}, b::vecT; x0 = 0, theta=1) where {rt, vecT}
   if solver.A === nothing
-    solver.x₀ .= b
+    state.x₀ .= b
   else
-    mul!(solver.x₀, adjoint(solver.A), b)
+    mul!(state.x₀, adjoint(solver.A), b)
   end
 
-  solver.norm_x₀ = norm(solver.x₀)
+  state.norm_x₀ = norm(state.x₀)
 
-  solver.x    .= x0
-  solver.xᵒˡᵈ .= 0 # makes no difference in 1st iteration what this is set to
+  state.x    .= x0
+  state.xᵒˡᵈ .= 0 # makes no difference in 1st iteration what this is set to
 
-  solver.theta = theta
-  solver.thetaᵒˡᵈ = theta
+  state.theta = theta
+  state.thetaᵒˡᵈ = theta
   # normalization of regularization parameters
-  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
+  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, state.x₀)
 end
 
-solverconvergence(solver::FISTA) = (; :residual => norm(solver.res))
+solverconvergence(solver::FISTA) = (; :residual => norm(solver.state.res))
 
 
 """
@@ -121,53 +141,56 @@ solverconvergence(solver::FISTA) = (; :residual => norm(solver.res))
 
 performs one fista iteration.
 """
-function iterate(solver::FISTA, iteration::Int=0)
-  if done(solver, iteration) return nothing end
+function iterate(solver::FISTA, state = solver.state)
+  if done(solver, state) return nothing end
 
   # momentum / Nesterov step
   # this implementation mimics BART, saving memory by first swapping x and xᵒˡᵈ before calculating x + α * (x - xᵒˡᵈ)
-  tmp = solver.xᵒˡᵈ
-  solver.xᵒˡᵈ = solver.x
-  solver.x = tmp # swap x and xᵒˡᵈ
-  solver.x .*= ((1 - solver.thetaᵒˡᵈ)/solver.theta) # here we calculate -α * xᵒˡᵈ, where xᵒˡᵈ is now stored in x
-  solver.x .+= ((solver.thetaᵒˡᵈ-1)/solver.theta + 1) .* (solver.xᵒˡᵈ) # add (α+1)*x, where x is now stored in xᵒˡᵈ
+  tmp = state.xᵒˡᵈ
+  state.xᵒˡᵈ = state.x
+  state.x = tmp # swap x and xᵒˡᵈ
+  state.x .*= ((1 - state.thetaᵒˡᵈ)/state.theta) # here we calculate -α * xᵒˡᵈ, where xᵒˡᵈ is now stored in x
+  state.x .+= ((state.thetaᵒˡᵈ-1)/state.theta + 1) .* (state.xᵒˡᵈ) # add (α+1)*x, where x is now stored in xᵒˡᵈ
 
   # calculate residuum and do gradient step
   # solver.x .-= solver.ρ .* (solver.AHA * solver.x .- solver.x₀)
-  mul!(solver.res, solver.AHA, solver.x)
-  solver.res .-= solver.x₀
-  solver.x .-= solver.ρ .* solver.res
+  mul!(state.res, solver.AHA, state.x)
+  state.res .-= state.x₀
+  state.x .-= state.ρ .* state.res
 
-  solver.rel_res_norm = norm(solver.res) / solver.norm_x₀
-  solver.verbose && println("Iteration $iteration; rel. residual = $(solver.rel_res_norm)")
+  state.rel_res_norm = norm(state.res) / state.norm_x₀
+  solver.verbose && println("Iteration $iteration; rel. residual = $(state.rel_res_norm)")
 
   # the two lines below are equivalent to the ones above and non-allocating, but require the 5-argument mul! function to implemented for AHA, i.e. if AHA is LinearOperator, it requires LinearOperators.jl v2
   # mul!(solver.x, solver.AHA, solver.xᵒˡᵈ, -solver.ρ, 1)
   # solver.x .+= solver.ρ .* solver.x₀
 
   # proximal map
-  prox!(solver.reg, solver.x, solver.ρ * λ(solver.reg))
+  prox!(solver.reg, state.x, state.ρ * λ(solver.reg))
 
   for proj in solver.proj
-    prox!(proj, solver.x)
+    prox!(proj, state.x)
   end
 
   # gradient restart conditions
   if solver.restart == :gradient
-    if real(solver.res ⋅ (solver.x .- solver.xᵒˡᵈ) ) > 0 #if momentum is at an obtuse angle to the negative gradient
+    if real(state.res ⋅ (state.x .- state.xᵒˡᵈ) ) > 0 #if momentum is at an obtuse angle to the negative gradient
       solver.verbose && println("Gradient restart at iter $iteration")
-      solver.theta = 1
+      state.theta = 1
     end
   end
 
   # predictor-corrector update
-  solver.thetaᵒˡᵈ = solver.theta
-  solver.theta = (1 + sqrt(1 + 4 * solver.thetaᵒˡᵈ^2)) / 2
+  state.thetaᵒˡᵈ = state.theta
+  state.theta = (1 + sqrt(1 + 4 * state.thetaᵒˡᵈ^2)) / 2
 
+  state.iteration += 1
   # return the residual-norm as item and iteration number as state
-  return solver, iteration+1
+  return state.x₀, state
 end
 
-@inline converged(solver::FISTA) = (solver.rel_res_norm < solver.relTol)
+@inline converged(::FISTA, state::FISTAState) = (state.rel_res_norm < state.relTol)
 
-@inline done(solver::FISTA,iteration) = converged(solver) || iteration>=solver.iterations
+@inline done(solver::FISTA, state::FISTAState) = converged(solver, state) || state.iteration>=state.iterations
+
+solversolution(solver::FISTA) = solver.state.x 
