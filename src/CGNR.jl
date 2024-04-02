@@ -19,8 +19,8 @@ mutable struct CGNRState{T, vecT} <: AbstractSolverState{CGNR} where {T, vecT<:A
   ζl::T
   iteration::Int64
   iterations::Int64
-  relTol::T
-  z0::T
+  relTol::Float64
+  z0::Float64
 end
 
 """
@@ -92,7 +92,6 @@ end
 init!(solver::CGNR, b; kwargs...) = init!(solver, solver.state, b; kwargs...)
 
 function init!(solver::CGNR, state, b; kwargs...)
-  @info "Conversion"
   x = similar(b, size(state.x)...)
   x₀ = similar(b, size(state.x₀)...)
   pl = similar(b, size(state.pl)...)
@@ -186,11 +185,10 @@ function iterate(solver::CGNR, state=solver.state)
 end
 
 
-function converged(solver::CGNR)
-  state = solver.state
+function converged(::CGNR, state::CGNRState)
   return norm(state.x₀) / state.z0 <= state.relTol
 end
 
-@inline done(solver::CGNR, state) = converged(solver) || state.iteration >= min(state.iterations, size(solver.AHA, 2))
+@inline done(solver::CGNR, state::CGNRState) = converged(solver, state) || state.iteration >= min(state.iterations, size(solver.AHA, 2))
 
 solversolution(solver::CGNR) = solver.state.x 
