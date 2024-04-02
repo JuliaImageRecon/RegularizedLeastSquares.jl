@@ -9,14 +9,14 @@ mutable struct CGNR{matT,opT, R,PR} <: AbstractKrylovSolver
   state::AbstractSolverState{<:CGNR}
 end
 
-mutable struct CGNRState{T, vecT} <: AbstractSolverState{CGNR} where {T, vecT<:AbstractArray{T}}
-  x::vecT
-  x₀::vecT
-  pl::vecT
-  vl::vecT
-  αl::T
-  βl::T
-  ζl::T
+mutable struct CGNRState{T, Tc, vecTc} <: AbstractSolverState{CGNR} where {T, Tc <: Union{T, Complex{T}}, vecTc<:AbstractArray{Tc}}
+  x::vecTc
+  x₀::vecTc
+  pl::vecTc
+  vl::vecTc
+  αl::Tc
+  βl::Tc
+  ζl::Tc
   iteration::Int64
   iterations::Int64
   relTol::T
@@ -92,7 +92,6 @@ end
 init!(solver::CGNR, b; kwargs...) = init!(solver, solver.state, b; kwargs...)
 
 function init!(solver::CGNR, state, b; kwargs...)
-  @info "Conversion"
   x = similar(b, size(state.x)...)
   x₀ = similar(b, size(state.x₀)...)
   pl = similar(b, size(state.pl)...)
@@ -108,7 +107,7 @@ end
 
 (re-) initializes the CGNR iterator
 """
-function init!(solver::CGNR, state::CGNRState{T, vecT}, b::vecT; x0 = 0) where {T, vecT <: AbstractVector{T}}
+function init!(solver::CGNR, state::CGNRState{T, Tc, vecTc}, b::vecTc; x0 = 0) where {T, Tc <: Union{T, Complex{T}}, vecTc<:AbstractArray{Tc}}
   state.pl .= 0     #temporary vector
   state.vl .= 0     #temporary vector
   state.αl  = 0     #temporary scalar
@@ -186,11 +185,10 @@ function iterate(solver::CGNR, state=solver.state)
 end
 
 
-function converged(solver::CGNR)
-  state = solver.state
+function converged(::CGNR, state::CGNRState)
   return norm(state.x₀) / state.z0 <= state.relTol
 end
 
-@inline done(solver::CGNR, state) = converged(solver) || state.iteration >= min(state.iterations, size(solver.AHA, 2))
+@inline done(solver::CGNR, state::CGNRState) = converged(solver, state) || state.iteration >= min(state.iterations, size(solver.AHA, 2))
 
 solversolution(solver::CGNR) = solver.state.x 
