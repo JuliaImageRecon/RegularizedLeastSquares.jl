@@ -115,20 +115,23 @@ end
 
 (re-) initializes the FISTA iterator
 """
-function init!(solver::FISTA, state::FISTAState{rt, vecT}, b::vecT; x0 = 0, theta=1) where {rt, vecT}
+function init!(solver::FISTA, state::FISTAState{rT, vecT}, b::vecT; x0 = 0, theta=1) where {rT, vecT}
   if solver.A === nothing
     state.x₀ .= b
   else
     mul!(state.x₀, adjoint(solver.A), b)
   end
+  state.iteration = 0
 
   state.norm_x₀ = norm(state.x₀)
 
   state.x    .= x0
   state.xᵒˡᵈ .= 0 # makes no difference in 1st iteration what this is set to
 
+  state.res[:] .= rT(Inf)
   state.theta = theta
   state.thetaᵒˡᵈ = theta
+  state.rel_res_norm = rT(Inf)
   # normalization of regularization parameters
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, state.x₀)
 end
