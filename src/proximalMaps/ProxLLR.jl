@@ -101,7 +101,7 @@ end
 """
     norm(reg::LLRRegularization, x, λ)
 
-returns the value of the LLR-regularization term.
+returns the value of the LLR-regularization term. The norm is only implemented for 2D, non-fully overlapping blocks. 
 """
 function norm(reg::LLRRegularization, x::Vector{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
     shape = reg.shape
@@ -191,23 +191,10 @@ function proxLLROverlapping!(reg::LLRRegularization{TR, N, TI}, x::AbstractArray
     bthreads = BLAS.get_num_threads()
     try
         BLAS.set_num_threads(1)
-        xᴸᴸᴿ = [Array{Tc}(undef, prod(blockSize), K) for _ = 1:Threads.nthreads()]
         for is ∈ block_idx
             shift_idx = (Tuple(is)..., 0)
             xs = circshift(xp, shift_idx)
-
-            @floop for i ∈ CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
-                @views xᴸᴸᴿ[Threads.threadid()] .= reshape(xs[i.+block_idx, :], :, K)
-
-                ub = sqrt(norm(xᴸᴸᴿ[Threads.threadid()]' * xᴸᴸᴿ[Threads.threadid()], Inf)) #upper bound on singular values given by matrix infinity norm
-                if λ >= ub #save time by skipping the SVT as recommended by Ong/Lustig, IEEE 2016
-                    xs[i.+block_idx, :] .= 0
-                else # threshold singular values
-                    SVDec = svd!(xᴸᴸᴿ[Threads.threadid()])
-                    prox!(L1Regularization, SVDec.S, λ)
-                    xs[i.+block_idx, :] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
-                end
-            end
+            proxLLRNonOverlapping!(reg, xs, λ)
             x .+= circshift(xs, -1 .* shift_idx)[CartesianIndices(x)]
         end
     finally
