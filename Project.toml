@@ -16,6 +16,9 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 VectorizationBase = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
+[weakdeps]
+ProximalCore = "dc4f5ac2-75d1-4f31-931e-60435d74994b"
+
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
@@ -30,6 +33,10 @@ VectorizationBase = "0.19, 0.21"
 LinearOperatorCollection = "1.2"
 LinearOperators = "2.3.3"
 FFTW = "1.0"
+ProximalCore = "0.1"
 
 [targets]
 test = ["Test", "Random", "FFTW"]
+
+[extensions]
+RegularizedLeastSquaresProximalCore = "ProximalCore"
