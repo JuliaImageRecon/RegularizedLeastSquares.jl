@@ -1,10 +1,17 @@
 export pogm, POGM
 
-mutable struct POGM{rT<:Real,vecT<:Union{AbstractVector{rT},AbstractVector{Complex{rT}}},matA,matAHA,R,RN} <: AbstractProximalGradientSolver
+mutable struct POGM{matA,matAHA,R,RN} <: AbstractProximalGradientSolver
   A::matA
   AHA::matAHA
   reg::R
   proj::Vector{RN}
+  normalizeReg::AbstractRegularizationNormalization
+  verbose::Bool
+  restart::Symbol
+  state::AbstractSolverState{<:POGM}
+end
+
+mutable struct POGMState{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}} <: AbstractSolverState{POGM}
   x::vecT
   x₀::vecT
   xᵒˡᵈ::vecT
@@ -21,15 +28,12 @@ mutable struct POGM{rT<:Real,vecT<:Union{AbstractVector{rT},AbstractVector{Compl
   γᵒˡᵈ::rT
   σ::rT
   σ_fac::rT
+  iteration::Int64
   iterations::Int64
   relTol::rT
-  normalizeReg::AbstractRegularizationNormalization
   norm_x₀::rT
   rel_res_norm::rT
-  verbose::Bool
-  restart::Symbol
 end
-
 """
     POGM(A; AHA = A'*A, reg = L1Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false)
     POGM( ; AHA = ,     reg = L1Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false)
@@ -109,8 +113,27 @@ function POGM(A
   other = identity.(other)
   reg = normalize(POGM, normalizeReg, reg, A, nothing)
 
-  return POGM(A, AHA, reg[1], other, x, x₀, xᵒˡᵈ, y, z, w, res, rT(rho), rT(theta), rT(theta), rT(0), rT(1), rT(1), rT(1), rT(1), rT(sigma_fac),
-    iterations, rT(relTol), normalizeReg, one(rT), rT(Inf), verbose, restart)
+  state = POGMState(x, x₀, xᵒˡᵈ, y, z, w, res, rT(rho), rT(theta), rT(theta), rT(0), rT(1), rT(1),
+   rT(1), rT(1), rT(sigma_fac), 0, iterations, rT(relTol), one(rT), rT(Inf))
+
+  return POGM(A, AHA, reg[1], other, normalizeReg, verbose, restart, state)
+end
+
+function init!(solver::POGM, state, b; kwargs...)
+  x = similar(b, size(state.x)...)
+  x₀ = similar(b, size(state.x₀)...)
+  xᵒˡᵈ = similar(b, size(state.xᵒˡᵈ)...)
+  y = similar(b, size(state.y)...)
+  z = similar(b, size(state.z)...)
+  w = similar(b, size(state.w)...)
+  res = similar(b, size(state.res)...)
+
+  state = POGMState(x, x₀, xᵒˡᵈ, y, z, w, res, state.ρ, state.theta, state.theta,
+    state.α, state.β, state.γ, state.γᵒˡᵈ, state.σ, state.σ_fac,
+    state.iteration, state.iterations, state.relTol, state.norm_x₀, state.rel_res_norm)
+  
+  solver.state = state
+  init!(solver, state, b; kwargs...)
 end
 
 """
@@ -118,28 +141,32 @@ end
 
 (re-) initializes the POGM iterator
 """
-function init!(solver::POGM, b; x0=0, theta=1)
+function init!(solver::POGM, state::POGMState{rT, vecT}, b::vecT; x0 = 0, theta=1) where {rT, vecT}
   if solver.A === nothing
-    solver.x₀ .= b
+    state.x₀ .= b
   else
-    mul!(solver.x₀, adjoint(solver.A), b)
+    mul!(state.x₀, adjoint(solver.A), b)
   end
 
-  solver.norm_x₀ = norm(solver.x₀)
+  state.norm_x₀ = norm(state.x₀)
 
-  solver.x .= x0
-  solver.xᵒˡᵈ .= 0 # makes no difference in 1st iteration what this is set to
-  solver.y .= 0
-  solver.z .= 0
+  state.x .= x0
+  state.xᵒˡᵈ .= 0 # makes no difference in 1st iteration what this is set to
+  state.y .= 0
+  state.z .= 0
   if solver.restart != :none #save time if not using restart
-    solver.w .= 0
+    state.w .= 0
   end
 
-  solver.theta = theta
-  solver.thetaᵒˡᵈ = theta
-  solver.σ = 1
+  state.res[:] .= rT(Inf)
+  state.theta = theta
+  state.thetaᵒˡᵈ = theta
+  state.σ = 1
+  state.rel_res_norm = rT(Inf)
+
+  state.iteration = 0
   # normalization of regularization parameters
-  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, solver.x₀)
+  solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, state.x₀)
 end
 
 solverconvergence(solver::POGM) = (; :residual => norm(solver.res))
@@ -149,71 +176,74 @@ solverconvergence(solver::POGM) = (; :residual => norm(solver.res))
 
 performs one POGM iteration.
 """
-function iterate(solver::POGM, iteration::Int=0)
-  if done(solver, iteration)
+function iterate(solver::POGM, state::POGMState = solver.state)
+  if done(solver, state)
     return nothing
   end
 
   # calculate residuum and do gradient step
   # solver.x .-= solver.ρ .* (solver.AHA * solver.x .- solver.x₀)
-  solver.xᵒˡᵈ .= solver.x #save this for inertia step later
-  mul!(solver.res, solver.AHA, solver.x)
-  solver.res .-= solver.x₀
-  solver.x .-= solver.ρ .* solver.res
+  state.xᵒˡᵈ .= state.x #save this for inertia step later
+  mul!(state.res, solver.AHA, state.x)
+  state.res .-= state.x₀
+  state.x .-= state.ρ .* state.res
 
-  solver.rel_res_norm = norm(solver.res) / solver.norm_x₀
-  solver.verbose && println("Iteration $iteration; rel. residual = $(solver.rel_res_norm)")
+  state.rel_res_norm = norm(state.res) / state.norm_x₀
+  solver.verbose && println("Iteration $iteration; rel. residual = $(state.rel_res_norm)")
 
   # inertial parameters
-  solver.thetaᵒˡᵈ = solver.theta
-  if iteration == solver.iterations - 1 && solver.restart != :none #the convergence rate depends on choice of # iterations!
-    solver.theta = (1 + sqrt(1 + 8 * solver.thetaᵒˡᵈ^2)) / 2
+  state.thetaᵒˡᵈ = state.theta
+  if state.iteration == state.iterations - 1 && solver.restart != :none #the convergence rate depends on choice of # iterations!
+    state.theta = (1 + sqrt(1 + 8 * state.thetaᵒˡᵈ^2)) / 2
   else
-    solver.theta = (1 + sqrt(1 + 4 * solver.thetaᵒˡᵈ^2)) / 2
+    state.theta = (1 + sqrt(1 + 4 * state.thetaᵒˡᵈ^2)) / 2
   end
-  solver.α = (solver.thetaᵒˡᵈ - 1) / solver.theta
-  solver.β = solver.σ * solver.thetaᵒˡᵈ / solver.theta
-  solver.γᵒˡᵈ = solver.γ
+  state.α = (state.thetaᵒˡᵈ - 1) / state.theta
+  state.β = state.σ * state.thetaᵒˡᵈ / state.theta
+  state.γᵒˡᵈ = state.γ
   if solver.restart == :gradient
-    solver.γ = solver.ρ * (1 + solver.α + solver.β)
+    state.γ = state.ρ * (1 + state.α + state.β)
   else
-    solver.γ = solver.ρ * (2solver.thetaᵒˡᵈ + solver.theta - 1) / solver.theta
+    state.γ = state.ρ * (2state.thetaᵒˡᵈ + state.theta - 1) / state.theta
   end
 
   # inertia steps
   # x + α * (x - y) + β * (x - xᵒˡᵈ) + ρα/γᵒˡᵈ * (z - xᵒˡᵈ)
-  tmp = solver.y
-  solver.y = solver.x
-  solver.x = tmp # swap x and y
-  solver.x .*= -solver.α # here we calculate -α * y, where y is now stored in x
-  solver.x .+= (1 + solver.α + solver.β) .* solver.y
-  solver.x .-= (solver.β + solver.ρ * solver.α / solver.γᵒˡᵈ) .* solver.xᵒˡᵈ
-  solver.x .+= solver.ρ * solver.α / solver.γᵒˡᵈ .* solver.z
-  solver.z .= solver.x #store this for next iteration and GR
+  tmp = state.y
+  state.y = state.x
+  state.x = tmp # swap x and y
+  state.x .*= -state.α # here we calculate -α * y, where y is now stored in x
+  state.x .+= (1 + state.α + state.β) .* state.y
+  state.x .-= (state.β + state.ρ * state.α / state.γᵒˡᵈ) .* state.xᵒˡᵈ
+  state.x .+= state.ρ * state.α / state.γᵒˡᵈ .* state.z
+  state.z .= state.x #store this for next iteration and GR
 
   # proximal map
-  prox!(solver.reg, solver.x, solver.γ * λ(solver.reg))
+  prox!(solver.reg, state.x, state.γ * λ(solver.reg))
   for proj in solver.proj
-    prox!(proj, solver.x)
+    prox!(proj, state.x)
   end
 
   # gradient restart conditions
   if solver.restart == :gradient
-    solver.w .+= solver.y .+ solver.ρ ./ solver.γ .* (solver.x .- solver.z)
-    if real((solver.w ⋅ solver.x - solver.w ⋅ solver.z) / solver.γ - solver.w ⋅ solver.res) < 0
+    state.w .+= state.y .+ state.ρ ./ state.γ .* (state.x .- state.z)
+    if real((state.w ⋅ state.x - state.w ⋅ state.z) / state.γ - state.w ⋅ state.res) < 0
       solver.verbose && println("Gradient restart at iter $iteration")
-      solver.σ = 1
-      solver.theta = 1
+      state.σ = 1
+      state.theta = 1
     else # decreasing γ
-      solver.σ *= solver.σ_fac
+      state.σ *= state.σ_fac
     end
-    solver.w .= solver.ρ / solver.γ .* (solver.z .- solver.x) .- solver.y
+    state.w .= state.ρ / state.γ .* (state.z .- state.x) .- state.y
   end
 
   # return the residual-norm as item and iteration number as state
-  return solver, iteration + 1
+  state.iteration += 1
+  return state.x₀, state
 end
 
-@inline converged(solver::POGM) = (solver.rel_res_norm < solver.relTol)
+@inline converged(solver::POGM, state::POGMState) = (state.rel_res_norm < state.relTol)
 
-@inline done(solver::POGM, iteration) = converged(solver) || iteration >= solver.iterations
+@inline done(solver::POGM, state::POGMState) = converged(solver, state) || state.iteration >= state.iterations
+
+solversolution(solver::POGM) = solver.state.x 

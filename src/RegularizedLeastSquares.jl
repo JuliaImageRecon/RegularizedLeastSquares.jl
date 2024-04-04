@@ -105,7 +105,7 @@ function solve!(solver::AbstractLinearSolver, b; x0 = 0, callbacks = (_, _) -> n
   end
 
 
-  init!(solver, b; x0)
+  init!(solver, solver.state, b; x0)
   foreach(cb -> cb(solver, 0), callbacks)
 
   for (iteration, _) = enumerate(solver)
