@@ -14,6 +14,7 @@ mutable struct Kaczmarz{matT,R,U,RN} <: AbstractRowActionSolver
   shuffleRows::Bool
   seed::Int64
   normalizeReg::AbstractRegularizationNormalization
+  iterations::Int64
   state::AbstractSolverState{<:Kaczmarz}
 end
 
@@ -25,7 +26,6 @@ mutable struct KaczmarzState{T, vecT <: AbstractArray{T}} <: AbstractSolverState
   τl::T
   αl::T
   iteration::Int64
-  iterations::Int64
 end
 
 """
@@ -103,11 +103,11 @@ function Kaczmarz(A
   τl = zero(eltype(A))
   αl = zero(eltype(A))
 
-  state = KaczmarzState(u, x, vl, εw, τl, αl, 0, iterations)
+  state = KaczmarzState(u, x, vl, εw, τl, αl, 0)
 
   return Kaczmarz(A, L2, other, denom, rowindex, rowIndexCycle,
                   randomized, subMatrixSize, probabilities, shuffleRows,
-                  Int64(seed), normalizeReg, state)
+                  Int64(seed), normalizeReg, iterations, state)
 end
 
 function init!(solver::Kaczmarz, state::KaczmarzState{T, vecT}, b::otherT; kwargs...) where {T, vecT, otherT}
@@ -115,7 +115,7 @@ function init!(solver::Kaczmarz, state::KaczmarzState{T, vecT}, b::otherT; kwarg
   x = similar(b, size(state.x)...)
   vl = similar(b, size(state.vl)...)
 
-  state = KaczmarzState(u, x, vl, state.εw, state.τl, state.αl, state.iteration, state.iterations)
+  state = KaczmarzState(u, x, vl, state.εw, state.τl, state.αl, state.iteration)
   solver.state = state
   init!(solver, state, b; kwargs...)
 end
@@ -199,7 +199,7 @@ function iterate_row_index(solver::Kaczmarz, state::KaczmarzState, A, row, index
   state.vl[row] += state.αl*state.ɛw
 end
 
-@inline done(solver::Kaczmarz,state::KaczmarzState) = state.iteration>=state.iterations
+@inline done(solver::Kaczmarz,state::KaczmarzState) = state.iteration>=solver.iterations
 
 
 """

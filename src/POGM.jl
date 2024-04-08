@@ -7,7 +7,8 @@ mutable struct POGM{matA,matAHA,R,RN} <: AbstractProximalGradientSolver
   proj::Vector{RN}
   normalizeReg::AbstractRegularizationNormalization
   verbose::Bool
-  restart::Symbol
+  restart::Symbol  
+  iterations::Int64
   state::AbstractSolverState{<:POGM}
 end
 
@@ -29,7 +30,6 @@ mutable struct POGMState{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractV
   σ::rT
   σ_fac::rT
   iteration::Int64
-  iterations::Int64
   relTol::rT
   norm_x₀::rT
   rel_res_norm::rT
@@ -114,9 +114,9 @@ function POGM(A
   reg = normalize(POGM, normalizeReg, reg, A, nothing)
 
   state = POGMState(x, x₀, xᵒˡᵈ, y, z, w, res, rT(rho), rT(theta), rT(theta), rT(0), rT(1), rT(1),
-   rT(1), rT(1), rT(sigma_fac), 0, iterations, rT(relTol), one(rT), rT(Inf))
+   rT(1), rT(1), rT(sigma_fac), 0, rT(relTol), one(rT), rT(Inf))
 
-  return POGM(A, AHA, reg[1], other, normalizeReg, verbose, restart, state)
+  return POGM(A, AHA, reg[1], other, normalizeReg, verbose, restart, iterations, state)
 end
 
 function init!(solver::POGM, state, b; kwargs...)
@@ -130,7 +130,7 @@ function init!(solver::POGM, state, b; kwargs...)
 
   state = POGMState(x, x₀, xᵒˡᵈ, y, z, w, res, state.ρ, state.theta, state.theta,
     state.α, state.β, state.γ, state.γᵒˡᵈ, state.σ, state.σ_fac,
-    state.iteration, state.iterations, state.relTol, state.norm_x₀, state.rel_res_norm)
+    state.iteration, state.relTol, state.norm_x₀, state.rel_res_norm)
   
   solver.state = state
   init!(solver, state, b; kwargs...)
@@ -193,7 +193,7 @@ function iterate(solver::POGM, state::POGMState = solver.state)
 
   # inertial parameters
   state.thetaᵒˡᵈ = state.theta
-  if state.iteration == state.iterations - 1 && solver.restart != :none #the convergence rate depends on choice of # iterations!
+  if state.iteration == solver.iterations - 1 && solver.restart != :none #the convergence rate depends on choice of # iterations!
     state.theta = (1 + sqrt(1 + 8 * state.thetaᵒˡᵈ^2)) / 2
   else
     state.theta = (1 + sqrt(1 + 4 * state.thetaᵒˡᵈ^2)) / 2
@@ -244,6 +244,6 @@ end
 
 @inline converged(solver::POGM, state::POGMState) = (state.rel_res_norm < state.relTol)
 
-@inline done(solver::POGM, state::POGMState) = converged(solver, state) || state.iteration >= state.iterations
+@inline done(solver::POGM, state::POGMState) = converged(solver, state) || state.iteration >= solver.iterations
 
 solversolution(solver::POGM) = solver.state.x 

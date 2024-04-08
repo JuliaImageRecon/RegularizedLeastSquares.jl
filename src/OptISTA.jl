@@ -7,6 +7,7 @@ mutable struct OptISTA{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractVec
   proj::Vector{RN}
   normalizeReg::AbstractRegularizationNormalization
   verbose::Bool
+  iterations::Int64
   state::AbstractSolverState{<:OptISTA}
 end
 
@@ -25,7 +26,6 @@ mutable struct OptISTAState{rT <: Real, vecT <: Union{AbstractVector{rT}, Abstra
   β::rT
   γ::rT
   iteration::Int64
-  iterations::Int64
   relTol::rT
   norm_x₀::rT
   rel_res_norm::rT
@@ -104,9 +104,9 @@ function OptISTA(A
   reg = normalize(OptISTA, normalizeReg, reg, A, nothing)
 
   state = OptISTAState(x, x₀, y, z, zᵒˡᵈ, res, rT(rho),rT(theta),rT(theta),rT(θn),rT(0),rT(1),rT(1),
-  0, iterations,rT(relTol), one(rT),rT(Inf))
+  0,rT(relTol), one(rT),rT(Inf))
 
-  return OptISTA(A, AHA, reg[1], other, normalizeReg, verbose, state)
+  return OptISTA(A, AHA, reg[1], other, normalizeReg, verbose, iterations, state)
 end
 
 function init!(solver::OptISTA, state::OptISTAState, b; kwargs...)
@@ -117,7 +117,7 @@ function init!(solver::OptISTA, state::OptISTAState, b; kwargs...)
   zᵒˡᵈ = similar(b, size(state.zᵒˡᵈ)...)
   res = similar(b, size(state.res)...)
 
-  state = OptISTAState(x, x₀, y, z, zᵒˡᵈ, res, state.ρ, state.θ, state.θᵒˡᵈ, state.θn, state.α, state.β, state.γ, state.iteration, state.iterations, state.relTol, state.norm_x₀, state.rel_res_norm)
+  state = OptISTAState(x, x₀, y, z, zᵒˡᵈ, res, state.ρ, state.θ, state.θᵒˡᵈ, state.θn, state.α, state.β, state.γ, state.iteration, state.relTol, state.norm_x₀, state.rel_res_norm)
   solver.state = state
   init!(solver, state, b; kwargs...)
 end
@@ -148,7 +148,7 @@ function init!(solver::OptISTA, state::OptISTAState{rT, vecT}, b::vecT; x0 = 0, 
   state.θ = θ
   state.θᵒˡᵈ = θ
   state.θn = θ
-  for _ = 1:(state.iterations-1)
+  for _ = 1:(solver.iterations-1)
     state.θn = (1 + sqrt(1 + 4 * state.θn^2)) / 2
   end
   state.θn = (1 + sqrt(1 + 8 * state.θn^2)) / 2
@@ -172,7 +172,7 @@ function iterate(solver::OptISTA, state::OptISTAState = solver.state)
   # inertial parameters
   state.γ = 2state.θ / state.θn^2 * (state.θn^2 - 2state.θ^2 + state.θ)
   state.θᵒˡᵈ = state.θ
-  if state.iteration == state.iterations - 1 #the convergence rate depends on choice of # iterations!
+  if state.iteration == solver.iterations - 1 #the convergence rate depends on choice of # iterations!
     state.θ = (1 + sqrt(1 + 8 * state.θᵒˡᵈ^2)) / 2
   else
     state.θ = (1 + sqrt(1 + 4 * state.θᵒˡᵈ^2)) / 2
@@ -210,6 +210,6 @@ end
 
 @inline converged(solver::OptISTA, state::OptISTAState) = (state.rel_res_norm < state.relTol)
 
-@inline done(solver::OptISTA, state::OptISTAState) = converged(solver, state) || state.iteration >= state.iterations
+@inline done(solver::OptISTA, state::OptISTAState) = converged(solver, state) || state.iteration >= solver.iterations
 
 solversolution(solver::OptISTA) = solver.state.x 

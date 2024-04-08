@@ -10,6 +10,8 @@ mutable struct ADMM{matT,opT,R,ropT,P,preconT} <: AbstractPrimalDualSolver
   normalizeReg::AbstractRegularizationNormalization
   vary_ρ::Symbol
   verbose::Bool
+  iterations::Int64
+  iterationsCG::Int64
   state::AbstractSolverState{<:ADMM}
 end
 
@@ -27,9 +29,7 @@ mutable struct ADMMState{rT <: Real, rvecT <: AbstractVector{rT}, vecT <: Union{
   # other paremters
   ρ::rvecT
   iteration::Int64
-  iterations::Int64  
   # state variables for CG
-  iterationsCG::Int64
   cgStateVars::CGStateVariables
   # convergence parameters
   rᵏ::rvecT
@@ -135,9 +135,9 @@ function ADMM(A
   # normalization parameters
   reg = normalize(ADMM, normalizeReg, reg, A, nothing)
 
-  state = ADMMState(β, β_y, x, xᵒˡᵈ, z, zᵒˡᵈ, u, uᵒˡᵈ, rho, 0, iterations, iterationsCG, cgStateVars, rᵏ, sᵏ, ɛᵖʳⁱ, ɛᵈᵘᵃ, rT(0), Δ, rT(absTol), rT(relTol), rT(tolInner))
+  state = ADMMState(β, β_y, x, xᵒˡᵈ, z, zᵒˡᵈ, u, uᵒˡᵈ, rho, 0, cgStateVars, rᵏ, sᵏ, ɛᵖʳⁱ, ɛᵈᵘᵃ, rT(0), Δ, rT(absTol), rT(relTol), rT(tolInner))
 
-  return ADMM(A, reg, regTrafo, proj, AHA, precon, normalizeReg, vary_rho, verbose, state)
+  return ADMM(A, reg, regTrafo, proj, AHA, precon, normalizeReg, vary_rho, verbose, iterations, iterationsCG, state)
 end
 
 function init!(solver::ADMM, state, b; kwargs...)
@@ -153,7 +153,7 @@ function init!(solver::ADMM, state, b; kwargs...)
 
   cgStateVars = CGStateVariables(zero(x),similar(x),similar(x))
 
-  state = ADMMState(β, β_y, x, xᵒˡᵈ, z, zᵒˡᵈ, u, uᵒˡᵈ, state.ρ, state.iteration, state.iterations, state.iterationsCG, cgStateVars,
+  state = ADMMState(β, β_y, x, xᵒˡᵈ, z, zᵒˡᵈ, u, uᵒˡᵈ, state.ρ, state.iteration, cgStateVars,
       state.rᵏ, state.sᵏ, state.ɛᵖʳⁱ, state.ɛᵈᵘᵃ, state.σᵃᵇˢ, state.Δ, state.absTol, state.relTol, state.tolInner)
   
   solver.state = state
@@ -217,7 +217,7 @@ function iterate(solver::ADMM, state::ADMMState = solver.state)
   end
   solver.verbose && println("conjugated gradients: ")
   state.xᵒˡᵈ .= state.x
-  cg!(state.x, AHA, state.β, Pl=solver.precon, maxiter=state.iterationsCG, reltol=state.tolInner, statevars=state.cgStateVars, verbose=solver.verbose)
+  cg!(state.x, AHA, state.β, Pl=solver.precon, maxiter=solver.iterationsCG, reltol=state.tolInner, statevars=state.cgStateVars, verbose=solver.verbose)
 
   for proj in solver.proj
     prox!(proj, state.x)
@@ -284,6 +284,6 @@ function converged(solver::ADMM, state::ADMMState)
   return false
 end
 
-@inline done(solver::ADMM, state) = converged(solver, state) || state.iteration >= state.iterations
+@inline done(solver::ADMM, state) = converged(solver, state) || state.iteration >= solver.iterations
 
 solversolution(solver::ADMM) = solver.state.x 

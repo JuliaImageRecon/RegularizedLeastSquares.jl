@@ -8,6 +8,7 @@ mutable struct FISTA{matA, matAHA, R, RN} <: AbstractProximalGradientSolver
   normalizeReg::AbstractRegularizationNormalization
   verbose::Bool
   restart::Symbol
+  iterations::Int64
   state::AbstractSolverState{<:FISTA}
 end
 
@@ -20,7 +21,6 @@ mutable struct FISTAState{rT <: Real, vecT <: Union{AbstractVector{rT}, Abstract
   theta::rT
   thetaᵒˡᵈ::rT
   iteration::Int64
-  iterations::Int64
   relTol::rT
   norm_x₀::rT
   rel_res_norm::rT
@@ -92,9 +92,9 @@ function FISTA(A
   other = identity.(other)
   reg = normalize(FISTA, normalizeReg, reg, A, nothing)
 
-  state = FISTAState(x, x₀, xᵒˡᵈ, res, rT(rho), rT(theta), rT(theta), 0, iterations, rT(relTol), one(rT), rT(Inf))
+  state = FISTAState(x, x₀, xᵒˡᵈ, res, rT(rho), rT(theta), rT(theta), 0, rT(relTol), one(rT), rT(Inf))
 
-  return FISTA(A, AHA, reg[1], other, normalizeReg, verbose, restart, state)
+  return FISTA(A, AHA, reg[1], other, normalizeReg, verbose, restart, iterations, state)
 end
 
 init!(solver::FISTA, b; kwargs...) = init!(solver, solver.state, b; kwargs...)
@@ -105,7 +105,7 @@ function init!(solver::FISTA, state, b; kwargs...)
   xᵒˡᵈ = similar(b, size(state.xᵒˡᵈ)...)
   res = similar(b, size(state.res)...)
 
-  state = FISTAState(x, x₀, xᵒˡᵈ, res, state.ρ, state.theta, state.theta, state.iteration, state.iterations, state.relTol, state.norm_x₀, state.rel_res_norm)
+  state = FISTAState(x, x₀, xᵒˡᵈ, res, state.ρ, state.theta, state.theta, state.iteration, state.relTol, state.norm_x₀, state.rel_res_norm)
   solver.state = state
   init!(solver, state, b; kwargs...)
 end
@@ -194,6 +194,6 @@ end
 
 @inline converged(::FISTA, state::FISTAState) = (state.rel_res_norm < state.relTol)
 
-@inline done(solver::FISTA, state::FISTAState) = converged(solver, state) || state.iteration>=state.iterations
+@inline done(solver::FISTA, state::FISTAState) = converged(solver, state) || state.iteration>=solver.iterations
 
 solversolution(solver::FISTA) = solver.state.x 

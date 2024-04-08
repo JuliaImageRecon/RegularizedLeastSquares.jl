@@ -6,6 +6,7 @@ mutable struct CGNR{matT,opT, R,PR} <: AbstractKrylovSolver
   L2::R
   constr::PR
   normalizeReg::AbstractRegularizationNormalization
+  iterations::Int64
   state::AbstractSolverState{<:CGNR}
 end
 
@@ -18,7 +19,6 @@ mutable struct CGNRState{T, Tc, vecTc} <: AbstractSolverState{CGNR} where {T, Tc
   βl::Tc
   ζl::Tc
   iteration::Int64
-  iterations::Int64
   relTol::T
   z0::T
 end
@@ -84,20 +84,20 @@ function CGNR(A
   end
   other = identity.(other)
 
-  state = CGNRState(x, x₀, pl, vl, αl, βl, ζl, 0, iterations, relTol, zero(real(T)))
+  state = CGNRState(x, x₀, pl, vl, αl, βl, ζl, 0, relTol, zero(real(T)))
 
-  return CGNR(A, AHA, L2, other, normalizeReg, state)
+  return CGNR(A, AHA, L2, other, normalizeReg, iterations, state)
 end
 
 init!(solver::CGNR, b; kwargs...) = init!(solver, solver.state, b; kwargs...)
 
-function init!(solver::CGNR, state, b; kwargs...)
+function init!(solver, state, b; kwargs...)
   x = similar(b, size(state.x)...)
   x₀ = similar(b, size(state.x₀)...)
   pl = similar(b, size(state.pl)...)
   vl = similar(b, size(state.vl)...)
 
-  state = CGNRState(x, x₀, pl, vl, state.αl, state.βl, state.ζl, state.iteration, state.iterations, state.relTol, state.z0)
+  state = CGNRState(x, x₀, pl, vl, state.αl, state.βl, state.ζl, state.iteration, state.relTol, state.z0)
   solver.state = state
   init!(solver, state, b; kwargs...)
 end
@@ -181,7 +181,7 @@ function iterate(solver::CGNR, state=solver.state)
   state.pl .+= state.x₀
 
   state.iteration += 1
-  return state.x₀, state
+  return state.x, state
 end
 
 
@@ -189,6 +189,6 @@ function converged(::CGNR, state::CGNRState)
   return norm(state.x₀) / state.z0 <= state.relTol
 end
 
-@inline done(solver::CGNR, state::CGNRState) = converged(solver, state) || state.iteration >= min(state.iterations, size(solver.AHA, 2))
+@inline done(solver::CGNR, state::CGNRState) = converged(solver, state) || state.iteration >= min(solver.iterations, size(solver.AHA, 2))
 
 solversolution(solver::CGNR) = solver.state.x 
