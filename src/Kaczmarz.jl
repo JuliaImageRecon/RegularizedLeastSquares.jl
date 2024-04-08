@@ -1,26 +1,31 @@
 export kaczmarz
 export Kaczmarz
 
-mutable struct Kaczmarz{matT,R,T,U,RN} <: AbstractRowActionSolver
+mutable struct Kaczmarz{matT,R,U,RN} <: AbstractRowActionSolver
   A::matT
-  u::Vector{T}
   L2::R
   reg::Vector{RN}
   denom::Vector{U}
   rowindex::Vector{Int64}
   rowIndexCycle::Vector{Int64}
-  x::Vector{T}
-  vl::Vector{T}
-  εw::T
-  τl::T
-  αl::T
   randomized::Bool
   subMatrixSize::Int64
   probabilities::Vector{U}
   shuffleRows::Bool
   seed::Int64
-  iterations::Int64
   normalizeReg::AbstractRegularizationNormalization
+  state::AbstractSolverState{<:Kaczmarz}
+end
+
+mutable struct KaczmarzState{T, vecT <: AbstractArray{T}} <: AbstractSolverState{Kaczmarz}
+  u::vecT
+  x::vecT
+  vl::vecT
+  εw::T
+  τl::T
+  αl::T
+  iteration::Int64
+  iterations::Int64
 end
 
 """
@@ -98,10 +103,21 @@ function Kaczmarz(A
   τl = zero(eltype(A))
   αl = zero(eltype(A))
 
-  return Kaczmarz(A, u, L2, other, denom, rowindex, rowIndexCycle, x, vl, εw, τl, αl,
+  state = KaczmarzState(u, x, vl, εw, τl, αl, 0, iterations)
+
+  return Kaczmarz(A, L2, other, denom, rowindex, rowIndexCycle,
                   randomized, subMatrixSize, probabilities, shuffleRows,
-                  Int64(seed), iterations,
-                  normalizeReg)
+                  Int64(seed), normalizeReg, state)
+end
+
+function init!(solver::Kaczmarz, state::KaczmarzState{T, vecT}, b::otherT; kwargs...) where {T, vecT, otherT}
+  u = similar(b, size(state.u)...)
+  x = similar(b, size(state.x)...)
+  vl = similar(b, size(state.vl)...)
+
+  state = KaczmarzState(u, x, vl, state.εw, state.τl, state.αl, state.iteration, state.iterations)
+  solver.state = state
+  init!(solver, state, b; kwargs...)
 end
 
 """
@@ -109,7 +125,7 @@ end
 
 (re-) initializes the Kacmarz iterator
 """
-function init!(solver::Kaczmarz, b; x0 = 0)
+function init!(solver::Kaczmarz, state::KaczmarzState{T, vecT}, b::vecT; x0 = 0) where {T, vecT}
   λ_prev = λ(solver.L2)
   solver.L2  = normalize(solver, solver.normalizeReg, solver.L2,  solver.A, b)
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
@@ -134,26 +150,27 @@ function init!(solver::Kaczmarz, b; x0 = 0)
   end
 
   # start vector
-  solver.x .= x0
-  solver.vl .= 0
+  state.x .= x0
+  state.vl .= 0
 
-  solver.u .= b
+  state.u .= b
   if λ_ isa Vector
-    solver.ɛw = 0
+    state.ɛw = 0
   else
-    solver.ɛw = sqrt(λ_)
+    state.ɛw = sqrt(λ_)
   end
+  state.iteration = 0
 end
 
 
 function solversolution(solver::Kaczmarz{matT, RN}) where {matT, R<:L2Regularization{<:Vector}, RN <: Union{R, AbstractNestedRegularization{<:R}}}
-  return solver.x .* (1 ./ sqrt.(λ(solver.L2)))
+  return solver.state.x .* (1 ./ sqrt.(λ(solver.L2)))
 end
-solversolution(solver::Kaczmarz) = solver.x
-solverconvergence(solver::Kaczmarz) = (; :residual => norm(solver.vl))
+solversolution(solver::Kaczmarz) = solver.state.x
+solverconvergence(solver::Kaczmarz) = (; :residual => norm(solver.state.vl))
 
-function iterate(solver::Kaczmarz, iteration::Int=0)
-  if done(solver,iteration) return nothing end
+function iterate(solver::Kaczmarz, state = solver.state)
+  if done(solver,state) return nothing end
 
   if solver.randomized
     usedIndices = Int.(StatsBase.sample!(Random.GLOBAL_RNG, solver.rowIndexCycle, weights(solver.probabilities), zeros(solver.subMatrixSize), replace=false))
@@ -163,25 +180,26 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
 
   for i in usedIndices
     row = solver.rowindex[i]
-    iterate_row_index(solver, solver.A, row, i)
+    iterate_row_index(solver, state, solver.A, row, i)
   end
 
   for r in solver.reg
     prox!(r, solver.x)
   end
 
-  return solver.vl, iteration+1
+  state.iteration += 1
+  return state.x, state
 end
 
-iterate_row_index(solver::Kaczmarz, A::AbstractLinearSolver, row, index) = iterate_row_index(solver, Matrix(A[row, :]), row, index) 
-function iterate_row_index(solver::Kaczmarz, A, row, index)
-  solver.τl = dot_with_matrix_row(A,solver.x,row)
-  solver.αl = solver.denom[index]*(solver.u[row]-solver.τl-solver.ɛw*solver.vl[row])
-  kaczmarz_update!(A,solver.x,row,solver.αl)
-  solver.vl[row] += solver.αl*solver.ɛw
+iterate_row_index(solver::Kaczmarz, state::KaczmarzState, A::AbstractLinearSolver, row, index) = iterate_row_index(solver, Matrix(A[row, :]), row, index) 
+function iterate_row_index(solver::Kaczmarz, state::KaczmarzState, A, row, index)
+  state.τl = dot_with_matrix_row(A,state.x,row)
+  state.αl = solver.denom[index]*(state.u[row]-state.τl-state.ɛw*state.vl[row])
+  kaczmarz_update!(A,state.x,row,state.αl)
+  state.vl[row] += state.αl*state.ɛw
 end
 
-@inline done(solver::Kaczmarz,iteration::Int) = iteration>=solver.iterations
+@inline done(solver::Kaczmarz,state::KaczmarzState) = state.iteration>=state.iterations
 
 
 """
