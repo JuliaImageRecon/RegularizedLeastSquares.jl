@@ -189,6 +189,7 @@ function init!(solver::ADMM, state::ADMMState{rT, rvecT, vecT}, b::vecT; x0 = 0)
   state.σᵃᵇˢ = sqrt(length(b)) * state.absTol
   state.Δ .= Inf
 
+  state.iteration = 0
   # normalization of regularization parameters
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
 end
@@ -271,7 +272,8 @@ function iterate(solver::ADMM, state::ADMMState = solver.state)
     end
   end
 
-  return solver.rᵏ, iteration+1
+  state.iteration += 1
+  return state.x, state
 end
 
 function converged(solver::ADMM, state::ADMMState)
