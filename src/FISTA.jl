@@ -97,8 +97,6 @@ function FISTA(A
   return FISTA(A, AHA, reg[1], other, normalizeReg, verbose, restart, iterations, state)
 end
 
-init!(solver::FISTA, b; kwargs...) = init!(solver, solver.state, b; kwargs...)
-
 function init!(solver::FISTA, state::FISTAState{rT, vecT}, b::otherT; kwargs...) where {rT, vecT, otherT}
   x = similar(b, size(state.x)...)
   x₀ = similar(b, size(state.x₀)...)

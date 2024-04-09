@@ -89,8 +89,6 @@ function CGNR(A
   return CGNR(A, AHA, L2, other, normalizeReg, iterations, state)
 end
 
-init!(solver::CGNR, b; kwargs...) = init!(solver, solver.state, b; kwargs...)
-
 function init!(solver::CGNR, state::CGNRState{T, Tc, vecTc}, b::otherTc; kwargs...) where {T, Tc, vecTc, otherTc}
   x = similar(b, size(state.x)...)
   x₀ = similar(b, size(state.x₀)...)
