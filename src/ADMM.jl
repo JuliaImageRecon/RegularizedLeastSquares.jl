@@ -140,7 +140,7 @@ function ADMM(A
   return ADMM(A, reg, regTrafo, proj, AHA, precon, normalizeReg, vary_rho, verbose, iterations, iterationsCG, state)
 end
 
-function init!(solver::ADMM, state, b; kwargs...)
+function init!(solver::ADMM, state::ADMMState{rT, rvecT, vecT}, b::otherT; kwargs...) where {rT, rvecT, vecT, otherT}
   x    = similar(b, size(state.x)...)
   xᵒˡᵈ = similar(b, size(state.xᵒˡᵈ)...)
   β    = similar(b, size(state.β)...)
@@ -284,6 +284,6 @@ function converged(solver::ADMM, state::ADMMState)
   return false
 end
 
-@inline done(solver::ADMM, state) = converged(solver, state) || state.iteration >= solver.iterations
+@inline done(solver::ADMM, state::ADMMState) = converged(solver, state) || state.iteration >= solver.iterations
 
 solversolution(solver::ADMM) = solver.state.x 

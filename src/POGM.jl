@@ -119,7 +119,7 @@ function POGM(A
   return POGM(A, AHA, reg[1], other, normalizeReg, verbose, restart, iterations, state)
 end
 
-function init!(solver::POGM, state, b; kwargs...)
+function init!(solver::POGM, state::POGMState{rT, vecT}, b::otherT; kwargs...) where {rT, vecT, otherT}
   x = similar(b, size(state.x)...)
   x₀ = similar(b, size(state.x₀)...)
   xᵒˡᵈ = similar(b, size(state.xᵒˡᵈ)...)
@@ -239,7 +239,7 @@ function iterate(solver::POGM, state::POGMState = solver.state)
 
   # return the residual-norm as item and iteration number as state
   state.iteration += 1
-  return state.x₀, state
+  return state.x, state
 end
 
 @inline converged(solver::POGM, state::POGMState) = (state.rel_res_norm < state.relTol)

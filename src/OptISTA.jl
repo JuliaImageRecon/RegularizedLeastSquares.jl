@@ -109,7 +109,7 @@ function OptISTA(A
   return OptISTA(A, AHA, reg[1], other, normalizeReg, verbose, iterations, state)
 end
 
-function init!(solver::OptISTA, state::OptISTAState, b; kwargs...)
+function init!(solver::OptISTA, state::OptISTAState{rT, vecT}, b::otherT; kwargs...) where {rT, vecT, otherT}
   x = similar(b, size(state.x)...)
   x₀ = similar(b, size(state.x₀)...)
   y = similar(b, size(state.y)...)

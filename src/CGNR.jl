@@ -91,7 +91,7 @@ end
 
 init!(solver::CGNR, b; kwargs...) = init!(solver, solver.state, b; kwargs...)
 
-function init!(solver, state, b; kwargs...)
+function init!(solver::CGNR, state::CGNRState{T, Tc, vecTc}, b::otherTc; kwargs...) where {T, Tc, vecTc, otherTc}
   x = similar(b, size(state.x)...)
   x₀ = similar(b, size(state.x₀)...)
   pl = similar(b, size(state.pl)...)

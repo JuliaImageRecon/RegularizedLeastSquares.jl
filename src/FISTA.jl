@@ -99,7 +99,7 @@ end
 
 init!(solver::FISTA, b; kwargs...) = init!(solver, solver.state, b; kwargs...)
 
-function init!(solver::FISTA, state, b; kwargs...)
+function init!(solver::FISTA, state::FISTAState{rT, vecT}, b::otherT; kwargs...) where {rT, vecT, otherT}
   x = similar(b, size(state.x)...)
   x₀ = similar(b, size(state.x₀)...)
   xᵒˡᵈ = similar(b, size(state.xᵒˡᵈ)...)
@@ -189,7 +189,7 @@ function iterate(solver::FISTA, state = solver.state)
 
   state.iteration += 1
   # return the residual-norm as item and iteration number as state
-  return state.x₀, state
+  return state.x, state
 end
 
 @inline converged(::FISTA, state::FISTAState) = (state.rel_res_norm < state.relTol)
