@@ -23,15 +23,8 @@ end
   solvers = linearSolverListReal()
 
   for solver in solvers
-      solverInfo = SolverInfo(Float64)
-      S = createLinearSolver(
-          solver,
-          A,
-          iterations = 200,
-          solverInfo = solverInfo,
-          shape = (2, 1),
-      )
-      x_approx = solve(S, b)
+      S = createLinearSolver(solver, A, iteration = 200)
+      x_approx = solve!(S, b)
       @info "Testing solver $solver ...: $x  == $x_approx"
       @test norm(x - x_approx) / norm(x) ≈ 0 atol = 0.1
   end
