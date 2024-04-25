@@ -79,7 +79,7 @@ function ADMM(A
             ; AHA = A'*A
             , precon = Identity()
             , reg = L1Regularization(zero(real(eltype(AHA))))
-            , regTrafo = opEye(eltype(AHA), size(AHA,1))
+            , regTrafo = opEye(eltype(AHA), size(AHA,1), S = LinearOperators.storage_type(AHA))
             , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
             , rho = 1e-1
             , vary_rho::Symbol = :none
