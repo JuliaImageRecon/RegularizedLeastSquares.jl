@@ -85,13 +85,13 @@ function ADMM(A
             , vary_rho::Symbol = :none
             , iterations::Int = 10
             , iterationsCG::Int = 10
-            , absTol::Real = eps(real(eltype(AHA)))
-            , relTol::Real = eps(real(eltype(AHA)))
+            , absTol::Real = eps(real(eltype(LinearOperators.storage_type(AHA))))
+            , relTol::Real = eps(real(eltype(LinearOperators.storage_type(AHA))))
             , tolInner::Real = 1e-5
             , verbose = false
             )
 
-  T  = eltype(AHA)
+  T  = eltype(LinearOperators.storage_type(AHA))
   rT = real(T)
 
   reg = isa(reg, AbstractVector) ? reg : [reg]
