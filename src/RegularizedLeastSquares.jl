@@ -15,7 +15,7 @@ using StatsBase
 using LinearOperatorCollection
 using InteractiveUtils
 
-export AbstractLinearSolver, createLinearSolver, init, deinit, solve!, linearSolverList, linearSolverListReal, applicableSolverList
+export AbstractLinearSolver, createLinearSolver, init!, deinit, solve!, linearSolverList, linearSolverListReal, applicableSolverList
 
 abstract type AbstractLinearSolver end
 abstract type AbstractSolverState{S} end
@@ -105,7 +105,7 @@ function solve!(solver::AbstractLinearSolver, b; x0 = 0, callbacks = (_, _) -> n
   end
 
 
-  init!(solver, solver.state, b; x0)
+  init!(solver, b; x0)
   foreach(cb -> cb(solver, 0), callbacks)
 
   for (iteration, _) = enumerate(solver)
@@ -153,7 +153,7 @@ include("Transforms.jl")
 include("Regularization/Regularization.jl")
 include("proximalMaps/ProximalMaps.jl")
 
-export solversolution, solverconvergence
+export solversolution, solverconvergence, solverstate
 """
     solversolution(solver::AbstractLinearSolver)
 
@@ -166,6 +166,10 @@ solversolution(solver::AbstractLinearSolver) = solver.x
 Return a named tuple of the solvers current convergence metrics
 """
 function solverconvergence end
+
+solverstate(solver::AbstractLinearSolver) = solver.state
+
+init!(solver::AbstractLinearSolver, b; kwargs...) = init!(solver, solverstate(solver), b; kwargs...)
 
 include("Utils.jl")
 include("Kaczmarz.jl")
