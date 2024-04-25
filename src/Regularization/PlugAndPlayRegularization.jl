@@ -26,9 +26,9 @@ PlugAndPlayRegularization(model, shape; kwargs...) = PlugAndPlayRegularization(o
 
 function prox!(self::PlugAndPlayRegularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: Complex{T}}
     if self.ignoreIm
-        x[:] = prox!(self, real.(x), λ) + imag.(x) * one(T)im
+        copyto!(x, prox!(self, real.(x), λ) + imag.(x) * one(T)im)
     else
-        x[:] = prox!(self, real.(x), λ) + prox!(self, imag.(x), λ) * one(T)im
+        copyto!(x, prox!(self, real.(x), λ) + prox!(self, imag.(x), λ) * one(T)im)
     end
     return x
 end
@@ -50,7 +50,7 @@ function prox!(self::PlugAndPlayRegularization, x::AbstractArray{T}, λ::T) wher
     out = out - λ * (out - self.model(out))
     out = RegularizedLeastSquares.inverse_transform(tf, out)
 
-    x[:] = vec(out)
+    copyto!(x, vec(out))
     return x
 end
 
