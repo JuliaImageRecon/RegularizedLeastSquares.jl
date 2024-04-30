@@ -1,5 +1,13 @@
 export TVRegularization
 
+mutable struct TVParams{Tc,vecTc <: AbstractVector{Tc}, matT}
+  pq::vecTc
+  rs::vecTc
+  pqOld::vecTc
+  xTmp::vecTc
+  ∇::matT
+end
+
 """
     TVRegularization
 
@@ -21,22 +29,14 @@ and Deblurring Problems", IEEE Trans. Image Process. 18(11), 2009
 * `dims`                    - Dimension to perform the TV along. If `Integer`, the Condat algorithm is called, and the FDG algorithm otherwise.
 * `iterationsTV=20`         - number of FGP iterations
 """
-struct TVRegularization{T,N,TI} <: AbstractParameterizedRegularization{T} where {N,TI<:Integer}
+mutable struct TVRegularization{T,N,TI} <: AbstractParameterizedRegularization{T} where {N,TI<:Integer}
   λ::T
   dims
   shape::NTuple{N,TI}
   iterationsTV::Int64
+  params::Union{TVParams, Nothing}
 end
-TVRegularization(λ; shape=(0,), dims=1:length(shape), iterationsTV=10, kargs...) = TVRegularization(λ, dims, shape, iterationsTV)
-
-
-mutable struct TVParams{Tc,vecTc <: AbstractVector{Tc}, matT}
-  pq::vecTc
-  rs::vecTc
-  pqOld::vecTc
-  xTmp::vecTc
-  ∇::matT
-end
+TVRegularization(λ; shape=(0,), dims=1:length(shape), iterationsTV=10, kargs...) = TVRegularization(λ, dims, shape, iterationsTV, nothing)
 
 function TVParams(shape, T::Type=Float64; dims=1:length(shape))
   return TVParams(Vector{T}(undef, prod(shape)); shape=shape, dims=dims)
@@ -61,12 +61,13 @@ end
 
 Proximal map for TV regularization. Calculated with the Condat algorithm if the TV is calculated only along one dimension and with the Fast Gradient Projection algorithm otherwise.
 """
-prox!(reg::TVRegularization, x::AbstractVector{Tc}, λ::T) where {T,Tc<:Union{T,Complex{T}}} = proxTV!(x, λ, shape=reg.shape, dims=reg.dims, iterationsTV=reg.iterationsTV)
+prox!(reg::TVRegularization, x::AbstractVector{Tc}, λ::T) where {T,Tc<:Union{T,Complex{T}}} = proxTV!(reg, x, λ, shape=reg.shape, dims=reg.dims, iterationsTV=reg.iterationsTV)
 
-function proxTV!(x, λ; shape, dims=1:length(shape), kwargs...) # use kwargs for shape and dims
-  return proxTV!(x, λ, shape, dims; kwargs...) # define shape and dims w/o kwargs to enable multiple dispatch on dims
+function proxTV!(reg, x, λ; shape, dims=1:length(shape), kwargs...) # use kwargs for shape and dims
+  return proxTV!(reg, x, λ, shape, dims; kwargs...) # define shape and dims w/o kwargs to enable multiple dispatch on dims
 end
 
+proxTV!(reg, x, shape, dims::Integer; kwargs...) = proxTV!(reg, x, shape, dims; kwargs...)
 function proxTV!(x::AbstractVector{T}, λ::T, shape, dims::Integer; kwargs...) where {T<:Real}
   x_ = reshape(x, shape)
   i = CartesianIndices((ones(Int, dims - 1)..., 0:shape[dims]-1, ones(Int, length(shape) - dims)...))
@@ -77,8 +78,12 @@ function proxTV!(x::AbstractVector{T}, λ::T, shape, dims::Integer; kwargs...) w
   return x
 end
 
-function proxTV!(x::AbstractVector{Tc}, λ::T, shape, dims; iterationsTV=10, tvpar=TVParams(x; shape=shape, dims=dims), kwargs...) where {T<:Real,Tc<:Union{T,Complex{T}}}
-  return proxTV!(x, λ, tvpar; iterationsTV=iterationsTV)
+# Reuse TvParams if possible
+function proxTV!(reg, x::AbstractVector{Tc}, λ::T, shape, dims; iterationsTV=10, kwargs...) where {T<:Real,Tc<:Union{T,Complex{T}}}
+  if isnothing(reg.params) || length(x) != length(reg.params.xTmp) || typeof(x) != typeof(reg.params.xTmp)
+    reg.params = TVParams(x; shape = shape, dims = dims)
+  end
+  return proxTV!(x, λ, reg.params; iterationsTV=iterationsTV)
 end
 
 function proxTV!(x::AbstractVector{Tc}, λ::T, p::TVParams{Tc}; iterationsTV=10, kwargs...) where {T<:Real,Tc<:Union{T,Complex{T}}}
