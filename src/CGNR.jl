@@ -19,8 +19,8 @@ mutable struct CGNR{matT,opT,vecT,T,R,PR} <: AbstractKrylovSolver
 end
 
 """
-    CGNR(A; AHA = A' * A, reg = L2Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), weights = similar(AHA, 0), iterations = 10, relTol = eps(real(eltype(AHA))))
-    CGNR( ; AHA = ,       reg = L2Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), weights = similar(AHA, 0), iterations = 10, relTol = eps(real(eltype(AHA))))
+    CGNR(A; AHA = A' * A, reg = L2Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), iterations = 10, relTol = eps(real(eltype(AHA))))
+    CGNR( ; AHA = ,       reg = L2Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), iterations = 10, relTol = eps(real(eltype(AHA))))
 
 creates an `CGNR` object for the forward operator `A` or normal operator `AHA`.
 
@@ -33,7 +33,6 @@ creates an `CGNR` object for the forward operator `A` or normal operator `AHA`.
   * `AHA`                                               - normal operator is optional if `A` is supplied
   * `reg::AbstractParameterizedRegularization`          - regularization term; can also be a vector of regularization terms
   * `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; options are `NoNormalization()`, `MeasurementBasedNormalization()`, `SystemMatrixBasedNormalization()`
-  * `weights::AbstactVector`                            - weights for the data term; must be of same length and type as the data term
   * `iterations::Int`                                   - maximum number of iterations
   * `relTol::Real`                                      - tolerance for stopping criterion
 
