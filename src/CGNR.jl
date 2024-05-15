@@ -81,7 +81,7 @@ function CGNR(A
 
 
   return CGNR(A, AHA,
-    L2, other, x, x₀, pl, vl, αl, βl, ζl, iterations, relTol, 0.0, normalizeReg)
+    L2, other, x, x₀, pl, vl, αl, βl, ζl, iterations, Float64(relTol), 0.0, normalizeReg)
 end
 
 """
