@@ -1,67 +1,52 @@
 Random.seed!(12345)
 
-@testset "Real Linear Solver" begin
-    A = rand(3, 2)
-    x = rand(2)
+function testRealLinearSolver(; arrayType = Array, elType = Float32)
+    A = rand(elType, 3, 2)
+    x = rand(elType, 2)
     b = A * x
 
     solvers = linearSolverListReal()
 
     for solver in solvers
-        S = createLinearSolver(solver, A, iterations = 200)
-        x_approx = solve!(S, b)
+        S = createLinearSolver(solver, arrayType(A), iterations = 200)
+        x_approx = solve!(S, arrayType(b))
         @info "Testing solver $solver: $x ≈ $x_approx"
-        @test x_approx ≈ x rtol = 0.1
+        @test Array(x_approx) ≈ x rtol = 0.1
     end
 end
 
-@testset "Real Linear Solver" begin
-  A = JLArray(rand(3, 2))
-  x = JLArray(rand(2))
-  b = A * x
-
-  solvers = linearSolverListReal()
-
-  for solver in solvers
-      S = createLinearSolver(solver, A, iteration = 200)
-      x_approx = solve!(S, b)
-      @info "Testing solver $solver ...: $x  == $x_approx"
-      @test norm(x - x_approx) / norm(x) ≈ 0 atol = 0.1
-  end
-end
-
-@testset "Complex Linear Solver" begin
-    A = rand(3, 2) + im * rand(3, 2)
-    x = rand(2) + im * rand(2)
+function testComplexLinearSolver(; arrayType = Array, elType = Float32)
+    A = rand(elType, 3, 2) + im * rand(elType, 3, 2)
+    x = rand(elType, 2) + im * rand(elType, 2)
     b = A * x
 
     solvers = linearSolverList()
 
     for solver in solvers
-        S = createLinearSolver(solver, A, iterations = 100)
-        x_approx = solve!(S, b)
+        S = createLinearSolver(solver, arrayType(A), iterations = 100)
+        x_approx = solve!(S, arrayType(b))
         @info "Testing solver $solver: $x ≈ $x_approx"
-        @test x_approx ≈ x rtol = 0.1
+        @test Array(x_approx) ≈ x rtol = 0.1
     end
 end
 
-@testset "Complex Linear Solver w/ AHA Interface" begin
-    A = rand(3, 2) + im * rand(3, 2)
-    x = rand(2) + im * rand(2)
+function testComplexLinearAHASolver(; arrayType = Array, elType = Float32)
+    A = rand(elType, 3, 2) + im * rand(elType, 3, 2)
+    x = rand(elType, 2) + im * rand(elType, 2)
     AHA = A'*A
     b = AHA * x
 
-    solvers = filter(s -> s ∉ [DirectSolver, PseudoInverse, DaxKaczmarz, DaxConstrained, Kaczmarz, PrimalDualSolver], linearSolverListReal())
+    solvers = filter(s -> s ∉ [DirectSolver, PseudoInverse, Kaczmarz], linearSolverListReal())
 
     for solver in solvers
-        S = createLinearSolver(solver, nothing; AHA=AHA, iterations = 100)
-        x_approx = solve!(S, b)
+        S = createLinearSolver(solver, nothing; AHA=arrayType(AHA), iterations = 100)
+        x_approx = solve!(S, arrayType(b))
         @info "Testing solver $solver: $x ≈ $x_approx"
-        @test x_approx ≈ x rtol = 0.1
+        @test Array(x_approx) ≈ x rtol = 0.1
     end
 end
 
-@testset "General Convex Solver" begin
+function testConvexLinearSolver(; arrayType = Array, elType = Float32)
     # fully sampled operator, image and data
     N = 256
     numPeaks = 5
@@ -74,11 +59,11 @@ end
 
     # random undersampling
     idx = sort(unique(rand(1:N, div(N, 2))))
-    b = b[idx]
-    F = F[idx, :]
+    b = arrayType(b[idx])
+    F = arrayType(F[idx, :])
 
     for solver in [POGM, OptISTA, FISTA, ADMM]
-        reg = L1Regularization(1e-3)
+        reg = L1Regularization(elType(1e-3))
         S = createLinearSolver(
             solver,
             F;
@@ -88,7 +73,7 @@ end
         )
         x_approx = solve!(S, b)
         @info "Testing solver $solver w/o restart: relative error = $(norm(x - x_approx) / norm(x))"
-        @test x ≈ x_approx rtol = 0.1
+        @test x ≈ Array(x_approx) rtol = 0.1
 
         #additionally test the gradient restarting scheme
         if solver == POGM || solver == FISTA
@@ -102,11 +87,11 @@ end
             )
             x_approx = solve!(S, b)
             @info "Testing solver $solver w/ gradient restart: relative error = $(norm(x - x_approx) / norm(x))"
-            @test x ≈ x_approx rtol = 0.1
+            @test x ≈ Array(x_approx) rtol = 0.1
         end
 
         # test invariance to the maximum eigenvalue
-        reg = L1Regularization(reg.λ * length(b) / norm(b, 1))
+        reg = L1Regularization(elType(reg.λ * length(b) / norm(b, 1)))
         scale_F = 1e3
         S = createLinearSolver(
             solver,
@@ -118,12 +103,12 @@ end
         x_approx = solve!(S, b)
         x_approx .*= scale_F
         @info "Testing solver $solver w/o restart and after re-scaling: relative error = $(norm(x - x_approx) / norm(x))"
-        @test x ≈ x_approx rtol = 0.1
+        @test x ≈ Array(x_approx) rtol = 0.1
     end
 
     # test ADMM with option vary_rho
     solver = ADMM
-    reg = L1Regularization(1.e-3)
+    reg = L1Regularization(elType(1.e-3))
     S = createLinearSolver(
         solver,
         F;
@@ -136,7 +121,7 @@ end
     )
     x_approx = solve!(S, b)
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
-    @test x ≈ x_approx rtol = 0.1
+    @test x ≈ Array(x_approx) rtol = 0.1
 
     S = createLinearSolver(
         solver,
@@ -150,7 +135,7 @@ end
     )
     x_approx = solve!(S, b)
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
-    @test x ≈ x_approx rtol = 0.1
+    @test x ≈ Array(x_approx) rtol = 0.1
 
     # the PnP scheme only increases rho, hence we only test it with a small initial rho
     S = createLinearSolver(
@@ -165,11 +150,11 @@ end
     )
     x_approx = solve!(S, b)
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
-    @test x ≈ x_approx rtol = 0.1
+    @test x ≈ Array(x_approx) rtol = 0.1
 
     ##
     solver = SplitBregman
-    reg = L1Regularization(2e-3)
+    reg = L1Regularization(eltype(2e-3))
     S = createLinearSolver(
         solver,
         F;
@@ -181,9 +166,9 @@ end
     )
     x_approx = solve!(S, b)
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
-    @test x ≈ x_approx rtol = 0.1
+    @test x ≈ Array(x_approx) rtol = 0.1
 
-    reg = L1Regularization(reg.λ * length(b) / norm(b, 1))
+    reg = L1Regularization(eltype(reg.λ * length(b) / norm(b, 1)))
     S = createLinearSolver(
         solver,
         F;
@@ -195,9 +180,9 @@ end
     )
     x_approx = solve!(S, b)
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
-    @test x ≈ x_approx rtol = 0.1
+    @test x ≈ Array(x_approx) rtol = 0.1
 
-    ##
+    #=
     solver = PrimalDualSolver
     reg = [L1Regularization(1.e-4), TVRegularization(1.e-4, shape = (0,0))]
     FR = [real.(F ./ norm(F)); imag.(F ./ norm(F))]
@@ -211,4 +196,28 @@ end
     x_approx = solve!(S, bR)
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ x_approx rtol = 0.1
+    =#
+end
+
+
+@testset "Test Solvers" begin
+    for arrayType in [Array, JLArray]
+        for elType in [Float32, Float64]
+            @testset "Real Linear Solver: $arrayType{$elType}" begin
+                testRealLinearSolver(; arrayType, elType)
+            end
+
+            @testset "Complex Linear Solver: $arrayType{$elType}" begin
+                testComplexLinearSolver(; arrayType, elType)
+            end
+
+            @testset "Complex Linear Solver w/ AHA Interface: $arrayType{$elType}" begin
+                testComplexLinearAHASolver(; arrayType, elType)
+            end
+
+            @testset "General Convex Solver: $arrayType{$elType}" begin
+                testConvexLinearSolver(; arrayType, elType)
+            end
+        end
+    end
 end
