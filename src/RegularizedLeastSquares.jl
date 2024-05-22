@@ -173,8 +173,8 @@ init!(solver::AbstractLinearSolver, b; kwargs...) = init!(solver, solverstate(so
 
 include("Utils.jl")
 include("Kaczmarz.jl")
-include("DAXKaczmarz.jl")
-include("DAXConstrained.jl")
+#include("DAXKaczmarz.jl")
+#include("DAXConstrained.jl")
 include("CGNR.jl")
 include("Direct.jl")
 include("FISTA.jl")
@@ -182,7 +182,7 @@ include("OptISTA.jl")
 include("POGM.jl")
 include("ADMM.jl")
 include("SplitBregman.jl")
-include("PrimalDualSolver.jl")
+#include("PrimalDualSolver.jl")
 
 include("Callbacks.jl")
 
@@ -192,7 +192,8 @@ include("deprecated.jl")
 Return a list of all available linear solvers
 """
 function linearSolverList()
-  filter(s -> s ∉ [DaxKaczmarz, DaxConstrained, PrimalDualSolver], linearSolverListReal())
+  #filter(s -> s ∉ [DaxKaczmarz, DaxConstrained, PrimalDualSolver], linearSolverListReal())
+  linearSolverListReal()
 end
 
 function linearSolverListReal()
