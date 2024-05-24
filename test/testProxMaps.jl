@@ -277,6 +277,19 @@ function testLLR_3D(shape=(32,32,32,80),blockSize=(4,4,4);σ=0.05)
   # @test 0.5*norm(xNoisy-x_llr)^2+normLLR(x_llr,10*σ,shape=shape[1:3],blockSize=blockSize,randshift=false) <= normLLR(xNoisy,10*σ,shape=shape[1:3],blockSize=blockSize,randshift=false)
 end
 
+function testConversion()
+  xF32 = zeros(Float32, 10)
+  xF64 = zeros(Float64, 10)
+  # None should throw errors
+  for prox in [L1Regularization, L21Regularization, L2Regularization, LLRRegularization, NuclearRegularization, TVRegularization]
+    @info "Test λ conversion for $prox"
+    @test prox!(prox, xF32, Float64(0.0); shape = (2, 5), svtShape = (2,5)) isa Vector skip = in(prox, [LLRRegularization, NuclearRegularization])
+    @test prox!(prox, xF64, Float32(0.0); shape = (2, 5), svtShape = (2,5)) isa Vector skip = in(prox, [LLRRegularization, NuclearRegularization])
+    @test RegularizedLeastSquares.norm(prox, xF32, Float64(0.0); shape = (2, 5), svtShape = (2,5)) isa Number skip = in(prox, [LLRRegularization, NuclearRegularization])
+    @test RegularizedLeastSquares.norm(prox, xF64, Float32(0.0); shape = (2, 5), svtShape = (2,5)) isa Number skip = in(prox, [LLRRegularization, NuclearRegularization])
+  end
+end
+
 @testset "Proximal Maps" begin
   testL2Prox()
   testL1Prox()
@@ -289,4 +302,5 @@ end
   testLLR()
   #testLLROverlapping()
   testLLR_3D()
+  testConversion()
 end
