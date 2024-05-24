@@ -16,7 +16,7 @@ end
 performs soft-thresholding - i.e. proximal map for the Lasso problem.
 """
 function prox!(::L1Regularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
-  ε = eps(T)
+  ε = eps(typeof(λ))
   x .= max.((abs.(x).-λ),0) .* (x.+ε)./(abs.(x).+ε)
   return x
 end
