@@ -23,7 +23,7 @@ NuclearRegularization(λ; svtShape::NTuple=[], kargs...) = NuclearRegularization
 
 performs singular value soft-thresholding - i.e. the proximal map for the nuclear norm regularization.
 """
-function prox!(reg::NuclearRegularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T}
+function prox!(reg::NuclearRegularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T <: Real}
   U,S,V = svd(reshape(x, reg.svtShape))
   prox!(L1Regularization, S, λ)
   x[:] = vec(U*Matrix(Diagonal(S))*V')
@@ -35,7 +35,7 @@ end
 
 returns the value of the nuclear norm regularization term.
 """
-function norm(reg::NuclearRegularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T}
+function norm(reg::NuclearRegularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T <: Real}
   U,S,V = svd( reshape(x, reg.svtShape) )
   return λ*norm(S,1)
 end

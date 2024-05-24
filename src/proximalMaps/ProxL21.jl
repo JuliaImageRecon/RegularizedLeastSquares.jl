@@ -23,7 +23,7 @@ L21Regularization(λ; slices::Int64 = 1, kargs...) = L21Regularization(λ, slice
 
 performs group-soft-thresholding for l1/l2-regularization.
 """
-function prox!(reg::L21Regularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}},λ::T) where {T}
+function prox!(reg::L21Regularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}},λ::T) where {T <: Real}
   return proxL21!(x, λ, reg.slices)
 end
 
@@ -39,7 +39,7 @@ end
 
 return the value of the L21-regularization term.
 """
-function norm(reg::L21Regularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T}
+function norm(reg::L21Regularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T <: Real}
   sliceLength = div(length(x),reg.slices)
   groupNorm = [norm(x[i:sliceLength:end]) for i=1:sliceLength]
   return λ*norm(groupNorm,1)

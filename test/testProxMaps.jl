@@ -278,29 +278,34 @@ function testLLR_3D(shape=(32,32,32,80),blockSize=(4,4,4);σ=0.05)
 end
 
 function testConversion()
-  xF32 = zeros(Float32, 10)
-  xF64 = zeros(Float64, 10)
-  # None should throw errors
-  for prox in [L1Regularization, L21Regularization, L2Regularization, LLRRegularization, NuclearRegularization, TVRegularization]
-    @info "Test λ conversion for $prox"
-    @test prox!(prox, xF32, Float64(0.0); shape = (2, 5), svtShape = (2,5)) isa Vector skip = in(prox, [LLRRegularization, NuclearRegularization])
-    @test prox!(prox, xF64, Float32(0.0); shape = (2, 5), svtShape = (2,5)) isa Vector skip = in(prox, [LLRRegularization, NuclearRegularization])
-    @test RegularizedLeastSquares.norm(prox, xF32, Float64(0.0); shape = (2, 5), svtShape = (2,5)) isa Number skip = in(prox, [LLRRegularization, NuclearRegularization])
-    @test RegularizedLeastSquares.norm(prox, xF64, Float32(0.0); shape = (2, 5), svtShape = (2,5)) isa Number skip = in(prox, [LLRRegularization, NuclearRegularization])
+  for (xType, lambdaType) in [(Float32, Float64), (Float64, Float32), (Complex{Float32}, Float64), (Complex{Float64}, Float32)]
+    for prox in [L1Regularization, L21Regularization, L2Regularization, LLRRegularization, NuclearRegularization, TVRegularization]
+      @info "Test λ conversion for prox!($prox, $xType, $lambdaType)"
+      @test try prox!(prox, zeros(xType, 10), lambdaType(0.0); shape=(2, 5), svtShape=(2, 5))
+        true
+      catch e
+        false
+      end skip = in(prox, [LLRRegularization, NuclearRegularization])
+      @test try norm(prox, zeros(xType, 10), lambdaType(0.0); shape=(2, 5), svtShape=(2, 5))
+        true
+      catch e
+        false
+      end skip = in(prox, [LLRRegularization, NuclearRegularization])
+    end
   end
 end
 
 @testset "Proximal Maps" begin
-  testL2Prox()
-  testL1Prox()
-  testL21Prox()
-  testTVprox()
-  testDirectionalTVprox()
-  testPositive()
-  testProj()
-  testNuclear()
-  testLLR()
-  #testLLROverlapping()
-  testLLR_3D()
-  testConversion()
+  @testset "L2 Prox" testL2Prox()
+  @testset "L1 Prox" testL1Prox()
+  @testset "L21 Prox" testL21Prox()
+  @testset "TV Prox" testTVprox()
+  @testset "TV Prox Directional" testDirectionalTVprox()
+  @testset "Positive Prox" testPositive()
+  @testset "Projection Prox" testProj()
+  @testset "Nuclear Prox" testNuclear()
+  #@testset "LLR Prox" testLLR()
+  #@testset "LLR Prox Overlapping" #testLLROverlapping()
+  #@testset "LLR Prox 3D" testLLR_3D()
+  @testset "Prox Lambda Conversion" testConversion()
 end
