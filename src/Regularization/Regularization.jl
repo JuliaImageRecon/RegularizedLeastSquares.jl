@@ -27,9 +27,11 @@ norm(reg::AbstractParameterizedRegularization, x::AbstractArray) = norm(reg, x, 
 return the regularization parameter `λ` of `reg`
 """
 λ(reg::AbstractParameterizedRegularization) = reg.λ
-# Conversion
-prox!(reg::AbstractParameterizedRegularization, x::AbstractArray{Tc}, λ) where {T, Tc<:Union{T, Complex{T}}} = prox!(reg, x, convert(T, λ))
-norm(reg::AbstractParameterizedRegularization, x::AbstractArray{Tc}, λ) where {T, Tc<:Union{T, Complex{T}}} = norm(reg, x, convert(T, λ))
+# Conversion (https://github.com/JuliaLang/julia/issues/52978#issuecomment-1900698430)
+prox!(reg::R, x::AbstractArray{T}, λ::otherT) where {R<:AbstractParameterizedRegularization, T, otherT} = prox!(reg, x, convert(T, λ))
+prox!(reg::R, x::AbstractArray{Complex{T}}, λ::otherT) where {R<:AbstractParameterizedRegularization, T, otherT} = prox!(reg, x, convert(T, λ))
+norm(reg::R, x::AbstractArray{T}, λ::otherT) where {R<:AbstractParameterizedRegularization, T, otherT} = norm(reg, x, convert(T, λ))
+norm(reg::R, x::AbstractArray{Complex{T}}, λ::otherT) where {R<:AbstractParameterizedRegularization, T, otherT} = norm(reg, x, convert(T, λ))
 
 """
     prox!(regType::Type{<:AbstractParameterizedRegularization}, x, λ; kwargs...)

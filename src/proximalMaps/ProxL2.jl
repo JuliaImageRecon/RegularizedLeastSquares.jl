@@ -15,7 +15,7 @@ end
 
 performs the proximal map for Tikhonov regularization.
 """
-function prox!(::L2Regularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
+function prox!(::L2Regularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T}
   x[:] .*= 1. ./ (1. .+ 2. .*λ)#*x
   return x
 end
@@ -25,8 +25,8 @@ end
 
 returns the value of the L2-regularization term
 """
-norm(::L2Regularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}} = λ*norm(x,2)^2
-function norm(::L2Regularization, x::AbstractArray{Tc}, λ::AbstractArray{T}) where {T, Tc <: Union{T, Complex{T}}}
+norm(::L2Regularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T} = λ*norm(x,2)^2
+function norm(::L2Regularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::AbstractArray{T}) where {T}
   res = zero(real(eltype(x)))
   for i in eachindex(x)
     res+= λ[i]*abs2(x[i])
