@@ -201,7 +201,7 @@ end
 
 
 @testset "Test Solvers" begin
-    for arrayType in [Array, JLArray]
+    for arrayType in arrayTypes
         for elType in [Float32, Float64]
             @testset "Real Linear Solver: $arrayType{$elType}" begin
                 testRealLinearSolver(; arrayType, elType)
