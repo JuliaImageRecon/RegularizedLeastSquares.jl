@@ -258,9 +258,9 @@ Power iterations to determine the maximum eigenvalue of a normal operator or squ
 maximum eigenvalue of the operator
 """
 function power_iterations(AᴴA; rtol=1e-2, maxiter=30, verbose=false)
-  # Creating b like this allows instead of directly randn it to become a CuArray
+  # Creating b like this allows instead it to become a GPU array
   b = similar(LinearOperators.storage_type(AᴴA), size(AᴴA, 2))
-  b[:] = randn(eltype(AᴴA), size(AᴴA, 2))
+  copyto!(b, randn(eltype(b), size(AᴴA, 2)))
   
   bᵒˡᵈ = similar(b)
   λ = Inf
