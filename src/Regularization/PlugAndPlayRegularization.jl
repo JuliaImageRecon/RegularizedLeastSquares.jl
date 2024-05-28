@@ -24,7 +24,7 @@ struct PlugAndPlayRegularization{T, M, I} <: AbstractParameterizedRegularization
 end
 PlugAndPlayRegularization(model, shape; kwargs...) = PlugAndPlayRegularization(one(Float32); kwargs..., model = model, shape = shape)
 
-function prox!(self::PlugAndPlayRegularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: Complex{T}}
+function prox!(self::PlugAndPlayRegularization, x::AbstractArray{Complex{T}}, λ::T) where {T <: Real}
     if self.ignoreIm
         copyto!(x, prox!(self, real.(x), λ) + imag.(x) * one(T)im)
     else
@@ -33,7 +33,7 @@ function prox!(self::PlugAndPlayRegularization, x::AbstractArray{Tc}, λ::T) whe
     return x
 end
 
-function prox!(self::PlugAndPlayRegularization, x::AbstractArray{T}, λ::T) where {T}
+function prox!(self::PlugAndPlayRegularization, x::AbstractArray{T}, λ::T) where {T <: Real}
 
     if λ != self.λ && (λ < 0.0 || λ > 1.0)
         temp = clamp(λ, zero(T), one(T))

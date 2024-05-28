@@ -6,7 +6,10 @@ using JLArrays
 
 arrayTypes = [Array, JLArray]
 
-include("testKaczmarz.jl")
-include("testProxMaps.jl")
-include("testSolvers.jl")
-include("testRegularization.jl")
+@testset "RegularizedLeastSquares" begin
+  include("testCreation.jl")
+  include("testKaczmarz.jl")
+  include("testProxMaps.jl")
+  include("testSolvers.jl")
+  include("testRegularization.jl")
+end

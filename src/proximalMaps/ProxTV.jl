@@ -61,7 +61,7 @@ end
 
 Proximal map for TV regularization. Calculated with the Condat algorithm if the TV is calculated only along one dimension and with the Fast Gradient Projection algorithm otherwise.
 """
-prox!(reg::TVRegularization, x::AbstractVector{Tc}, λ::T) where {T,Tc<:Union{T,Complex{T}}} = proxTV!(reg, x, λ, shape=reg.shape, dims=reg.dims, iterationsTV=reg.iterationsTV)
+prox!(reg::TVRegularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T <: Real} = proxTV!(reg, x, λ, shape=reg.shape, dims=reg.dims, iterationsTV=reg.iterationsTV)
 
 function proxTV!(reg, x, λ; shape, dims=1:length(shape), kwargs...) # use kwargs for shape and dims
   return proxTV!(reg, x, λ, shape, dims; kwargs...) # define shape and dims w/o kwargs to enable multiple dispatch on dims
@@ -149,7 +149,7 @@ end
 
 returns the value of the TV-regularization term.
 """
-function norm(reg::TVRegularization, x::Vector{Tc}, λ::T) where {T<:Real,Tc<:Union{T,Complex{T}}}
-  ∇ = GradientOp(Tc; shape=reg.shape, dims=reg.dims)
+function norm(reg::TVRegularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T <: Real}
+  ∇ = GradientOp(eltype(x); shape=reg.shape, dims=reg.dims)
   return λ * norm(∇ * x, 1)
 end
