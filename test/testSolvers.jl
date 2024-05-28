@@ -202,21 +202,23 @@ end
 
 @testset "Test Solvers" begin
     for arrayType in arrayTypes
+        @testset "$arrayType" begin
         for elType in [Float32, Float64]
-            @testset "Real Linear Solver: $arrayType{$elType}" begin
-                testRealLinearSolver(; arrayType, elType)
-            end
+                @testset "Real Linear Solver: $elType" begin
+                    testRealLinearSolver(; arrayType, elType)
+                end
 
-            @testset "Complex Linear Solver: $arrayType{$elType}" begin
-                testComplexLinearSolver(; arrayType, elType)
-            end
+                @testset "Complex Linear Solver: $elType" begin
+                    testComplexLinearSolver(; arrayType, elType)
+                end
 
-            @testset "Complex Linear Solver w/ AHA Interface: $arrayType{$elType}" begin
-                testComplexLinearAHASolver(; arrayType, elType)
-            end
+                @testset "Complex Linear Solver w/ AHA Interface: $elType" begin
+                    testComplexLinearAHASolver(; arrayType, elType)
+                end
 
-            @testset "General Convex Solver: $arrayType{$elType}" begin
-                testConvexLinearSolver(; arrayType, elType)
+                @testset "General Convex Solver: $elType" begin
+                    testConvexLinearSolver(; arrayType, elType)
+                end
             end
         end
     end
