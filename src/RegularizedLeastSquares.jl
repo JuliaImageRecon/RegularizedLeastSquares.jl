@@ -159,7 +159,7 @@ export solversolution, solverconvergence, solverstate
 
 Return the current solution of the solver
 """
-solversolution(solver::AbstractLinearSolver) = solver.x
+solversolution(solver::AbstractLinearSolver) = solverstate(solver).x
 """
     solverconvergence(solver::AbstractLinearSolver)
 
