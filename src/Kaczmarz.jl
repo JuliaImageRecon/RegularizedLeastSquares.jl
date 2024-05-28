@@ -184,7 +184,7 @@ function iterate(solver::Kaczmarz, state = solver.state)
   end
 
   for r in solver.reg
-    prox!(r, solver.x)
+    prox!(r, state.x)
   end
 
   state.iteration += 1
@@ -246,7 +246,7 @@ function initkaczmarz(A, λ::Vector)
 end
 
 initikhonov(A, λ) = transpose((1 ./ sqrt.(λ)) .* transpose(A)) # optimize structure for row access
-initikhonov(prod::ProdOp{Tc, WeightingOp{T}, matT}, λ) where {T, Tc<:Union{T, Complex{T}}, matT} = ProdOp(prod.A, initikhonov(prod.B, λ))
+initikhonov(prod::ProdOp{Tc, <:WeightingOp, matT}, λ) where {T, Tc<:Union{T, Complex{T}}, matT} = ProdOp(prod.A, initikhonov(prod.B, λ))
 ### kaczmarz_update! ###
 
 """
@@ -274,7 +274,7 @@ function kaczmarz_update!(B::Transpose{T,S}, x::Vector,
   end
 end
 
-function kaczmarz_update!(prod::ProdOp{Tc, WeightingOp{T}, matT}, x::Vector, k, beta) where {T, Tc<:Union{T, Complex{T}}, matT}
+function kaczmarz_update!(prod::ProdOp{Tc, WeightingOp{T, vecT}}, x, k, beta) where {T, Tc<:Union{T, Complex{T}}, vecT}
   weight = prod.A.weights[k]
   kaczmarz_update!(prod.B, x, k, weight*beta) # only for real weights
 end
