@@ -285,12 +285,12 @@ function testConversion()
         true
       catch e
         false
-      end skip = in(prox, [LLRRegularization, NuclearRegularization])
+      end skip = in(prox, [LLRRegularization])
       @test try norm(prox, zeros(xType, 10), lambdaType(0.0); shape=(2, 5), svtShape=(2, 5))
         true
       catch e
         false
-      end skip = in(prox, [LLRRegularization, NuclearRegularization])
+      end skip = in(prox, [LLRRegularization])
     end
   end
 end

@@ -26,7 +26,7 @@ performs singular value soft-thresholding - i.e. the proximal map for the nuclea
 function prox!(reg::NuclearRegularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T <: Real}
   U,S,V = svd(reshape(x, reg.svtShape))
   prox!(L1Regularization, S, λ)
-  copyto!(x, vec(U*Matrix(Diagonal(S))*V'))
+  copyto!(x, vec(U*Diagonal(S)*V'))
   return x
 end
 
