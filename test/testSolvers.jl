@@ -154,7 +154,7 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
 
     ##
     solver = SplitBregman
-    reg = L1Regularization(eltype(2e-3))
+    reg = L1Regularization(elType(2e-3))
     S = createLinearSolver(
         solver,
         F;
@@ -168,7 +168,7 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
     @test x ≈ Array(x_approx) rtol = 0.1
 
-    reg = L1Regularization(eltype(reg.λ * length(b) / norm(b, 1)))
+    reg = L1Regularization(elType(reg.λ * length(b) / norm(b, 1)))
     S = createLinearSolver(
         solver,
         F;
