@@ -43,8 +43,8 @@ end
 
 function init!(solver::DirectSolver, state::DirectSolverState{vecT}, b::otherT; kwargs...) where {vecT, otherT}
   x = similar(b, size(state.x)...)
-  b = similar(b, size(state.b)...)
-  solver.state = DirectSolverState(x, b)
+  bvecT = similar(b, size(state.b)...)
+  solver.state = DirectSolverState(x, bvecT)
   init!(solver, solver.state, b; kwargs...)
 end
 function init!(solver::DirectSolver, state::DirectSolverState{vecT}, b::vecT; x0=0) where vecT
@@ -56,7 +56,7 @@ end
 function iterate(solver::DirectSolver, state = solver.state)
   A = solver.A
   λ_ = λ(solver.l2)
-  lufact = lu(Matrix(A'*A + λ_*opEye(eltype(state.b), size(A,2),size(A,2), S = typeof(state.b))))
+  lufact = lu(A'*A .+ λ_)
   x = \(lufact,A' * state.b)
 
   for p in solver.proj
@@ -140,8 +140,8 @@ end
 
 function init!(solver::PseudoInverse, state::DirectSolverState{vecT}, b::otherT; kwargs...) where {vecT, otherT}
   x = similar(b, size(state.x)...)
-  b = similar(b, size(state.b)...)
-  solver.state = DirectSolverState(x, b)
+  bvecT = similar(b, size(state.b)...)
+  solver.state = DirectSolverState(x, bvecT)
   init!(solver, solver.state, b; kwargs...)
 end
 function init!(solver::PseudoInverse, state::DirectSolverState{vecT}, b::vecT; x0=0) where vecT

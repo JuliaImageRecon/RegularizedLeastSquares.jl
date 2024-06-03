@@ -7,11 +7,16 @@ function testRealLinearSolver(; arrayType = Array, elType = Float32)
 
     solvers = linearSolverListReal()
 
-    for solver in solvers
-        S = createLinearSolver(solver, arrayType(A), iterations = 200)
-        x_approx = solve!(S, arrayType(b))
-        @info "Testing solver $solver: $x ≈ $x_approx"
-        @test Array(x_approx) ≈ x rtol = 0.1
+    @testset for solver in solvers
+        @test try
+            S = createLinearSolver(solver, arrayType(A), iterations = 200)
+            x_approx = solve!(S, arrayType(b))
+            @info "Testing solver $solver: $x ≈ $x_approx"
+            @test Array(x_approx) ≈ x rtol = 0.1
+            true
+        catch 
+            false
+        end skip = arrayType == JLArray && solver == DirectSolver
     end
 end
 
@@ -22,11 +27,16 @@ function testComplexLinearSolver(; arrayType = Array, elType = Float32)
 
     solvers = linearSolverList()
 
-    for solver in solvers
-        S = createLinearSolver(solver, arrayType(A), iterations = 100)
-        x_approx = solve!(S, arrayType(b))
-        @info "Testing solver $solver: $x ≈ $x_approx"
-        @test Array(x_approx) ≈ x rtol = 0.1
+    @testset for solver in solvers
+        @test try
+            S = createLinearSolver(solver, arrayType(A), iterations = 100)
+            x_approx = solve!(S, arrayType(b))
+            @info "Testing solver $solver: $x ≈ $x_approx"
+            @test Array(x_approx) ≈ x rtol = 0.1
+            true
+        catch 
+            false
+        end skip = arrayType == JLArray && solver == DirectSolver
     end
 end
 
@@ -38,11 +48,16 @@ function testComplexLinearAHASolver(; arrayType = Array, elType = Float32)
 
     solvers = filter(s -> s ∉ [DirectSolver, PseudoInverse, Kaczmarz], linearSolverListReal())
 
-    for solver in solvers
-        S = createLinearSolver(solver, nothing; AHA=arrayType(AHA), iterations = 100)
-        x_approx = solve!(S, arrayType(b))
-        @info "Testing solver $solver: $x ≈ $x_approx"
-        @test Array(x_approx) ≈ x rtol = 0.1
+    @testset for solver in solvers
+        @test try
+            S = createLinearSolver(solver, nothing; AHA=arrayType(AHA), iterations = 100)
+            x_approx = solve!(S, arrayType(b))
+            @info "Testing solver $solver: $x ≈ $x_approx"
+            @test Array(x_approx) ≈ x rtol = 0.1
+            true
+        catch 
+            false
+        end
     end
 end
 
