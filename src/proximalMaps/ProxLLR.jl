@@ -28,7 +28,8 @@ LLRRegularization(λ;  shape::NTuple{N,TI}, blockSize::NTuple{N,TI} = ntuple(_ -
 
 performs the proximal map for LLR regularization using singular-value-thresholding
 """
-function prox!(reg::LLRRegularization{TR, N, TI}, x::AbstractArray{Tc}, λ::T) where {TR, N, TI, T, Tc <: Union{T, Complex{T}}}
+function prox!(reg::LLRRegularization{TR, N, TI}, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {TR, N, TI, T <: Real}
+    Tc = eltype(x)
     shape = reg.shape
     blockSize = reg.blockSize
     randshift = reg.randshift
@@ -92,7 +93,7 @@ end
 
 returns the value of the LLR-regularization term.
 """
-function norm(reg::LLRRegularization, x::Vector{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
+function norm(reg::LLRRegularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T <: Real}
     shape = reg.shape
     blockSize = reg.blockSize
     randshift = reg.randshift
