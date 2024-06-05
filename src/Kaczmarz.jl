@@ -24,16 +24,23 @@ mutable struct Kaczmarz{matT,R,T,U,RN} <: AbstractRowActionSolver
   
   U_k::Vector{Int64} # CHANGE_KR
   greedy_randomized::Bool # CHANGE_KR
-  theta::Float64 # CHANGE_KR
+  theta::Union{Nothing,Float64}# CHANGE_KR
   e_k::T # CHANGE_KR
   norms::Vector{T}
   norm_size::Int64
   Fnorm::Float64
   r::Vector{T}
+  B::matT
+  B_denom::Vector{Any}
+  i_k::Int64
+  diff_vec_sq::Vector{T}
+  diff_numb::T
+  diff_denom::T
+  r_probs::Vector{Real}
 end
 
 """
-    Kaczmarz(A; reg = L2Regularization(0), normalizeReg = NoNormalization(), randomized=false, subMatrixFraction=0.15, shuffleRows=false, seed=1234, iterations=10, greedy_randomized=false, theta=0.5)
+    Kaczmarz(A; reg = L2Regularization(0), normalizeReg = NoNormalization(), randomized=false, subMatrixFraction=0.15, shuffleRows=false, seed=1234, iterations=10, greedy_randomized=false, theta=Nothing)
 
 Creates a Kaczmarz object for the forward operator `A`.
 
@@ -62,7 +69,7 @@ function Kaczmarz(A
                 , seed::Int = 1234
                 , iterations::Int = 10
                 , greedy_randomized::Bool = false # CHANGE_KR
-                , theta::Float64 = 0.5 # CHANGE_KR
+                , theta::Union{Nothing,Float64}=nothing
                 )
 
   T = real(eltype(A))
@@ -95,9 +102,16 @@ function Kaczmarz(A
 
   M,N = size(A) # CHANGE_KR
   norms = zeros(Float64, M) # CHANGE_KR
+  B = []
+  B_denom = []
   # setup denom and rowindex
-  if greedy_randomized # CHANGE_KR
-  	A, denom, rowindex, norms  = initkaczmarz(A, λ(L2), greedy_randomized)
+  if greedy_randomized == true # CHANGE_KR
+    A, denom, rowindex, norms = initkaczmarz(A, λ(L2), greedy_randomized)
+    B = A * adjoint(A)  # CHANGE_KR
+    # Calculate all denominators - B * 1/(||A||²)
+    for x in 1:M
+      push!(B_denom, B[:, x] * denom[x])
+    end
   else
   	A, denom, rowindex = initkaczmarz(A, λ(L2))
   end
@@ -110,7 +124,7 @@ function Kaczmarz(A
 
   subMatrixSize = round(Int, subMatrixFraction*M)
 
-  u  = zeros(eltype(A),M)
+  u = zeros(eltype(A),M)
   x = zeros(eltype(A),N)
   vl = zeros(eltype(A),M)
   εw = zero(eltype(A))
@@ -120,13 +134,18 @@ function Kaczmarz(A
   U_k = Int64[] # CHANGE_KR
   e_k = zero(eltype(A)) # CHANGE_KR
   norm_size = M
-  Fnorm = norm(A,2)^2
+  Fnorm = 1.0 / norm(A, 2)^2
   r = eltype(A)[]
+  i_k = 0
+  diff_vec_sq = zeros(eltype(A), M)
+  diff_numb = zero(eltype(A))
+  diff_denom = zero(eltype(A))
+  r_probs = zeros(Real, M)
   
   return Kaczmarz(A, u, L2, other, denom, rowindex, rowIndexCycle, x, vl, εw, τl, αl,
                   randomized, subMatrixSize, probabilities, shuffleRows,
                   Int64(seed), iterations,
-                  normalizeReg, U_k, greedy_randomized, theta, e_k, norms, norm_size, Fnorm, r)
+                  normalizeReg, U_k, greedy_randomized, theta, e_k, norms, norm_size, Fnorm, r, B, B_denom, i_k, diff_vec_sq, diff_numb, diff_denom, r_probs)
 end
 
 """
@@ -146,7 +165,7 @@ function init!(solver::Kaczmarz, b; x0 = 0)
     # A must be unchanged, since we do not store the original SM
     _, solver.denom, solver.rowindex = initkaczmarz(solver.A, λ_)
     solver.rowIndexCycle = collect(1:length(rowindex))
-    if solver.randomized && !solver.greedy_randomized
+    if solver.randomized
       solver.probabilities = T.(rowProbabilities(solver.A, rowindex))
     end
   end
@@ -168,6 +187,10 @@ function init!(solver::Kaczmarz, b; x0 = 0)
   else
     solver.ɛw = sqrt(λ_)
   end
+
+  if solver.greedy_randomized
+    solver.r = copy(b)
+  end
 end
 
 
@@ -184,12 +207,19 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
     usedIndices = Int.(StatsBase.sample!(Random.GLOBAL_RNG, solver.rowIndexCycle, weights(solver.probabilities), zeros(solver.subMatrixSize), replace=false))
   # CHANGE_KR
   elseif solver.greedy_randomized
-    diff_vec_raw, diff_vec_sq, diff_numb, diff_denom = calcDiff(solver.A, solver.u, solver.x, size(solver.A)[1])
-    max = calcMax(solver.denom, diff_vec_sq,size(solver.norms)[1])
-    solver.e_k = calcEk(diff_denom, solver.Fnorm, max, solver.theta)
-    solver.U_k = calcIndexSet(solver.e_k, diff_numb, diff_vec_sq, size(solver.A)[1], solver.norms)
-    solver.r = calcR( diff_vec_raw, solver.U_k)
-    usedIndices = calcProbSelection(solver.r, solver.U_k)
+    calcDiff(solver)
+    max = calcMax(solver)
+    calcEk(solver, max, solver.theta)
+    calcIndexSet(solver)
+    calcProbSelection(solver)
+    row = solver.rowindex[solver.i_k]
+    iterate_row_index_greedy(solver, solver.A, row, solver.i_k)
+
+    for r in solver.reg
+      prox!(r, solver.x)
+    end
+    calcR(solver)
+    return solver.vl, iteration + 1
   else
     usedIndices = solver.rowIndexCycle
   end
@@ -203,7 +233,7 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
     prox!(r, solver.x)
   end
 
-  return solver.vl, iteration+1
+  return solver.vl, iteration + 1
 end
 
 iterate_row_index(solver::Kaczmarz, A::AbstractLinearSolver, row, index) = iterate_row_index(solver, Matrix(A[row, :]), row, index) 
@@ -212,6 +242,13 @@ function iterate_row_index(solver::Kaczmarz, A, row, index)
   solver.αl = solver.denom[index]*(solver.u[row]-solver.τl-solver.ɛw*solver.vl[row])
   kaczmarz_update!(A,solver.x,row,solver.αl)
   solver.vl[row] += solver.αl*solver.ɛw
+end
+
+iterate_row_index_greedy(solver::Kaczmarz, A::AbstractLinearSolver, row, index) = iterate_row_index_greedy(solver, Matrix(A[row, :]), row, index)
+function iterate_row_index_greedy(solver::Kaczmarz, A, row, index)
+  solver.αl = solver.denom[index] * (solver.r[index] - solver.ɛw * solver.vl[row])
+  kaczmarz_update!(A, solver.x, row, solver.αl)
+  solver.vl[row] += solver.αl * solver.ɛw
 end
 
 @inline done(solver::Kaczmarz,iteration::Int) = iteration>=solver.iterations
@@ -233,17 +270,16 @@ end
 
 # CHANGE_KR
 # Calculate next useable index
-function calcProbSelection(r, U_k)
-  r_denom = 1.0 / (norm(r)^2)
-  r_probs = zeros(size(r)[1])
-  for i in 1:size(r)[1]
-    r_probs[i] = (abs(r[i])^2) * r_denom
+function calcProbSelection(solver::Kaczmarz)
+  r_denom = 1.0 / (norm(solver.r)^2)
+  solver.r_probs = zeros(size(solver.r, 1))
+  for i in solver.U_k
+    if (i != 0)
+      solver.r_probs[i] = (abs(solver.r[i])^2) * r_denom
   end
-  r_index = sample(U_k, ProbabilityWeights(r_probs), 1, replace=false)
-  return r_index[1]
+  end
+  solver.i_k = sample(solver.U_k, ProbabilityWeights(solver.r_probs), 1, replace=false)[1]
 end
-
-
 
 ### initkaczmarz ###
 
@@ -291,65 +327,50 @@ function initkaczmarz(A, λ::Vector)
   return initkaczmarz(A, 0)
 end
 
-# CHANGE_KR
-function calcMax(denoms,diff_vec_sq, norm_size)
-  max = 0
-  for i in 1:norm_size
-    new_max = (diff_vec_sq[i]) * ( denoms[i])
+function calcMax(solver::Kaczmarz)
+  max = zero(Float64)
+  for i in 1:solver.norm_size
+    new_max = convert(Float64, (solver.diff_vec_sq[i]) * (solver.denom[i]))
     if new_max > max
       max = new_max
     end
   end
   return max
+
 end
-# CHANGE_KR
-function calcDiff(A,u,x, size)
-  diff_vec_raw = zeros(eltype(A),size)
-  diff_vec_sq = zeros(eltype(A),size)
-  diff_vec_raw = u - (A * x)
-  diff_vec_sq = map((x) -> abs(x)^2,diff_vec_raw)
-  diff_numb = norm(diff_vec_raw)^2
-  diff_denom = 1.0/diff_numb 
-  return diff_vec_raw, diff_vec_sq, diff_numb, diff_denom
+function calcDiff(solver::Kaczmarz)
+  solver.diff_vec_sq = map((x) -> abs(x)^2, solver.r)
+  solver.diff_numb = norm(solver.r, 2)^2
+  solver.diff_denom = 1.0 / solver.diff_numb
 end
 
-# CHANGE_KR
-function calcEk(diff_denom, Fnorm ,max ,theta::Float64)
-  Fnorm = 1.0 / Fnorm
-  if theta == (0.5)
-    e_k = ( 0.5 ) * ( ( ( diff_denom ) * max ) + Fnorm )
-  else
-    e_k =  ( (theta * ( (  diff_denom ) * max )) + ((1-theta) * Fnorm) )
-  end
-  return e_k
+function calcEk(solver::Kaczmarz, max, theta::Nothing)
+  solver.e_k = (0.5) * (((solver.diff_denom) * max) + solver.Fnorm)
 end
-# CHANGE_KR
-function calcIndexSet(e_k, diff_numb, diff_vec_sq, size_test, norms)::AbstractVector{Int64}
+function calcEk(solver::Kaczmarz, max, theta::Float64)
+  solver.e_k = ((theta * ((solver.diff_denom) * max)) + ((1 - theta) * solver.Fnorm))
+end
+function calcIndexSet(solver::Kaczmarz)
   # Calculate e_K * || b - A*x_k ||²
-  lower_bound_const = e_k * diff_numb
-  size_test = size(norms)[1]
-  U_k = Int64[]
-  for i in 1:size_test
+  lower_bound_const = convert(Float64, solver.e_k * solver.diff_numb)
+  solver.U_k = zeros(Int64, solver.norm_size)
+  for i in 1:solver.norm_size
   # Calculate lower bound
-    lower_bound = convert(eltype(diff_vec_sq),lower_bound_const * norms[i])
+    lower_bound = convert(Float64, lower_bound_const * solver.norms[i])
     # Check if index is in Set
-    if diff_vec_sq[i] >= lower_bound
-      push!(U_k, i)
+    if convert(Float64, solver.diff_vec_sq[i]) >= lower_bound
+      solver.U_k[i] = i
     end
   end
-  return U_k
 end
 
-function calcR( diff_vec_raw, U_k)
-  size_U_k = size(U_k)[1]
-  r = zeros(eltype(diff_vec_raw),size_U_k)
-  j = 1
-  for i in 1:size_U_k
-    r[j] = diff_vec_raw[U_k[i]]
-    j=j+1
-  end
-  return r
+
+function calcR(solver::Kaczmarz)
+  solver.r = solver.r - (solver.r[solver.i_k] * solver.B_denom[solver.i_k])
 end
+# function calcRZero(solver::Kaczmarz, b::Vector{ComplexF64})
+#   solver.r = copy(b)
+# end
 
 initikhonov(A, λ) = transpose((1 ./ sqrt.(λ)) .* transpose(A)) # optimize structure for row access
 initikhonov(prod::ProdOp{Tc, WeightingOp{T}, matT}, λ) where {T, Tc<:Union{T, Complex{T}}, matT} = ProdOp(prod.A, initikhonov(prod.B, λ))
