@@ -4,7 +4,8 @@ using Random, Test
 using FFTW
 using JLArrays
 
-arrayTypes = [Array, JLArray]
+areTypesDefined = @isdefined arrayTypes
+arrayTypes = areTypesDefined ? arrayTypes : [Array, JLArray]
 
 @testset "RegularizedLeastSquares" begin
   include("testCreation.jl")
