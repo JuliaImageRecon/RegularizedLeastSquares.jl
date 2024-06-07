@@ -1,7 +1,7 @@
 export kaczmarz
 export Kaczmarz
 
-mutable struct Kaczmarz{matT,R,T,U,RN} <: AbstractRowActionSolver
+mutable struct Kaczmarz{matT,R,T,U,RN,matAHA} <: AbstractRowActionSolver
   A::matT
   u::Vector{T}
   L2::R
@@ -28,15 +28,14 @@ mutable struct Kaczmarz{matT,R,T,U,RN} <: AbstractRowActionSolver
   e_k::T # CHANGE_KR
   norms::Vector{T}
   norm_size::Int64
-  Fnorm::Float64
+  Fnorm::T
   r::Vector{T}
-  B::matT
-  B_denom::Vector{Any}
+  B::matAHA
   i_k::Int64
   diff_vec_sq::Vector{T}
   diff_numb::T
   diff_denom::T
-  r_probs::Vector{Real}
+  r_probs::Vector{U}
 end
 
 """
@@ -100,17 +99,16 @@ function Kaczmarz(A
   end
   other = identity.(other)
 
-  M,N = size(A) # CHANGE_KR
-  norms = zeros(Float64, M) # CHANGE_KR
-  B = []
-  B_denom = []
+  M, N = size(A) # CHANGE_KR
+  norms = zeros(eltype(A), M) # CHANGE_KR
+  B = typeof(A)
   # setup denom and rowindex
   if greedy_randomized == true # CHANGE_KR
     A, denom, rowindex, norms = initkaczmarz(A, λ(L2), greedy_randomized)
     B = A * adjoint(A)  # CHANGE_KR
     # Calculate all denominators - B * 1/(||A||²)
     for x in 1:M
-      push!(B_denom, B[:, x] * denom[x])
+      B[:, x] = B[:, x] * denom[x]
     end
   else
   	A, denom, rowindex = initkaczmarz(A, λ(L2))
@@ -134,18 +132,18 @@ function Kaczmarz(A
   U_k = Int64[] # CHANGE_KR
   e_k = zero(eltype(A)) # CHANGE_KR
   norm_size = M
-  Fnorm = 1.0 / norm(A, 2)^2
+  Fnorm = eltype(A)(1.0 / norm(A, 2)^2)
   r = eltype(A)[]
   i_k = 0
   diff_vec_sq = zeros(eltype(A), M)
   diff_numb = zero(eltype(A))
   diff_denom = zero(eltype(A))
-  r_probs = zeros(Real, M)
+  r_probs = zeros(real(eltype(A)), M)
   
   return Kaczmarz(A, u, L2, other, denom, rowindex, rowIndexCycle, x, vl, εw, τl, αl,
                   randomized, subMatrixSize, probabilities, shuffleRows,
                   Int64(seed), iterations,
-                  normalizeReg, U_k, greedy_randomized, theta, e_k, norms, norm_size, Fnorm, r, B, B_denom, i_k, diff_vec_sq, diff_numb, diff_denom, r_probs)
+    normalizeReg, U_k, greedy_randomized, theta, e_k, norms, norm_size, Fnorm, r, B, i_k, diff_vec_sq, diff_numb, diff_denom, r_probs)
 end
 
 """
@@ -294,8 +292,6 @@ function initkaczmarz(A,λ, greedy_randomized)
   denom = T[]
   rowindex = Int64[]
   norms = eltype(A)[] # CHANGE_KR
-  Fnorm = (norm(A,2))^2 #CHANGE_KR
-  norm_size = size(norms)[1]
   for i = 1:size(A, 1)
     s² = rownorm²(A,i)
     if s²>0
@@ -366,7 +362,7 @@ end
 
 
 function calcR(solver::Kaczmarz)
-  solver.r = solver.r - (solver.r[solver.i_k] * solver.B_denom[solver.i_k])
+  solver.r = solver.r - (solver.r[solver.i_k] * solver.B[:, solver.i_k])
 end
 # function calcRZero(solver::Kaczmarz, b::Vector{ComplexF64})
 #   solver.r = copy(b)
