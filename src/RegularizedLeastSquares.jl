@@ -245,12 +245,12 @@ See also [`isapplicable`](@ref), [`linearSolverList`](@ref).
 """
 applicableSolverList(args...) = filter(solver -> isapplicable(solver, args...), linearSolverListReal())
 
-function filterKwargs(T::Type, kwargs)
+function filterKwargs(T::Type, kwargWarning, kwargs)
   table = methods(T)
   keywords = union(Base.kwarg_decl.(table)...)
   filtered = filter(in(keywords), keys(kwargs))
 
-  if length(filtered) < length(kwargs)
+  if length(filtered) < length(kwargs) && kwargWarning
     filteredout = filter(!in(keywords), keys(kwargs))
     @warn "The following arguments were passed but filtered out: $(join(filteredout, ", ")). Please watch closely if this introduces unexpexted behaviour in your code."
   end
@@ -266,12 +266,12 @@ regularized linear systems. All solvers return an approximate solution to Ax = b
 
 TODO: give a hint what solvers are available
 """
-function createLinearSolver(solver::Type{T}, A; kwargs...) where {T<:AbstractLinearSolver}
-  return solver(A; filterKwargs(T, kwargs)...)
+function createLinearSolver(solver::Type{T}, A; kwargWarning::Bool = true, kwargs...) where {T<:AbstractLinearSolver}
+  return solver(A; filterKwargs(T,kwargWarning,kwargs)...)
 end
 
-function createLinearSolver(solver::Type{T}; AHA, kwargs...) where {T<:AbstractLinearSolver}
-  return solver(; filterKwargs(T, kwargs)..., AHA = AHA)
+function createLinearSolver(solver::Type{T}; AHA, kwargWarning::Bool = true, kwargs...) where {T<:AbstractLinearSolver}
+  return solver(; filterKwargs(T,kwargWarning,kwargs)..., AHA = AHA)
 end
 
 end
