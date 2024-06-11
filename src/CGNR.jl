@@ -83,7 +83,7 @@ function CGNR(A
   end
   other = identity.(other)
 
-  state = CGNRState(x, x₀, pl, vl, αl, βl, ζl, 0, relTol, zero(real(T)))
+  state = CGNRState(x, x₀, pl, vl, αl, βl, ζl, 0, real(T)(relTol), zero(real(T)))
 
   return CGNR(A, AHA, L2, other, normalizeReg, iterations, state)
 end
@@ -160,21 +160,17 @@ function iterate(solver::CGNR, state=solver.state)
     state.αl = state.ζl / normvl
   end
 
-  #BLAS.axpy!(state.αl, state.pl, state.x)
   state.x .+= state.pl .* state.αl
 
-  #BLAS.axpy!(-state.αl, state.vl, state.x₀)
   state.x₀ .+= state.vl .* -state.αl
 
   if λ_ > 0
-    #BLAS.axpy!(-λ_ * state.αl, state.pl, state.x₀)
     state.x₀ .+= state.pl .* -λ_ * state.αl
   end
 
   state.βl = dot(state.x₀, state.x₀) / state.ζl
 
   rmul!(state.pl, state.βl)
-  #BLAS.axpy!(one(eltype(solver.AHA)), state.x₀, state.pl)
   state.pl .+= state.x₀
 
   state.iteration += 1
