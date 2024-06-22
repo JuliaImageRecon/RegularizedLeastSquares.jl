@@ -59,7 +59,8 @@ function proxLLRNonOverlapping!(reg::LLRRegularization{TR, N, TI}, x::Union{Abst
     ext = mod.(shape, blockSize)
     pad = mod.(blockSize .- ext, blockSize)
     if any(pad .!= 0)
-        xp = zeros(eltype(x), (shape .+ pad)..., K)
+        xp = similar(x, eltype(x), (shape .+ pad)..., K)
+        fill!(xp, zero(eltype(x)))
         xp[CartesianIndices(x)] .= xs
     else
         xp = xs
@@ -69,7 +70,7 @@ function proxLLRNonOverlapping!(reg::LLRRegularization{TR, N, TI}, x::Union{Abst
     try
         BLAS.set_num_threads(1)
         blocks = CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
-        xᴸᴸᴿ = [Array{eltype(x)}(undef, prod(blockSize), K) for _ = 1:length(blocks)]
+        xᴸᴸᴿ = [similar(x, prod(blockSize), K) for _ = 1:length(blocks)]
         let xp = xp # Avoid boxing error
             @floop for (id, i) ∈ enumerate(blocks)
                 @views xᴸᴸᴿ[id] .= reshape(xp[i.+block_idx, :], :, K)
