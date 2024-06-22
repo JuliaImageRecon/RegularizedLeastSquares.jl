@@ -202,7 +202,7 @@ solverconvergence(solver::ADMM) = (; :primal => solver.ráµ, :dual => solver.sáµ
 
 performs one ADMM iteration.
 """
-function iterate(solver::ADMM, state::ADMMState = solver.state)
+function iterate(solver::ADMM, state::S = solver.state) where S <: AbstractSolverState{<:ADMM}
   done(solver, state) && return nothing
   solver.verbose && println("Outer ADMM Iteration #$iteration")
 

@@ -176,7 +176,7 @@ solverconvergence(solver::POGM) = (; :residual => norm(solver.res))
 
 performs one POGM iteration.
 """
-function iterate(solver::POGM, state::POGMState = solver.state)
+function iterate(solver::POGM, state = solver.state)
   if done(solver, state)
     return nothing
   end
