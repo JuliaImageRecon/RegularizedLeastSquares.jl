@@ -30,7 +30,7 @@ LLRRegularization(λ;  shape::NTuple{N,TI}, blockSize::NTuple{N,TI} = ntuple(_ -
 
 performs the proximal map for LLR regularization using singular-value-thresholding
 """
-function prox!(reg::LLRRegularization{TR, N, TI}, x::AbstractArray{Tc}, λ::T) where {TR, N, TI, T, Tc <: Union{T, Complex{T}}}
+function prox!(reg::LLRRegularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T <: Real}
     reg.fullyOverlapping ? proxLLROverlapping!(reg, x, λ) : proxLLRNonOverlapping!(reg, x, λ)
 end
 
@@ -39,7 +39,7 @@ end
 
 performs the proximal map for LLR regularization using singular-value-thresholding on non-overlapping blocks
 """
-function proxLLRNonOverlapping!(reg::LLRRegularization{TR, N, TI}, x::AbstractArray{Tc}, λ::T) where {TR, N, TI, T, Tc <: Union{T, Complex{T}}}
+function proxLLRNonOverlapping!(reg::LLRRegularization{TR, N, TI}, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {TR, N, TI, T}
     shape = reg.shape
     blockSize = reg.blockSize
     randshift = reg.randshift
@@ -59,7 +59,7 @@ function proxLLRNonOverlapping!(reg::LLRRegularization{TR, N, TI}, x::AbstractAr
     ext = mod.(shape, blockSize)
     pad = mod.(blockSize .- ext, blockSize)
     if any(pad .!= 0)
-        xp = zeros(Tc, (shape .+ pad)..., K)
+        xp = zeros(eltype(x), (shape .+ pad)..., K)
         xp[CartesianIndices(x)] .= xs
     else
         xp = xs
@@ -68,15 +68,16 @@ function proxLLRNonOverlapping!(reg::LLRRegularization{TR, N, TI}, x::AbstractAr
     bthreads = BLAS.get_num_threads()
     try
         BLAS.set_num_threads(1)
-        xᴸᴸᴿ = [Array{Tc}(undef, prod(blockSize), K) for _ = 1:Threads.nthreads()]
+        blocks = CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
+        xᴸᴸᴿ = [Array{eltype(x)}(undef, prod(blockSize), K) for _ = 1:length(blocks)]
         let xp = xp # Avoid boxing error
-            @floop for i ∈ CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
-                @views xᴸᴸᴿ[Threads.threadid()] .= reshape(xp[i.+block_idx, :], :, K)
-                ub = sqrt(norm(xᴸᴸᴿ[Threads.threadid()]' * xᴸᴸᴿ[Threads.threadid()], Inf)) #upper bound on singular values given by matrix infinity norm
+            @floop for (id, i) ∈ enumerate(blocks)
+                @views xᴸᴸᴿ[id] .= reshape(xp[i.+block_idx, :], :, K)
+                ub = sqrt(norm(xᴸᴸᴿ[id]' * xᴸᴸᴿ[id], Inf)) #upper bound on singular values given by matrix infinity norm
                 if λ >= ub #save time by skipping the SVT as recommended by Ong/Lustig, IEEE 2016
                     xp[i.+block_idx, :] .= 0
                 else # threshold singular values
-                    SVDec = svd!(xᴸᴸᴿ[Threads.threadid()])
+                    SVDec = svd!(xᴸᴸᴿ[id])
                     prox!(L1Regularization, SVDec.S, λ)
                     xp[i.+block_idx, :] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
                 end
@@ -168,7 +169,7 @@ proxLLROverlapping!(reg::LLRRegularization, x, λ)
 
 performs the proximal map for LLR regularization using singular-value-thresholding with fully overlapping blocks
 """
-function proxLLROverlapping!(reg::LLRRegularization{TR, N, TI}, x::AbstractArray{Tc}, λ::T) where {TR, N, TI, T, Tc <: Union{T, Complex{T}}}
+function proxLLROverlapping!(reg::LLRRegularization{TR, N, TI}, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {TR, N, TI, T}
     shape = reg.shape
     blockSize = reg.blockSize
     
@@ -180,7 +181,7 @@ function proxLLROverlapping!(reg::LLRRegularization{TR, N, TI}, x::AbstractArray
     ext = mod.(shape, blockSize)
     pad = mod.(blockSize .- ext, blockSize)
     if any(pad .!= 0)
-        xp = zeros(Tc, (shape .+ pad)..., K)
+        xp = zeros(eltype(x), (shape .+ pad)..., K)
         xp[CartesianIndices(x)] .= x
     else
         xp = copy(x)
