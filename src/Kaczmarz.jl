@@ -24,7 +24,7 @@ mutable struct Kaczmarz{matT,R,T,U,RN} <: AbstractRowActionSolver
 end
 
 """
-    Kaczmarz(A; reg = L2Regularization(0), normalizeReg = NoNormalization(), weights=nothing, randomized=false, subMatrixFraction=0.15, shuffleRows=false, seed=1234, iterations=10, regMatrix=nothing)
+    Kaczmarz(A; reg = L2Regularization(0), normalizeReg = NoNormalization(), randomized=false, subMatrixFraction=0.15, shuffleRows=false, seed=1234, iterations=10)
 
 Creates a Kaczmarz object for the forward operator `A`.
 

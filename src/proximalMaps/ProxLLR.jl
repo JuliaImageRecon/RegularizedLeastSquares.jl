@@ -103,7 +103,7 @@ end
 
 returns the value of the LLR-regularization term. The norm is only implemented for 2D, non-fully overlapping blocks. 
 """
-function norm(reg::LLRRegularization, x::Vector{Tc}, λ::T) where {T, Tc <: Union{T, Complex{T}}}
+function norm(reg::LLRRegularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T <: Real}
     shape = reg.shape
     blockSize = reg.blockSize
     randshift = reg.randshift

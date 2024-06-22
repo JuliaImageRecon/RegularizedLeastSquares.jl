@@ -3,7 +3,10 @@ using RegularizedLeastSquares, LinearAlgebra, RegularizedLeastSquares.LinearOper
 using Random, Test
 using FFTW
 
-include("testKaczmarz.jl")
-include("testProxMaps.jl")
-include("testSolvers.jl")
-include("testRegularization.jl")
+@testset "RegularizedLeastSquares" begin
+  include("testCreation.jl")
+  include("testKaczmarz.jl")
+  include("testProxMaps.jl")
+  include("testSolvers.jl")
+  include("testRegularization.jl")
+end

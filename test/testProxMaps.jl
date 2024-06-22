@@ -277,16 +277,35 @@ function testLLR_3D(shape=(32,32,32,80),blockSize=(4,4,4);σ=0.05)
   # @test 0.5*norm(xNoisy-x_llr)^2+normLLR(x_llr,10*σ,shape=shape[1:3],blockSize=blockSize,randshift=false) <= normLLR(xNoisy,10*σ,shape=shape[1:3],blockSize=blockSize,randshift=false)
 end
 
+function testConversion()
+  for (xType, lambdaType) in [(Float32, Float64), (Float64, Float32), (Complex{Float32}, Float64), (Complex{Float64}, Float32)]
+    for prox in [L1Regularization, L21Regularization, L2Regularization, LLRRegularization, NuclearRegularization, TVRegularization]
+      @info "Test λ conversion for prox!($prox, $xType, $lambdaType)"
+      @test try prox!(prox, zeros(xType, 10), lambdaType(0.0); shape=(2, 5), svtShape=(2, 5))
+        true
+      catch e
+        false
+      end skip = in(prox, [LLRRegularization, NuclearRegularization])
+      @test try norm(prox, zeros(xType, 10), lambdaType(0.0); shape=(2, 5), svtShape=(2, 5))
+        true
+      catch e
+        false
+      end skip = in(prox, [LLRRegularization, NuclearRegularization])
+    end
+  end
+end
+
 @testset "Proximal Maps" begin
-  testL2Prox()
-  testL1Prox()
-  testL21Prox()
-  testTVprox()
-  testDirectionalTVprox()
-  testPositive()
-  testProj()
-  testNuclear()
-  testLLR()
-  #testLLROverlapping()
-  testLLR_3D()
+  @testset "L2 Prox" testL2Prox()
+  @testset "L1 Prox" testL1Prox()
+  @testset "L21 Prox" testL21Prox()
+  @testset "TV Prox" testTVprox()
+  @testset "TV Prox Directional" testDirectionalTVprox()
+  @testset "Positive Prox" testPositive()
+  @testset "Projection Prox" testProj()
+  @testset "Nuclear Prox" testNuclear()
+  #@testset "LLR Prox" testLLR()
+  #@testset "LLR Prox Overlapping" #testLLROverlapping()
+  #@testset "LLR Prox 3D" testLLR_3D()
+  @testset "Prox Lambda Conversion" testConversion()
 end
