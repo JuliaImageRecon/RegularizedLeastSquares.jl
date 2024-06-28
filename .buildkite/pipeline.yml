@@ -31,7 +31,7 @@ steps:
       Pkg.add("TestEnv")
       using TestEnv
       TestEnv.activate();
-      Pkg.add("CUDA")
+      Pkg.add("AMDGPU")
       Pkg.instantiate()
-      include("test/gpu/cuda.jl")'
+      include("test/gpu/rocm.jl")'
     timeout_in_minutes: 30
