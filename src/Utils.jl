@@ -242,7 +242,7 @@ function nrmsd(I,Ireco)
 end
 
 """
-    power_iterations(AᴴA; rtol=1e-2, maxiter=30, verbose=false)
+    power_iterations(AᴴA; rtol=1e-3, maxiter=30, verbose=false)
 
 Power iterations to determine the maximum eigenvalue of a normal operator or square matrix.
 
@@ -250,14 +250,14 @@ Power iterations to determine the maximum eigenvalue of a normal operator or squ
 * `AᴴA`                 - operator or matrix; has to be square
 
 # Keyword Arguments
-* `rtol=1e-2`           - relative tolerance; function terminates if the change of the max. eigenvalue is smaller than this values
+* `rtol=1e-3`           - relative tolerance; function terminates if the change of the max. eigenvalue is smaller than this values
 * `maxiter=30`          - maximum number of power iterations
 * `verbose=false`       - print maximum eigenvalue if `true`
 
 # Output
 maximum eigenvalue of the operator
 """
-function power_iterations(AᴴA; rtol=1e-2, maxiter=30, verbose=false)
+function power_iterations(AᴴA; rtol=1e-3, maxiter=30, verbose=false)
   b = randn(eltype(AᴴA), size(AᴴA,2))
   bᵒˡᵈ = similar(b)
   λ = Inf
@@ -273,8 +273,8 @@ function power_iterations(AᴴA; rtol=1e-2, maxiter=30, verbose=false)
     mul!(b, AᴴA, bᵒˡᵈ)
 
     λᵒˡᵈ = λ
-    λ = (bᵒˡᵈ' * b) / (bᵒˡᵈ' * bᵒˡᵈ)
-    verbose && println("iter = $i; λ = $λ")
+    λ = abs(bᵒˡᵈ' * b) # λ is real-valued for Hermitian matrices
+    verbose && println("iter = $i; λ = $λ; abs(λ/λᵒˡᵈ - 1) = $(abs(λ/λᵒˡᵈ - 1)) <? $rtol")
     abs(λ/λᵒˡᵈ - 1) < rtol && return λ
   end
 
