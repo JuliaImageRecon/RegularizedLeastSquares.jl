@@ -39,4 +39,4 @@ function RegularizedLeastSquares.enfPos!(x::arrT) where {T<:Real, arrT <: Abstra
   end
 end
 
-RegularizedLeastSquares.rownorm²(A::AbstractGPUMatrix,row::Int64) = sum(map(abs2, A[row, :]))
+RegularizedLeastSquares.rownorm²(A::AbstractGPUMatrix,row::Int64) = sum(map(abs2, @view A[row, :]))
