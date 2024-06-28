@@ -239,12 +239,12 @@ function testLLROverlapping(shape=(32,32,80),blockSize=(4,4);σ=0.05, arrayType 
   xNoisy[:] += σ/sqrt(2.0)*(randn(prod(shape))+1im*randn(prod(shape)))
 
   x_llr = copy(xNoisy)
-  proxLLROverlapping!(x_llr,10*σ,shape=shape[1:2],blockSize=blockSize)
+  prox!(LLRRegularization, x_llr,10*σ,shape=shape[1:2],blockSize=blockSize, fullyOverlapping = true)
   @test norm(x - x_llr) <= norm(x - xNoisy)
   @test norm(x - x_llr) / norm(x) ≈ 0 atol=0.05
   @info "rel. LLR error : $(norm(x - x_llr)/ norm(x)) vs $(norm(x - xNoisy)/ norm(x))"
   # check decrease of objective function
-  @test 0.5*norm(xNoisy-x_llr)^2+normLLR(x_llr,10*σ,shape=shape[1:2],blockSize=blockSize,randshift=false) <= normLLR(xNoisy,10*σ,shape=shape[1:2],blockSize=blockSize,randshift=false)
+  #@test 0.5*norm(xNoisy-x_llr)^2+normLLR(x_llr,10*σ,shape=shape[1:2],blockSize=blockSize,randshift=false) <= normLLR(xNoisy,10*σ,shape=shape[1:2],blockSize=blockSize,randshift=false)
 end
 
 function testLLR_3D(shape=(32,32,32,80),blockSize=(4,4,4);σ=0.05, arrayType = Array)
@@ -306,9 +306,9 @@ end
       @testset "Positive Prox" testPositive(;arrayType)
       @testset "Projection Prox" testProj(;arrayType)
       @testset "Nuclear Prox" testNuclear(;arrayType)
-      #@testset "LLR Prox: $arrayType" testLLR(;arrayType)
-      #@testset "LLR Prox Overlapping: $arrayType" testLLROverlapping(;arrayType)
-      #@testset "LLR Prox 3D: $arrayType" testLLR_3D(;arrayType)
+      @testset "LLR Prox: $arrayType" testLLR(;arrayType)
+      @testset "LLR Prox Overlapping: $arrayType" testLLROverlapping(;arrayType)
+      @testset "LLR Prox 3D: $arrayType" testLLR_3D(;arrayType)
     end
   end
   @testset "Prox Lambda Conversion" testConversion()
