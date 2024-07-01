@@ -10,9 +10,9 @@ function testRealLinearSolver(; arrayType = Array, elType = Float32)
     @testset for solver in solvers
         @test try
             S = createLinearSolver(solver, arrayType(A), iterations = 200)
-            x_approx = solve!(S, arrayType(b))
+            x_approx = Array(solve!(S, arrayType(b)))
             @info "Testing solver $solver: $x ≈ $x_approx"
-            @test Array(x_approx) ≈ x rtol = 0.1
+            @test x_approx ≈ x rtol = 0.1
             true
         catch 
             false
@@ -30,9 +30,9 @@ function testComplexLinearSolver(; arrayType = Array, elType = Float32)
     @testset for solver in solvers
         @test try
             S = createLinearSolver(solver, arrayType(A), iterations = 100)
-            x_approx = solve!(S, arrayType(b))
+            x_approx = Array(solve!(S, arrayType(b)))
             @info "Testing solver $solver: $x ≈ $x_approx"
-            @test Array(x_approx) ≈ x rtol = 0.1
+            @test x_approx ≈ x rtol = 0.1
             true
         catch 
             false
@@ -51,9 +51,9 @@ function testComplexLinearAHASolver(; arrayType = Array, elType = Float32)
     @testset for solver in solvers
         @test try
             S = createLinearSolver(solver, nothing; AHA=arrayType(AHA), iterations = 100)
-            x_approx = solve!(S, arrayType(b))
+            x_approx = Array(solve!(S, arrayType(b)))
             @info "Testing solver $solver: $x ≈ $x_approx"
-            @test Array(x_approx) ≈ x rtol = 0.1
+            @test x_approx ≈ x rtol = 0.1
             true
         catch 
             false
@@ -86,9 +86,9 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
             iterations = 200,
             normalizeReg = NoNormalization(),
         )
-        x_approx = solve!(S, b)
+        x_approx = Array(solve!(S, b))
         @info "Testing solver $solver w/o restart: relative error = $(norm(x - x_approx) / norm(x))"
-        @test x ≈ Array(x_approx) rtol = 0.1
+        @test x ≈ x_approx rtol = 0.1
 
         #additionally test the gradient restarting scheme
         if solver == POGM || solver == FISTA
@@ -100,9 +100,9 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
                 normalizeReg = NoNormalization(),
                 restart = :gradient,
             )
-            x_approx = solve!(S, b)
+            x_approx = Array(solve!(S, b))
             @info "Testing solver $solver w/ gradient restart: relative error = $(norm(x - x_approx) / norm(x))"
-            @test x ≈ Array(x_approx) rtol = 0.1
+            @test x ≈ x_approx rtol = 0.1
         end
 
         # test invariance to the maximum eigenvalue
@@ -115,10 +115,10 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
             iterations = 200,
             normalizeReg = MeasurementBasedNormalization(),
         )
-        x_approx = solve!(S, b)
+        x_approx = Array(solve!(S, b))
         x_approx .*= scale_F
         @info "Testing solver $solver w/o restart and after re-scaling: relative error = $(norm(x - x_approx) / norm(x))"
-        @test x ≈ Array(x_approx) rtol = 0.1
+        @test x ≈ x_approx rtol = 0.1
     end
 
     # test ADMM with option vary_rho
@@ -134,9 +134,9 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
         vary_rho = :balance,
         verbose = false,
     )
-    x_approx = solve!(S, b)
+    x_approx = Array(solve!(S, b))
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
-    @test x ≈ Array(x_approx) rtol = 0.1
+    @test x ≈ x_approx rtol = 0.1
 
     S = createLinearSolver(
         solver,
@@ -148,9 +148,9 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
         vary_rho = :balance,
         verbose = false,
     )
-    x_approx = solve!(S, b)
+    x_approx = Array(solve!(S, b))
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
-    @test x ≈ Array(x_approx) rtol = 0.1
+    @test x ≈ x_approx rtol = 0.1
 
     # the PnP scheme only increases rho, hence we only test it with a small initial rho
     S = createLinearSolver(
@@ -163,9 +163,9 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
         vary_rho = :PnP,
         verbose = false,
     )
-    x_approx = solve!(S, b)
+    x_approx = Array(solve!(S, b))
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
-    @test x ≈ Array(x_approx) rtol = 0.1
+    @test x ≈ x_approx rtol = 0.1
 
     ##
     solver = SplitBregman
@@ -179,9 +179,9 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
         rho = 1.0,
         normalizeReg = NoNormalization(),
     )
-    x_approx = solve!(S, b)
+    x_approx = Array(solve!(S, b))
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
-    @test x ≈ Array(x_approx) rtol = 0.1
+    @test x ≈ x_approx rtol = 0.1
 
     reg = L1Regularization(elType(reg.λ * length(b) / norm(b, 1)))
     S = createLinearSolver(
@@ -193,9 +193,9 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
         rho = 1.0,
         normalizeReg = MeasurementBasedNormalization(),
     )
-    x_approx = solve!(S, b)
+    x_approx = Array(solve!(S, b))
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
-    @test x ≈ Array(x_approx) rtol = 0.1
+    @test x ≈ x_approx rtol = 0.1
 
     #=
     solver = PrimalDualSolver
