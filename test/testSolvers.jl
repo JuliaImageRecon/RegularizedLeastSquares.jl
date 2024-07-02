@@ -17,7 +17,7 @@ function testRealLinearSolver(; arrayType = Array, elType = Float32)
         catch e
             @error e
             false
-        end skip = arrayType == JLArray && solver == DirectSolver
+        end skip = arrayType != Array && solver <: AbstractDirectSolver # 
     end
 end
 
@@ -38,7 +38,7 @@ function testComplexLinearSolver(; arrayType = Array, elType = Float32)
         catch e
             @error e
             false
-        end skip = arrayType == JLArray && solver == DirectSolver
+        end skip = arrayType != Array && solver <: AbstractDirectSolver
     end
 end
 
