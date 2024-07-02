@@ -99,7 +99,7 @@ function dot_with_matrix_row(B::Transpose{T,S},
   tmp
 end
 
-function dot_with_matrix_row(prod::ProdOp{T, <:WeightingOp, matT}, x::Vector{T}, k) where {T, matT}
+function dot_with_matrix_row(prod::ProdOp{T, <:WeightingOp, matT}, x::AbstractVector{T}, k) where {T, matT}
   A = prod.B
   return prod.A.weights[k]*dot_with_matrix_row(A, x, k)
 end

@@ -40,3 +40,6 @@ function RegularizedLeastSquares.enfPos!(x::arrT) where {T<:Real, arrT <: Abstra
 end
 
 RegularizedLeastSquares.rownorm²(A::AbstractGPUMatrix,row::Int64) = sum(map(abs2, @view A[row, :]))
+
+RegularizedLeastSquares.dot_with_matrix_row(A::AbstractGPUMatrix{T}, x::AbstractGPUVector{T}, k::Int64) where {T} = dot(view(A, k, :), x)
+RegularizedLeastSquares.dot_with_matrix_row(B::Transpose{T,S}, x::AbstractGPUVector{T}, k::Int64) where {T,S<:AbstractGPUArray} = dot(view(B.parent, :, k), x)
