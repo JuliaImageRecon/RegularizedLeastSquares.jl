@@ -41,7 +41,7 @@ end
 
 Callback that accumlates the solvers convergence metrics per iteration. Results are stored in the `convMeas` field.
 """
-StoreConvergenceCallback() = new(Dict{Symbol, Any}())
+StoreConvergenceCallback() = StoreConvergenceCallback(Dict{Symbol, Any}())
 function (cb::StoreConvergenceCallback)(solver::AbstractLinearSolver, _)
   meas = solverconvergence(solver)
   for key in keys(meas)

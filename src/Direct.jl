@@ -1,15 +1,17 @@
 export PseudoInverse, DirectSolver
-
-
 ### Direct Solver ###
 
-mutable struct DirectSolver{matT,vecT, R, PR}  <: AbstractDirectSolver
+mutable struct DirectSolver{matT, R, PR}  <: AbstractDirectSolver
   A::matT
-  x::vecT
-  b::vecT
   l2::R
   normalizeReg::AbstractRegularizationNormalization
   proj::Vector{PR}
+  state::AbstractSolverState{<:AbstractDirectSolver}
+end
+
+mutable struct DirectSolverState{vecT} <: AbstractSolverState{DirectSolver}
+  x::vecT
+  b::vecT
 end
 
 function DirectSolver(A; reg::Vector{<:AbstractRegularization} = [L2Regularization(zero(real(eltype(A))))], normalizeReg::AbstractRegularizationNormalization = NoNormalization())
@@ -36,24 +38,31 @@ function DirectSolver(A; reg::Vector{<:AbstractRegularization} = [L2Regularizati
   x = Vector{T}(undef,size(A, 2))
   b = zeros(T, size(A,1))
 
-  return DirectSolver(A, x, b, L2, normalizeReg, other)
+  return DirectSolver(A, L2, normalizeReg, other, DirectSolverState(x, b))
 end
 
-function init!(solver::DirectSolver, b; x0=0)
+function init!(solver::DirectSolver, state::DirectSolverState{vecT}, b::otherT; kwargs...) where {vecT, otherT}
+  x = similar(b, size(state.x)...)
+  bvecT = similar(b, size(state.b)...)
+  solver.state = DirectSolverState(x, bvecT)
+  init!(solver, solver.state, b; kwargs...)
+end
+function init!(solver::DirectSolver, state::DirectSolverState{vecT}, b::vecT; x0=0) where vecT
   solver.l2 = normalize(solver, solver.normalizeReg, solver.l2, solver.A, b)
-  solver.b .= b
+  state.b .= b
+  state.x .= x0
 end
 
-function iterate(solver::DirectSolver, iteration=0)
+function iterate(solver::DirectSolver, state = solver.state)
   A = solver.A
   λ_ = λ(solver.l2)
-  lufact = lu(Matrix(A'*A + λ_*opEye(size(A,2),size(A,2))))
-  x = \(lufact,A' * solver.b)
+  lufact = lu(A'*A .+ λ_)
+  x = \(lufact,A' * state.b)
 
   for p in solver.proj
     prox!(p, x)
   end
-  solver.x .= x
+  state.x .= x
   return nothing
 end
 
@@ -89,13 +98,12 @@ end
 
 ###  Pseudoinverse ###
 
-mutable struct PseudoInverse{R, vecT, PR}  <: AbstractDirectSolver
+mutable struct PseudoInverse{R, PR}  <: AbstractDirectSolver
   svd::SVD
-  x::vecT
-  b::vecT
   l2::R
   normalizeReg::AbstractRegularizationNormalization
   proj::Vector{PR}
+  state::AbstractSolverState{<:AbstractDirectSolver}
 end
 
 function PseudoInverse(A; reg::Vector{<:AbstractRegularization} = [L2Regularization(zero(real(eltype(A))))], normalizeReg::AbstractRegularizationNormalization = NoNormalization())
@@ -127,33 +135,35 @@ end
 function PseudoInverse(A::AbstractMatrix, x, b, l2, norm, proj)
   u, s, v = svd(A)
   temp = SVD(u, s, v)
-  return PseudoInverse(temp, x, b, l2, norm, proj)
+  return PseudoInverse(temp, l2, norm, proj, DirectSolverState(x, b))
 end
 
-function init!(solver::PseudoInverse, b; x0=0)
+function init!(solver::PseudoInverse, state::DirectSolverState{vecT}, b::otherT; kwargs...) where {vecT, otherT}
+  x = similar(b, size(state.x)...)
+  bvecT = similar(b, size(state.b)...)
+  solver.state = DirectSolverState(x, bvecT)
+  init!(solver, solver.state, b; kwargs...)
+end
+function init!(solver::PseudoInverse, state::DirectSolverState{vecT}, b::vecT; x0=0) where vecT
   solver.l2 = normalize(solver, solver.normalizeReg, solver.l2, solver.svd, b)
-  solver.b .= b
+  state.b .= b
 end
 
-function iterate(solver::PseudoInverse, iteration=0)
+function iterate(solver::PseudoInverse, state = solver.state)
   # Inversion by using the pseudoinverse of the SVD
   svd = solver.svd
 
   # Calculate singular values used for tikhonov regularization
-  D = [1/s for s in svd.S]
   λ_ = λ(solver.l2)
-  for i=1:length(D)
-    σi = svd.S[i]
-    D[i] = σi/(σi*σi+λ_*λ_)
-  end
+  D = svd.S ./ (svd.S.*svd.S .+ λ_ )
 
-  tmp = adjoint(svd.U)*solver.b
+  tmp = adjoint(svd.U)*state.b
   tmp .*= D
   x = svd.Vt * tmp
 
   for p in solver.proj
     prox!(p, x)
   end
-  solver.x = x
+  state.x = x
   return nothing
 end

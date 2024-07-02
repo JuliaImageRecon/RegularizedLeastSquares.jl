@@ -1,5 +1,13 @@
 export TVRegularization
 
+mutable struct TVParams{Tc,vecTc <: AbstractVector{Tc}, matT}
+  pq::vecTc
+  rs::vecTc
+  pqOld::vecTc
+  xTmp::vecTc
+  ∇::matT
+end
+
 """
     TVRegularization
 
@@ -21,29 +29,21 @@ and Deblurring Problems", IEEE Trans. Image Process. 18(11), 2009
 * `dims`                    - Dimension to perform the TV along. If `Integer`, the Condat algorithm is called, and the FDG algorithm otherwise.
 * `iterationsTV=20`         - number of FGP iterations
 """
-struct TVRegularization{T,N,TI} <: AbstractParameterizedRegularization{T} where {N,TI<:Integer}
+mutable struct TVRegularization{T,N,TI} <: AbstractParameterizedRegularization{T} where {N,TI<:Integer}
   λ::T
   dims
   shape::NTuple{N,TI}
   iterationsTV::Int64
+  params::Union{TVParams, Nothing}
 end
-TVRegularization(λ; shape=(0,), dims=1:length(shape), iterationsTV=10, kargs...) = TVRegularization(λ, dims, shape, iterationsTV)
-
-
-mutable struct TVParams{Tc,matT}
-  pq::Vector{Tc}
-  rs::Vector{Tc}
-  pqOld::Vector{Tc}
-  xTmp::Vector{Tc}
-  ∇::matT
-end
+TVRegularization(λ; shape=(0,), dims=1:length(shape), iterationsTV=10, kargs...) = TVRegularization(λ, dims, shape, iterationsTV, nothing)
 
 function TVParams(shape, T::Type=Float64; dims=1:length(shape))
   return TVParams(Vector{T}(undef, prod(shape)); shape=shape, dims=dims)
 end
 
 function TVParams(x::AbstractVector{Tc}; shape, dims=1:length(shape)) where {Tc}
-  ∇ = GradientOp(Tc; shape, dims)
+  ∇ = GradientOp(Tc; shape, dims, S = typeof(x))
 
   # allocate storage
   xTmp = similar(x)
@@ -61,12 +61,13 @@ end
 
 Proximal map for TV regularization. Calculated with the Condat algorithm if the TV is calculated only along one dimension and with the Fast Gradient Projection algorithm otherwise.
 """
-prox!(reg::TVRegularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T <: Real} = proxTV!(x, λ, shape=reg.shape, dims=reg.dims, iterationsTV=reg.iterationsTV)
+prox!(reg::TVRegularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T <: Real} = proxTV!(reg, x, λ, shape=reg.shape, dims=reg.dims, iterationsTV=reg.iterationsTV)
 
-function proxTV!(x, λ; shape, dims=1:length(shape), kwargs...) # use kwargs for shape and dims
-  return proxTV!(x, λ, shape, dims; kwargs...) # define shape and dims w/o kwargs to enable multiple dispatch on dims
+function proxTV!(reg, x, λ; shape, dims=1:length(shape), kwargs...) # use kwargs for shape and dims
+  return proxTV!(reg, x, λ, shape, dims; kwargs...) # define shape and dims w/o kwargs to enable multiple dispatch on dims
 end
 
+proxTV!(reg, x, shape, dims::Integer; kwargs...) = proxTV!(reg, x, shape, dims; kwargs...)
 function proxTV!(x::AbstractVector{T}, λ::T, shape, dims::Integer; kwargs...) where {T<:Real}
   x_ = reshape(x, shape)
   i = CartesianIndices((ones(Int, dims - 1)..., 0:shape[dims]-1, ones(Int, length(shape) - dims)...))
@@ -77,12 +78,19 @@ function proxTV!(x::AbstractVector{T}, λ::T, shape, dims::Integer; kwargs...) w
   return x
 end
 
-function proxTV!(x::AbstractVector{Tc}, λ::T, shape, dims; iterationsTV=10, tvpar=TVParams(x; shape=shape, dims=dims), kwargs...) where {T<:Real,Tc<:Union{T,Complex{T}}}
-  return proxTV!(x, λ, tvpar; iterationsTV=iterationsTV)
+# Reuse TvParams if possible
+function proxTV!(reg, x::AbstractVector{Tc}, λ::T, shape, dims; iterationsTV=10, kwargs...) where {T<:Real,Tc<:Union{T,Complex{T}}}
+  if isnothing(reg.params) || length(x) != length(reg.params.xTmp) || typeof(x) != typeof(reg.params.xTmp)
+    reg.params = TVParams(x; shape = shape, dims = dims)
+  end
+  return proxTV!(x, λ, reg.params; iterationsTV=iterationsTV)
 end
 
 function proxTV!(x::AbstractVector{Tc}, λ::T, p::TVParams{Tc}; iterationsTV=10, kwargs...) where {T<:Real,Tc<:Union{T,Complex{T}}}
   @assert length(p.xTmp) == length(x)
+  @assert length(p.rs) == length(p.pq)
+  @assert length(p.rs) == length(p.pq)
+
   # initialize dual variables
   p.xTmp .= 0
   p.pq .= 0
@@ -96,13 +104,11 @@ function proxTV!(x::AbstractVector{Tc}, λ::T, p::TVParams{Tc}; iterationsTV=10,
     p.pq = p.rs
 
     # gradient projection step for dual variables
-    Threads.@threads for i ∈ eachindex(p.xTmp, x)
-      @inbounds p.xTmp[i] = x[i]
-    end
+    tv_copy!(p.xTmp, x)
     mul!(p.xTmp, transpose(p.∇), p.rs, -λ, 1) # xtmp = x-λ*transpose(∇)*rs
     mul!(p.pq, p.∇, p.xTmp, 1 / (8λ), 1) # rs = ∇*xTmp/(8λ)
 
-    restrictMagnitude!(p.pq)
+    tv_restrictMagnitude!(p.pq)
 
     # form linear combination of old and new estimates
     tOld = t
@@ -111,19 +117,30 @@ function proxTV!(x::AbstractVector{Tc}, λ::T, p::TVParams{Tc}; iterationsTV=10,
     t3 = 1 + t2
 
     p.rs = pqTmp
-    Threads.@threads for i ∈ eachindex(p.rs, p.pq, p.pqOld)
-      @inbounds p.rs[i] = t3 * p.pq[i] - t2 * p.pqOld[i]
-    end
+    tv_linearcomb!(p.rs, t3, p.pq, t2, p.pqOld)
   end
 
   mul!(x, transpose(p.∇), p.pq, -λ, one(Tc)) # x .-= λ*transpose(∇)*pq
   return x
 end
 
+tv_copy!(dest, src) = copyto!(dest, src)
+function tv_copy!(dest::Vector{T}, src::Vector{T}) where T
+  Threads.@threads for i ∈ eachindex(dest, src)
+    @inbounds dest[i] = src[i]
+  end
+end
+
 # restrict x to a number smaller then one
-function restrictMagnitude!(x)
+function tv_restrictMagnitude!(x)
   Threads.@threads for i in eachindex(x)
     @inbounds x[i] /= max(1, abs(x[i]))
+  end
+end
+
+function tv_linearcomb!(rs, t3, pq, t2, pqOld)
+  Threads.@threads for i ∈ eachindex(rs, pq, pqOld)
+    @inbounds rs[i] = t3 * pq[i] - t2 * pqOld[i]
   end
 end
 

@@ -14,7 +14,7 @@ function proxTVCondat!(x::Vector{T}, λ::Float64; shape=[], kargs...) where T
     tv_denoise_3d_condat!(y_, nhood[d,:], λ*omega[d])
     y .+= y_ ./ length(omega)
   end
-  x[:] = y[:]
+  copyto!(x, y)
   return y
 end
 

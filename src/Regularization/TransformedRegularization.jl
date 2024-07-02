@@ -28,7 +28,7 @@ innerreg(reg::TransformedRegularization) = reg.reg
 function prox!(reg::TransformedRegularization, x::AbstractArray, args...)
 	z = reg.trafo * x
   result = prox!(reg.reg, z, args...)
-	x[:] = adjoint(reg.trafo) * result
+	copyto!(x, adjoint(reg.trafo) * result)
   return x
 end
 function norm(reg::TransformedRegularization, x::AbstractArray, args...)
