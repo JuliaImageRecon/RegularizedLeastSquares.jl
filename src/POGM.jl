@@ -35,8 +35,8 @@ mutable struct POGMState{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractV
   rel_res_norm::rT
 end
 """
-    POGM(A; AHA = A'*A, reg = L1Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false)
-    POGM( ; AHA = ,     reg = L1Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), rho = 0.95, normalize_rho = true, theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), iterations = 50, restart = :none, verbose = false)
+    POGM(A; AHA = A'*A, reg = L1Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), iterations = 50, verbose = false, rho = 0.95 / power_iterations(AHA), theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), restart = :none)
+    POGM( ; AHA = ,     reg = L1Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), iterations = 50, verbose = false, rho = 0.95 / power_iterations(AHA), theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), restart = :none)
 
 Creates a `POGM` object for the forward operator `A` or normal operator `AHA`. POGM has a 2x better worst-case bound than FISTA, but actual performance varies by application. It stores 3 extra intermediate variables the size of the image compared to FISTA. Only gradient restart scheme is implemented for now.
 
@@ -60,8 +60,7 @@ Creates a `POGM` object for the forward operator `A` or normal operator `AHA`. P
   * `AHA`                                               - normal operator is optional if `A` is supplied
   * `reg::AbstractParameterizedRegularization`          - regularization term
   * `normalizeReg::AbstractRegularizationNormalization` - regularization normalization scheme; options are `NoNormalization()`, `MeasurementBasedNormalization()`, `SystemMatrixBasedNormalization()`
-  * `rho::Real`                                         - step size for gradient step
-  * `normalize_rho::Bool`                               - normalize step size by the largest eigenvalue of `AHA`
+  * `rho::Real`                                         - step size for gradient step; the default is `0.95 / max_eigenvalue` as determined with power iterations.
   * `theta::Real`                                       - parameter for predictor-corrector step
   * `sigma_fac::Real`                                   - parameter for decreasing γ-momentum ∈ [0,1]
   * `relTol::Real`                                      - tolerance for stopping criterion
@@ -77,14 +76,13 @@ function POGM(A
             ; AHA = A'*A
             , reg = L1Regularization(zero(real(eltype(AHA))))
             , normalizeReg = NoNormalization()
-            , rho = 0.95
-            , normalize_rho = true
+            , iterations = 50
+            , verbose = false
+            , rho = 0.95 / power_iterations(AHA; verbose)
             , theta = 1
             , sigma_fac = 1
             , relTol = eps(real(eltype(AHA)))
-            , iterations = 50
             , restart = :none
-            , verbose = false
 )
 
   T = eltype(AHA)
@@ -98,10 +96,6 @@ function POGM(A
   w = similar(x)
   res = similar(x)
   res[1] = Inf # avoid spurious convergence in first iterations
-
-  if normalize_rho
-    rho /= abs(power_iterations(AHA))
-  end
 
   reg = isa(reg, AbstractVector) ? reg : [reg]
   indices = findsinks(AbstractProjectionRegularization, reg)

@@ -15,7 +15,7 @@ using StatsBase
 using LinearOperatorCollection
 using InteractiveUtils
 
-export AbstractLinearSolver, createLinearSolver, init!, deinit, solve!, linearSolverList, linearSolverListReal, applicableSolverList
+export AbstractLinearSolver, createLinearSolver, init!, deinit, solve!, linearSolverList, linearSolverListReal, applicableSolverList, power_iterations
 
 abstract type AbstractLinearSolver end
 abstract type AbstractSolverState{S} end
