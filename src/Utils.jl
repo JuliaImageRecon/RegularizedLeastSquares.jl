@@ -245,9 +245,11 @@ end
     power_iterations(AᴴA; rtol=1e-3, maxiter=30, verbose=false)
 
 Power iterations to determine the maximum eigenvalue of a normal operator or square matrix.
+For custom AᴴA which are not an abstract array or an `AbstractLinearOperator` one can pass a vector `b` of `size(AᴴA, 2)` to be used during the computation. 
 
 # Arguments
 * `AᴴA`                 - operator or matrix; has to be square
+* b                     - (optional), vector to be used during computation
 
 # Keyword Arguments
 * `rtol=1e-3`           - relative tolerance; function terminates if the change of the max. eigenvalue is smaller than this values
@@ -257,9 +259,9 @@ Power iterations to determine the maximum eigenvalue of a normal operator or squ
 # Output
 maximum eigenvalue of the operator
 """
-function power_iterations(AᴴA; rtol=1e-3, maxiter=30, verbose=false)
-  # Creating b like this allows instead it to become a GPU array
-  b = similar(LinearOperators.storage_type(AᴴA), size(AᴴA, 2))
+power_iterations(AᴴA::AbstractArray; kwargs...) = power_iterations(AᴴA, similar(AᴴA, size(AᴴA, 2)); kwargs...)
+power_iterations(AᴴA::AbstractLinearOperator; kwargs...) = power_iterations(AᴴA, similar(LinearOperators.storage_type(AᴴA), size(AᴴA, 2)); kwargs...)
+function power_iterations(AᴴA, b; rtol=1e-3, maxiter=30, verbose=false)
   copyto!(b, randn(eltype(b), size(AᴴA, 2)))
   
   bᵒˡᵈ = similar(b)
