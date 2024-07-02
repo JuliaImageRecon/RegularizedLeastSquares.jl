@@ -14,7 +14,8 @@ function testRealLinearSolver(; arrayType = Array, elType = Float32)
             @info "Testing solver $solver: $x ≈ $x_approx"
             @test x_approx ≈ x rtol = 0.1
             true
-        catch 
+        catch e
+            @error e
             false
         end skip = arrayType == JLArray && solver == DirectSolver
     end
@@ -34,7 +35,8 @@ function testComplexLinearSolver(; arrayType = Array, elType = Float32)
             @info "Testing solver $solver: $x ≈ $x_approx"
             @test x_approx ≈ x rtol = 0.1
             true
-        catch 
+        catch e
+            @error e
             false
         end skip = arrayType == JLArray && solver == DirectSolver
     end
@@ -55,7 +57,8 @@ function testComplexLinearAHASolver(; arrayType = Array, elType = Float32)
             @info "Testing solver $solver: $x ≈ $x_approx"
             @test x_approx ≈ x rtol = 0.1
             true
-        catch 
+        catch e
+            @error e
             false
         end
     end
