@@ -8,3 +8,8 @@ end
 function RegularizedLeastSquares.kaczmarz_update!(A, x::vecT, row, beta) where {T, vecT <: AbstractGPUVector{T}}
   x[:] .=  x .+ beta * conj.(view(A, row, :))
 end
+
+function RegularizedLeastSquares.kaczmarz_update!(B::Transpose{T, S}, x::vecT, row, beta) where {T, S <: AbstractGPUArray{T}, vecT <: AbstractGPUVector{T}}
+  A = B.parent
+  x[:] .=  x .+ beta * conj.(view(A, :, row))
+end

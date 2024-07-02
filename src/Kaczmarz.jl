@@ -71,7 +71,7 @@ function Kaczmarz(A
   end
 
   # Tikhonov matrix is only valid with NoNormalization or SystemMatrixBasedNormalization
-  if λ(L2) isa Vector && !(normalizeReg isa NoNormalization || normalizeReg isa SystemMatrixBasedNormalization)
+  if λ(L2) isa AbstractVector && !(normalizeReg isa NoNormalization || normalizeReg isa SystemMatrixBasedNormalization)
     error("Tikhonov matrix for Kaczmarz is only valid with no or system matrix based normalization")
   end
 
@@ -154,7 +154,7 @@ function init!(solver::Kaczmarz, state::KaczmarzState{T, vecT}, b::vecT; x0 = 0)
   state.vl .= 0
 
   state.u .= b
-  if λ_ isa Vector
+  if λ_ isa AbstractVector
     state.ɛw = 0
   else
     state.ɛw = sqrt(λ_)
@@ -163,7 +163,7 @@ function init!(solver::Kaczmarz, state::KaczmarzState{T, vecT}, b::vecT; x0 = 0)
 end
 
 
-function solversolution(solver::Kaczmarz{matT, RN}) where {matT, R<:L2Regularization{<:Vector}, RN <: Union{R, AbstractNestedRegularization{<:R}}}
+function solversolution(solver::Kaczmarz{matT, RN}) where {matT, R<:L2Regularization{<:AbstractVector}, RN <: Union{R, AbstractNestedRegularization{<:R}}}
   return solver.state.x .* (1 ./ sqrt.(λ(solver.L2)))
 end
 solversolution(solver::Kaczmarz) = solver.state.x
@@ -239,7 +239,7 @@ function initkaczmarz(A,λ)
   end
   return A, denom, rowindex
 end
-function initkaczmarz(A, λ::Vector)
+function initkaczmarz(A, λ::AbstractVector)
   λ = real(eltype(A)).(λ)
   A = initikhonov(A, λ)
   return initkaczmarz(A, 0)
