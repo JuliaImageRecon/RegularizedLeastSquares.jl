@@ -305,10 +305,12 @@ end
       @testset "TV Prox Directional" testDirectionalTVprox(;arrayType)
       @testset "Positive Prox" testPositive(;arrayType)
       @testset "Projection Prox" testProj(;arrayType)
-      @testset "Nuclear Prox" testNuclear(;arrayType)
-      @testset "LLR Prox: $arrayType" testLLR(;arrayType)
-      @testset "LLR Prox Overlapping: $arrayType" testLLROverlapping(;arrayType)
-      @testset "LLR Prox 3D: $arrayType" testLLR_3D(;arrayType)
+      if !areTypesDefined # Don't run these tests on GPUs/buildkite, since svd can fail
+        @testset "Nuclear Prox" testNuclear(;arrayType)
+        @testset "LLR Prox: $arrayType" testLLR(;arrayType)
+        @testset "LLR Prox Overlapping: $arrayType" testLLROverlapping(;arrayType)
+        @testset "LLR Prox 3D: $arrayType" testLLR_3D(;arrayType)
+      end
     end
   end
   @testset "Prox Lambda Conversion" testConversion()
