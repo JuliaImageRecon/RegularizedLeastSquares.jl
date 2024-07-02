@@ -159,7 +159,7 @@ function init!(solver::OptISTA, state::OptISTAState{rT, vecT}, b::vecT; x0 = 0, 
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, state.x₀)
 end
 
-solverconvergence(solver::OptISTA) = (; :residual => norm(solver.res))
+solverconvergence(state::OptISTAState) = (; :residual => norm(state.res))
 
 """
   iterate(it::OptISTA, iteration::Int=0)
@@ -211,5 +211,3 @@ end
 @inline converged(solver::OptISTA, state::OptISTAState) = (state.rel_res_norm < state.relTol)
 
 @inline done(solver::OptISTA, state::OptISTAState) = converged(solver, state) || state.iteration >= solver.iterations
-
-solversolution(solver::OptISTA) = solver.state.x 

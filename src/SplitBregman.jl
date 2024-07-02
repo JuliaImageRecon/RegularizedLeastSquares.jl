@@ -199,7 +199,7 @@ function init!(solver::SplitBregman, state::SplitBregmanState{rT, rvecT, vecT}, 
   state.iteration = 1
 end
 
-solverconvergence(solver::SplitBregman) = (; :primal => solver.rᵏ, :dual => solver.sᵏ)
+solverconvergence(state::SplitBregmanState) = (; :primal => state.rᵏ, :dual => state.sᵏ)
 
 function iterate(solver::SplitBregman, state=solver.state)
   if done(solver, state) return nothing end

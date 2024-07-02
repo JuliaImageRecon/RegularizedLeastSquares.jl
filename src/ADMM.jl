@@ -194,7 +194,7 @@ function init!(solver::ADMM, state::ADMMState{rT, rvecT, vecT}, b::vecT; x0 = 0)
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
 end
 
-solverconvergence(solver::ADMM) = (; :primal => solver.rᵏ, :dual => solver.sᵏ)
+solverconvergence(state::ADMMState) = (; :primal => state.rᵏ, :dual => state.sᵏ)
 
 
 """
@@ -285,5 +285,3 @@ function converged(solver::ADMM, state::ADMMState)
 end
 
 @inline done(solver::ADMM, state::ADMMState) = converged(solver, state) || state.iteration >= solver.iterations
-
-solversolution(solver::ADMM) = solver.state.x 

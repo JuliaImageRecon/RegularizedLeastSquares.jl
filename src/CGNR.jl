@@ -133,7 +133,7 @@ initCGNR(x₀, A, b) = mul!(x₀, adjoint(A), b)
 initCGNR(x₀, prod::ProdOp{T, <:WeightingOp, matT}, b) where {T, matT} = mul!(x₀, adjoint(prod.B), b .* prod.A.weights)
 initCGNR(x₀, ::Nothing, b) = x₀ .= b
 
-solverconvergence(solver::CGNR) = (; :residual => norm(solver.x₀))
+solverconvergence(state::CGNRState) = (; :residual => norm(state.x₀))
 
 """
   iterate(solver::CGNR{vecT,T,Tsparse}, iteration::Int=0) where {vecT,T,Tsparse}
@@ -183,5 +183,3 @@ function converged(::CGNR, state::CGNRState)
 end
 
 @inline done(solver::CGNR, state::CGNRState) = converged(solver, state) || state.iteration >= min(solver.iterations, size(solver.AHA, 2))
-
-solversolution(solver::CGNR) = solver.state.x 

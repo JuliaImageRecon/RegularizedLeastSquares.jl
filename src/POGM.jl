@@ -169,7 +169,7 @@ function init!(solver::POGM, state::POGMState{rT, vecT}, b::vecT; x0 = 0, theta=
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, state.x₀)
 end
 
-solverconvergence(solver::POGM) = (; :residual => norm(solver.res))
+solverconvergence(state::POGMState) = (; :residual => norm(state.res))
 
 """
   iterate(it::POGM, iteration::Int=0)
@@ -245,5 +245,3 @@ end
 @inline converged(solver::POGM, state::POGMState) = (state.rel_res_norm < state.relTol)
 
 @inline done(solver::POGM, state::POGMState) = converged(solver, state) || state.iteration >= solver.iterations
-
-solversolution(solver::POGM) = solver.state.x 

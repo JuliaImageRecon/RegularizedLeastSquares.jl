@@ -168,6 +168,7 @@ Return a named tuple of the solvers current convergence metrics
 function solverconvergence end
 
 solverstate(solver::AbstractLinearSolver) = solver.state
+solverconvergence(solver::AbstractLinearSolver) = solverconvergence(solverstate(solver))
 
 init!(solver::AbstractLinearSolver, b; kwargs...) = init!(solver, solverstate(solver), b; kwargs...)
 

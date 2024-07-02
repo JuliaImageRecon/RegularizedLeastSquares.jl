@@ -134,7 +134,7 @@ function init!(solver::FISTA, state::FISTAState{rT, vecT}, b::vecT; x0 = 0, thet
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, state.x₀)
 end
 
-solverconvergence(solver::FISTA) = (; :residual => norm(solver.state.res))
+solverconvergence(state::FISTAState) = (; :residual => norm(state.res))
 
 
 """
@@ -193,5 +193,3 @@ end
 @inline converged(::FISTA, state::FISTAState) = (state.rel_res_norm < state.relTol)
 
 @inline done(solver::FISTA, state::FISTAState) = converged(solver, state) || state.iteration>=solver.iterations
-
-solversolution(solver::FISTA) = solver.state.x 
