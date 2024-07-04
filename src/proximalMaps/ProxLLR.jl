@@ -103,7 +103,7 @@ end
 """
     norm(reg::LLRRegularization, x, λ)
 
-returns the value of the LLR-regularization term. The norm is only implemented for 2D, non-fully overlapping blocks. 
+returns the value of the LLR-regularization term. The norm is only implemented for 2D, non-fully overlapping blocks.
 """
 function norm(reg::LLRRegularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T <: Real}
     shape = reg.shape
@@ -173,7 +173,7 @@ performs the proximal map for LLR regularization using singular-value-thresholdi
 function proxLLROverlapping!(reg::LLRRegularization{TR, N, TI}, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {TR, N, TI, T}
     shape = reg.shape
     blockSize = reg.blockSize
-    
+
     x = reshape(x, tuple(shape..., length(x) ÷ prod(shape)))
 
     block_idx = CartesianIndices(blockSize)
