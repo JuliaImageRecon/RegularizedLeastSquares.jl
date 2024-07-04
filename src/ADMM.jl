@@ -1,13 +1,22 @@
 export ADMM
 
-mutable struct ADMM{matT,opT,R,ropT,P,vecT,rvecT,preconT,rT} <: AbstractPrimalDualSolver where {vecT <: AbstractVector{Union{rT, Complex{rT}}}, rvecT <: AbstractVector{rT}}
-  # operators and regularization
+mutable struct ADMM{matT,opT,R,ropT,P,preconT} <: AbstractPrimalDualSolver
   A::matT
   reg::Vector{R}
   regTrafo::Vector{ropT}
   proj::Vector{P}
-  # fields and operators for x update
   AHA::opT
+  precon::preconT
+  normalizeReg::AbstractRegularizationNormalization
+  vary_ρ::Symbol
+  verbose::Bool
+  iterations::Int64
+  iterationsCG::Int64
+  state::AbstractSolverState{<:ADMM}
+end
+
+mutable struct ADMMState{rT <: Real, rvecT <: AbstractVector{rT}, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}} <: AbstractSolverState{ADMM}
+  # fields and operators for x update
   β::vecT
   β_y::vecT
   # fields for primal & dual variables
@@ -16,12 +25,10 @@ mutable struct ADMM{matT,opT,R,ropT,P,vecT,rvecT,preconT,rT} <: AbstractPrimalDu
   z::Vector{vecT}
   zᵒˡᵈ::Vector{vecT}
   u::Vector{vecT}
-  uᵒˡᵈ::Vector{vecT}
-  # other parameters
-  precon::preconT
+  uᵒˡᵈ::Vector{vecT}  
+  # other paremters
   ρ::rvecT
-  iterations::Int64
-  iterationsCG::Int64
+  iteration::Int64
   # state variables for CG
   cgStateVars::CGStateVariables
   # convergence parameters
@@ -34,9 +41,6 @@ mutable struct ADMM{matT,opT,R,ropT,P,vecT,rvecT,preconT,rT} <: AbstractPrimalDu
   absTol::rT
   relTol::rT
   tolInner::rT
-  normalizeReg::AbstractRegularizationNormalization
-  vary_ρ::Symbol
-  verbose::Bool
 end
 
 """
@@ -75,7 +79,7 @@ function ADMM(A
             ; AHA = A'*A
             , precon = Identity()
             , reg = L1Regularization(zero(real(eltype(AHA))))
-            , regTrafo = opEye(eltype(AHA), size(AHA,1))
+            , regTrafo = opEye(eltype(AHA), size(AHA,1), S = LinearOperators.storage_type(AHA))
             , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
             , rho = 1e-1
             , vary_rho::Symbol = :none
@@ -131,7 +135,29 @@ function ADMM(A
   # normalization parameters
   reg = normalize(ADMM, normalizeReg, reg, A, nothing)
 
-  return ADMM(A, reg, regTrafo, proj, AHA, β, β_y, x, xᵒˡᵈ, z, zᵒˡᵈ, u, uᵒˡᵈ, precon, rho, iterations, iterationsCG, cgStateVars, rᵏ, sᵏ, ɛᵖʳⁱ, ɛᵈᵘᵃ, rT(0), Δ, rT(absTol), rT(relTol), rT(tolInner), normalizeReg, vary_rho, verbose)
+  state = ADMMState(β, β_y, x, xᵒˡᵈ, z, zᵒˡᵈ, u, uᵒˡᵈ, rho, 0, cgStateVars, rᵏ, sᵏ, ɛᵖʳⁱ, ɛᵈᵘᵃ, rT(0), Δ, rT(absTol), rT(relTol), rT(tolInner))
+
+  return ADMM(A, reg, regTrafo, proj, AHA, precon, normalizeReg, vary_rho, verbose, iterations, iterationsCG, state)
+end
+
+function init!(solver::ADMM, state::ADMMState{rT, rvecT, vecT}, b::otherT; kwargs...) where {rT, rvecT, vecT, otherT}
+  x    = similar(b, size(state.x)...)
+  xᵒˡᵈ = similar(b, size(state.xᵒˡᵈ)...)
+  β    = similar(b, size(state.β)...)
+  β_y  = similar(b, size(state.β_y)...)
+
+  z    = [similar(b, size(state.z[i])...)     for i ∈ eachindex(solver.reg)]
+  zᵒˡᵈ = [similar(b, size(state.zᵒˡᵈ[i])...)  for i ∈ eachindex(solver.reg)]
+  u    = [similar(b, size(state.u[i])...)     for i ∈ eachindex(solver.reg)]
+  uᵒˡᵈ = [similar(b, size(state.uᵒˡᵈ[i])...)  for i ∈ eachindex(solver.reg)]
+
+  cgStateVars = CGStateVariables(zero(x),similar(x),similar(x))
+
+  state = ADMMState(β, β_y, x, xᵒˡᵈ, z, zᵒˡᵈ, u, uᵒˡᵈ, state.ρ, state.iteration, cgStateVars,
+      state.rᵏ, state.sᵏ, state.ɛᵖʳⁱ, state.ɛᵈᵘᵃ, state.σᵃᵇˢ, state.Δ, state.absTol, state.relTol, state.tolInner)
+  
+  solver.state = state
+  init!(solver, state, b; kwargs...)
 end
 
 """
@@ -139,35 +165,36 @@ end
 
 (re-) initializes the ADMM iterator
 """
-function init!(solver::ADMM, b; x0=0)
-  solver.x .= x0
+function init!(solver::ADMM, state::ADMMState{rT, rvecT, vecT}, b::vecT; x0 = 0) where {rT, rvecT, vecT}
+  state.x .= x0
 
   # right hand side for the x-update
   if solver.A === nothing
-    solver.β_y .= b
+    state.β_y .= b
   else
-    mul!(solver.β_y, adjoint(solver.A), b)
+    mul!(state.β_y, adjoint(solver.A), b)
   end
 
   # primal and dual variables
   for i ∈ eachindex(solver.reg)
-    solver.z[i] .= solver.regTrafo[i] * solver.x
-    solver.u[i] .= 0
+    state.z[i] .= solver.regTrafo[i] * state.x
+    state.u[i] .= 0
   end
 
   # convergence parameter
-  solver.rᵏ .= Inf
-  solver.sᵏ .= Inf
-  solver.ɛᵖʳⁱ .= 0
-  solver.ɛᵈᵘᵃ .= 0
-  solver.σᵃᵇˢ = sqrt(length(b)) * solver.absTol
-  solver.Δ .= Inf
+  state.rᵏ .= Inf
+  state.sᵏ .= Inf
+  state.ɛᵖʳⁱ .= 0
+  state.ɛᵈᵘᵃ .= 0
+  state.σᵃᵇˢ = sqrt(length(b)) * state.absTol
+  state.Δ .= Inf
 
+  state.iteration = 0
   # normalization of regularization parameters
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
 end
 
-solverconvergence(solver::ADMM) = (; :primal => solver.rᵏ, :dual => solver.sᵏ)
+solverconvergence(state::ADMMState) = (; :primal => state.rᵏ, :dual => state.sᵏ)
 
 
 """
@@ -175,65 +202,65 @@ solverconvergence(solver::ADMM) = (; :primal => solver.rᵏ, :dual => solver.s�
 
 performs one ADMM iteration.
 """
-function iterate(solver::ADMM, iteration=1)
-  done(solver, iteration) && return nothing
+function iterate(solver::ADMM, state::S = solver.state) where S <: AbstractSolverState{<:ADMM}
+  done(solver, state) && return nothing
   solver.verbose && println("Outer ADMM Iteration #$iteration")
 
   # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 Σ_i||Φi*x+ui-zi||²
   # <=> (A'A+ρ Σ_i Φi'Φi)*x = A'b+ρΣ_i Φi'(zi-ui)
-  solver.β .= solver.β_y
+  state.β .= state.β_y
   AHA = solver.AHA
   for i ∈ eachindex(solver.reg)
-    mul!(solver.β, adjoint(solver.regTrafo[i]), solver.z[i],  solver.ρ[i], 1)
-    mul!(solver.β, adjoint(solver.regTrafo[i]), solver.u[i], -solver.ρ[i], 1)
-    AHA += solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
+    mul!(state.β, adjoint(solver.regTrafo[i]), state.z[i],  state.ρ[i], 1)
+    mul!(state.β, adjoint(solver.regTrafo[i]), state.u[i], -state.ρ[i], 1)
+    AHA += state.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
   end
   solver.verbose && println("conjugated gradients: ")
-  solver.xᵒˡᵈ .= solver.x
-  cg!(solver.x, AHA, solver.β, Pl=solver.precon, maxiter=solver.iterationsCG, reltol=solver.tolInner, statevars=solver.cgStateVars, verbose=solver.verbose)
+  state.xᵒˡᵈ .= state.x
+  cg!(state.x, AHA, state.β, Pl=solver.precon, maxiter=solver.iterationsCG, reltol=state.tolInner, statevars=state.cgStateVars, verbose=solver.verbose)
 
   for proj in solver.proj
-    prox!(proj, solver.x)
+    prox!(proj, state.x)
   end
 
   #  proximal map for regularization terms
   for i ∈ eachindex(solver.reg)
     # swap z and zᵒˡᵈ w/o copying data
-    tmp = solver.zᵒˡᵈ[i]
-    solver.zᵒˡᵈ[i] = solver.z[i]
-    solver.z[i] = tmp
+    tmp = state.zᵒˡᵈ[i]
+    state.zᵒˡᵈ[i] = state.z[i]
+    state.z[i] = tmp
 
     # 2. update z using the proximal map of 1/ρ*g(x)
-    mul!(solver.z[i], solver.regTrafo[i], solver.x)
-    solver.z[i] .+= solver.u[i]
-    if solver.ρ[i] != 0
-      prox!(solver.reg[i], solver.z[i], λ(solver.reg[i])/2solver.ρ[i]) # λ is divided by 2 to match the ISTA-type algorithms
+    mul!(state.z[i], solver.regTrafo[i], state.x)
+    state.z[i] .+= state.u[i]
+    if state.ρ[i] != 0
+      prox!(solver.reg[i], state.z[i], λ(solver.reg[i])/2state.ρ[i]) # λ is divided by 2 to match the ISTA-type algorithms
     end
 
     # 3. update u
-    solver.uᵒˡᵈ[i] .= solver.u[i]
-    mul!(solver.u[i], solver.regTrafo[i], solver.x, 1, 1)
-    solver.u[i] .-= solver.z[i]
+    state.uᵒˡᵈ[i] .= state.u[i]
+    mul!(state.u[i], solver.regTrafo[i], state.x, 1, 1)
+    state.u[i] .-= state.z[i]
 
     # update convergence criteria (one for each constraint)
-    solver.rᵏ[i] = norm(solver.regTrafo[i] * solver.x - solver.z[i])  # primal residual (x-z)
-    solver.sᵏ[i] = norm(solver.ρ[i] * adjoint(solver.regTrafo[i]) * (solver.z[i] .- solver.zᵒˡᵈ[i])) # dual residual (concerning f(x))
+    state.rᵏ[i] = norm(solver.regTrafo[i] * state.x - state.z[i])  # primal residual (x-z)
+    state.sᵏ[i] = norm(state.ρ[i] * adjoint(solver.regTrafo[i]) * (state.z[i] .- state.zᵒˡᵈ[i])) # dual residual (concerning f(x))
 
-    solver.ɛᵖʳⁱ[i] = max(norm(solver.regTrafo[i] * solver.x), norm(solver.z[i]))
-    solver.ɛᵈᵘᵃ[i] = norm(solver.ρ[i] * adjoint(solver.regTrafo[i]) * solver.u[i])
+    state.ɛᵖʳⁱ[i] = max(norm(solver.regTrafo[i] * state.x), norm(state.z[i]))
+    state.ɛᵈᵘᵃ[i] = norm(state.ρ[i] * adjoint(solver.regTrafo[i]) * state.u[i])
 
-    Δᵒˡᵈ = solver.Δ[i]
-    solver.Δ[i] = norm(solver.x    .- solver.xᵒˡᵈ   ) +
-                  norm(solver.z[i] .- solver.zᵒˡᵈ[i]) +
-                  norm(solver.u[i] .- solver.uᵒˡᵈ[i])
+    Δᵒˡᵈ = state.Δ[i]
+    state.Δ[i] = norm(state.x    .- state.xᵒˡᵈ   ) +
+                  norm(state.z[i] .- state.zᵒˡᵈ[i]) +
+                  norm(state.u[i] .- state.uᵒˡᵈ[i])
 
-    if (solver.vary_ρ == :balance && solver.rᵏ[i]/solver.ɛᵖʳⁱ[i] > 10solver.sᵏ[i]/solver.ɛᵈᵘᵃ[i]) || # adapt ρ according to Boyd et al.
-       (solver.vary_ρ == :PnP     && solver.Δ[i]/Δᵒˡᵈ > 0.9) # adapt ρ according to Chang et al.
-      solver.ρ[i] *= 2
-      solver.u[i] ./= 2
-    elseif solver.vary_ρ == :balance && solver.sᵏ[i]/solver.ɛᵈᵘᵃ[i] > 10solver.rᵏ[i]/solver.ɛᵖʳⁱ[i]
-      solver.ρ[i] /= 2
-      solver.u[i] .*= 2
+    if (solver.vary_ρ == :balance && state.rᵏ[i]/state.ɛᵖʳⁱ[i] > 10state.sᵏ[i]/state.ɛᵈᵘᵃ[i]) || # adapt ρ according to Boyd et al.
+       (solver.vary_ρ == :PnP     && state.Δ[i]/Δᵒˡᵈ > 0.9) # adapt ρ according to Chang et al.
+      state.ρ[i] *= 2
+      state.u[i] ./= 2
+    elseif solver.vary_ρ == :balance && state.sᵏ[i]/state.ɛᵈᵘᵃ[i] > 10state.rᵏ[i]/state.ɛᵖʳⁱ[i]
+      state.ρ[i] /= 2
+      state.u[i] .*= 2
     end
 
     if solver.verbose
@@ -245,15 +272,16 @@ function iterate(solver::ADMM, iteration=1)
     end
   end
 
-  return solver.rᵏ, iteration+1
+  state.iteration += 1
+  return state.x, state
 end
 
-function converged(solver::ADMM)
+function converged(solver::ADMM, state::ADMMState)
   for i ∈ eachindex(solver.reg)
-    (solver.rᵏ[i] >= solver.σᵃᵇˢ + solver.relTol * solver.ɛᵖʳⁱ[i]) && return false
-    (solver.sᵏ[i] >= solver.σᵃᵇˢ + solver.relTol * solver.ɛᵈᵘᵃ[i]) && return false
+    (state.rᵏ[i] >= state.σᵃᵇˢ + state.relTol * state.ɛᵖʳⁱ[i]) && return false
+    (state.sᵏ[i] >= state.σᵃᵇˢ + state.relTol * state.ɛᵈᵘᵃ[i]) && return false
   end
-  return true
+  return false
 end
 
-@inline done(solver::ADMM,iteration::Int) = converged(solver) || iteration >= solver.iterations
+@inline done(solver::ADMM, state::ADMMState) = converged(solver, state) || state.iteration >= solver.iterations
