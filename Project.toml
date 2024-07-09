@@ -4,32 +4,37 @@ authors = ["Tobias Knopp <tobias@knoppweb.de>"]
 version = "0.14.1"
 
 [deps]
-Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-LinearOperatorCollection = "a4a2c56f-fead-462a-a3ab-85921a5f2575"
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-LinearOperators = "5c8ed15e-5a4c-59e4-a42b-c7e8811fb125"
 FLoops = "cc61a311-1640-44b5-9fba-1b764f453329"
-IterativeSolvers = "42fd0dbc-a981-5370-80f2-aaf504508153"
-StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
-VectorizationBase = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
-
-[extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+IterativeSolvers = "42fd0dbc-a981-5370-80f2-aaf504508153"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+LinearOperatorCollection = "a4a2c56f-fead-462a-a3ab-85921a5f2575"
+LinearOperators = "5c8ed15e-5a4c-59e4-a42b-c7e8811fb125"
+MPIFiles = "371237a9-e6c1-5201-9adb-3d8cfa78fa9f"
+MPIMeasurements = "a874a27a-e9a7-503d-98b6-bf61df4bb725"
+MPIReco = "e4246700-6248-511e-8146-a1d1f47669d2"
+Noise = "81d43f40-5267-43b7-ae1c-8b967f377efa"
+OpenMPIData = "23f492f2-76ae-56df-892e-e25cea322c51"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+VectorizationBase = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 
 [compat]
-IterativeSolvers = "0.9"
-julia = "1.9"
-StatsBase = "0.33, 0.34"
+FFTW = "1.0"
 FLoops = "0.2"
-VectorizationBase = "0.19, 0.21"
+IterativeSolvers = "0.9"
 LinearOperatorCollection = "1.2"
 LinearOperators = "2.3.3"
-FFTW = "1.0"
+StatsBase = "0.33, 0.34"
+VectorizationBase = "0.19, 0.21"
+julia = "1.9"
+
+[extras]
+FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test", "Random", "FFTW"]

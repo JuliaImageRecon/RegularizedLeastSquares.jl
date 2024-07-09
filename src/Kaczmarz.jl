@@ -21,20 +21,20 @@ mutable struct Kaczmarz{matT,R,T,U,RN,matAHA} <: AbstractRowActionSolver
   seed::Int64
   iterations::Int64
   normalizeReg::AbstractRegularizationNormalization
-  
-  U_k::Vector{Int64} # CHANGE_KR
-  greedy_randomized::Bool # CHANGE_KR
-  theta::Union{Nothing,Float64}# CHANGE_KR
-  e_k::T # CHANGE_KR
-  norms::Vector{T}
+
+  U_k::Vector{Int64}
+  greedy_randomized::Bool
+  theta::Union{Nothing,Float64}
+  e_k::U
+  norms::Vector{U}
   norm_size::Int64
   Fnorm::T
   r::Vector{T}
   B::matAHA
   i_k::Int64
-  diff_vec_sq::Vector{T}
-  diff_numb::T
-  diff_denom::T
+  diff_vec_sq::Vector{U}
+  diff_numb::U
+  diff_denom::U
   r_probs::Vector{U}
 end
 
@@ -60,16 +60,8 @@ Creates a Kaczmarz object for the forward operator `A`.
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
 function Kaczmarz(A
-                ; reg = L2Regularization(zero(real(eltype(A))))
-                , normalizeReg::AbstractRegularizationNormalization = NoNormalization()
-                , randomized::Bool = false
-                , subMatrixFraction::Real = 0.15
-                , shuffleRows::Bool = false
-                , seed::Int = 1234
-                , iterations::Int = 10
-                , greedy_randomized::Bool = false # CHANGE_KR
-                , theta::Union{Nothing,Float64}=nothing
-                )
+  ; reg=L2Regularization(zero(real(eltype(A)))), normalizeReg::AbstractRegularizationNormalization=NoNormalization(), randomized::Bool=false, subMatrixFraction::Real=0.15, shuffleRows::Bool=false, seed::Int=1234, iterations::Int=10, greedy_randomized::Bool=false, theta::Union{Nothing,Float64}=nothing
+)
 
   T = real(eltype(A))
 
@@ -99,19 +91,24 @@ function Kaczmarz(A
   end
   other = identity.(other)
 
-  M, N = size(A) # CHANGE_KR
-  norms = zeros(eltype(A), M) # CHANGE_KR
+  M, N = size(A)
   B = typeof(A)
+  norms = zeros(eltype(T), M)
   # setup denom and rowindex
-  if greedy_randomized == true # CHANGE_KR
-    A, denom, rowindex, norms = initkaczmarz(A, λ(L2), greedy_randomized)
-    B = A * adjoint(A)  # CHANGE_KR
+  if greedy_randomized == true
+    #A, denom, rowindex, norms = initkaczmarz(A, λ(L2), greedy_randomized, true)
+    B = (A * adjoint(A)) + (λ(L2) * I)
     # Calculate all denominators - B * 1/(||A||²)
+    # if λ(L2) isa Vector
+    #   A, denom, rowindex, norms = initkaczmarz(A, λ(L2), greedy_randomized, true)
+    # else
+    A, denom, rowindex, norms = initkaczmarz(A, λ(L2), greedy_randomized)
+    #end
     for x in 1:M
-      B[:, x] = B[:, x] * denom[x]
+      B[:, x] = (B[:, x]) * denom[x]
     end
   else
-  	A, denom, rowindex = initkaczmarz(A, λ(L2))
+    A, denom, rowindex = initkaczmarz(A, λ(L2))
   end
 
   rowIndexCycle = collect(1:length(rowindex))
@@ -120,29 +117,30 @@ function Kaczmarz(A
     probabilities = T.(rowProbabilities(A, rowindex))
   end
 
-  subMatrixSize = round(Int, subMatrixFraction*M)
+  subMatrixSize = round(Int, subMatrixFraction * M)
 
-  u = zeros(eltype(A),M)
-  x = zeros(eltype(A),N)
-  vl = zeros(eltype(A),M)
+  u = zeros(eltype(A), M)
+  x = zeros(eltype(A), N)
+  vl = zeros(eltype(A), M)
   εw = zero(eltype(A))
   τl = zero(eltype(A))
   αl = zero(eltype(A))
 
-  U_k = Int64[] # CHANGE_KR
-  e_k = zero(eltype(A)) # CHANGE_KR
+  e_k = zero(eltype(denom))
   norm_size = M
-  Fnorm = eltype(A)(1.0 / norm(A, 2)^2)
-  r = eltype(A)[]
+  U_k = zeros(Int64, norm_size)
+  Fnorm = eltype(A)(1.0 / ((norm(A, 2)^2) + λ(L2)))
+  r_probs = zeros(eltype(T), norm_size) # Inhalt auf 0 setzen statt allokieren solver.r_probs .= zero(eltype(solver.r_probs))
+  r = zeros(eltype(A), norm_size)
   i_k = 0
-  diff_vec_sq = zeros(eltype(A), M)
-  diff_numb = zero(eltype(A))
-  diff_denom = zero(eltype(A))
-  r_probs = zeros(real(eltype(A)), M)
-  
+  diff_vec_sq = zeros(eltype(T), M)
+  diff_numb = zero(eltype(T))
+  diff_denom = zero(eltype(T))
+  r_probs = zeros(real(eltype(T)), M)
+
   return Kaczmarz(A, u, L2, other, denom, rowindex, rowIndexCycle, x, vl, εw, τl, αl,
-                  randomized, subMatrixSize, probabilities, shuffleRows,
-                  Int64(seed), iterations,
+    randomized, subMatrixSize, probabilities, shuffleRows,
+    Int64(seed), iterations,
     normalizeReg, U_k, greedy_randomized, theta, e_k, norms, norm_size, Fnorm, r, B, i_k, diff_vec_sq, diff_numb, diff_denom, r_probs)
 end
 
@@ -151,9 +149,9 @@ end
 
 (re-) initializes the Kacmarz iterator
 """
-function init!(solver::Kaczmarz, b; x0 = 0)
+function init!(solver::Kaczmarz, b; x0=0)
   λ_prev = λ(solver.L2)
-  solver.L2  = normalize(solver, solver.normalizeReg, solver.L2,  solver.A, b)
+  solver.L2 = normalize(solver, solver.normalizeReg, solver.L2, solver.A, b)
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
 
   λ_ = λ(solver.L2)
@@ -187,37 +185,32 @@ function init!(solver::Kaczmarz, b; x0 = 0)
   end
 
   if solver.greedy_randomized
-    solver.r = copy(b)
+    if x0 == 0
+      solver.r = copy(b)
+    else
+      # If x0 is set not to zero Vector
+      copy_b = copy(b)
+      Ax = A * solver.x
+      Ax_reg = Ax .- solver.εw
+      solver.r = copy_b - Ax_reg
+    end
   end
 end
 
 
-function solversolution(solver::Kaczmarz{matT, RN}) where {matT, R<:L2Regularization{<:Vector}, RN <: Union{R, AbstractNestedRegularization{<:R}}}
+function solversolution(solver::Kaczmarz{matT,RN}) where {matT,R<:L2Regularization{<:Vector},RN<:Union{R,AbstractNestedRegularization{<:R}}}
   return solver.x .* (1 ./ sqrt.(λ(solver.L2)))
 end
 solversolution(solver::Kaczmarz) = solver.x
 solverconvergence(solver::Kaczmarz) = (; :residual => norm(solver.vl))
 
 function iterate(solver::Kaczmarz, iteration::Int=0)
-  if done(solver,iteration) return nothing end
+  if done(solver, iteration)
+    return nothing
+  end
 
   if solver.randomized
     usedIndices = Int.(StatsBase.sample!(Random.GLOBAL_RNG, solver.rowIndexCycle, weights(solver.probabilities), zeros(solver.subMatrixSize), replace=false))
-  # CHANGE_KR
-  elseif solver.greedy_randomized
-    calcDiff(solver)
-    max = calcMax(solver)
-    calcEk(solver, max, solver.theta)
-    calcIndexSet(solver)
-    calcProbSelection(solver)
-    row = solver.rowindex[solver.i_k]
-    iterate_row_index_greedy(solver, solver.A, row, solver.i_k)
-
-    for r in solver.reg
-      prox!(r, solver.x)
-    end
-    calcR(solver)
-    return solver.vl, iteration + 1
   else
     usedIndices = solver.rowIndexCycle
   end
@@ -234,22 +227,27 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
   return solver.vl, iteration + 1
 end
 
-iterate_row_index(solver::Kaczmarz, A::AbstractLinearSolver, row, index) = iterate_row_index(solver, Matrix(A[row, :]), row, index) 
+iterate_row_index(solver::Kaczmarz, A::AbstractLinearSolver, row, index) = iterate_row_index(solver, Matrix(A[row, :]), row, index)
 function iterate_row_index(solver::Kaczmarz, A, row, index)
-  solver.τl = dot_with_matrix_row(A,solver.x,row)
-  solver.αl = solver.denom[index]*(solver.u[row]-solver.τl-solver.ɛw*solver.vl[row])
-  kaczmarz_update!(A,solver.x,row,solver.αl)
-  solver.vl[row] += solver.αl*solver.ɛw
+  if solver.greedy_randomized
+    prepareGreedyKaczmarz(solver)
+    iterate_row_index_greedy(solver, solver.A, solver.i_k, solver.i_k)
+    row = solver.i_k
+  else
+    solver.τl = dot_with_matrix_row(A, solver.x, row)
+    solver.αl = solver.denom[index] * (solver.u[row] - solver.τl - solver.ɛw * solver.vl[row])
+    solver.vl[row] += solver.αl * solver.ɛw
+  end
+  kaczmarz_update!(A, solver.x, row, solver.αl)
 end
 
 iterate_row_index_greedy(solver::Kaczmarz, A::AbstractLinearSolver, row, index) = iterate_row_index_greedy(solver, Matrix(A[row, :]), row, index)
 function iterate_row_index_greedy(solver::Kaczmarz, A, row, index)
-  solver.αl = solver.denom[index] * (solver.r[index] - solver.ɛw * solver.vl[row])
-  kaczmarz_update!(A, solver.x, row, solver.αl)
-  solver.vl[row] += solver.αl * solver.ɛw
+  solver.αl = solver.denom[index] * (solver.r[row])
+  calcR(solver)
 end
 
-@inline done(solver::Kaczmarz,iteration::Int) = iteration>=solver.iterations
+@inline done(solver::Kaczmarz, iteration::Int) = iteration >= solver.iterations
 
 
 """
@@ -259,22 +257,22 @@ This function calculates the probabilities of the rows of the system matrix
 function rowProbabilities(A, rowindex)
   normA² = rownorm²(A, 1:size(A, 1))
   p = zeros(length(rowindex))
-  for i=1:length(rowindex)
+  for i = 1:length(rowindex)
     j = rowindex[i]
     p[i] = rownorm²(A, j) / (normA²)
   end
   return p
 end
 
-# CHANGE_KR
-# Calculate next useable index
+
+#Calculate next useable index
 function calcProbSelection(solver::Kaczmarz)
-  r_denom = 1.0 / (norm(solver.r)^2)
-  solver.r_probs = zeros(size(solver.r, 1))
+  #r_denom = 1.0 / (norm(solver.r)^2)
+  solver.r_probs .= zero(eltype(solver.r_probs)) # Inhalt auf 0 setzen statt allokieren solver.r_probs .= zero(eltype(solver.r_probs))
   for i in solver.U_k
     if (i != 0)
-      solver.r_probs[i] = (abs(solver.r[i])^2) * r_denom
-  end
+      solver.r_probs[i] = (solver.diff_vec_sq[i]) * solver.diff_denom
+    end
   end
   solver.i_k = sample(solver.U_k, ProbabilityWeights(solver.r_probs), 1, replace=false)[1]
 end
@@ -287,31 +285,32 @@ end
 This function saves the denominators to compute αl in denom and the rowindices,
 which lead to an update of x in rowindex.
 """
-function initkaczmarz(A,λ, greedy_randomized)
+function initkaczmarz(A, λ, greedy_randomized)
   T = real(eltype(A))
   denom = T[]
+  norms = T[]
   rowindex = Int64[]
-  norms = eltype(A)[] # CHANGE_KR
   for i = 1:size(A, 1)
-    s² = rownorm²(A,i)
-    if s²>0
-      push!(denom,1/(s²+λ))
-      push!(norms, s²) # CHANGE_KR
-      push!(rowindex,i)
+    s² = rownorm²(A, i)
+    if s² > 0
+      norm = (s² + λ)
+      push!(norms, norm)
+      push!(denom, 1.0 / norm)
+      push!(rowindex, i)
     end
   end
   return A, denom, rowindex, norms
 end
 
-function initkaczmarz(A,λ)
+function initkaczmarz(A, λ)
   T = real(eltype(A))
   denom = T[]
   rowindex = Int64[]
   for i = 1:size(A, 1)
-    s² = rownorm²(A,i)
-    if s²>0
-      push!(denom,1/(s²+λ))
-      push!(rowindex,i)
+    s² = rownorm²(A, i)
+    if s² > 0
+      push!(denom, 1.0 / (s² + λ))
+      push!(rowindex, i)
     end
   end
   return A, denom, rowindex
@@ -323,19 +322,26 @@ function initkaczmarz(A, λ::Vector)
   return initkaczmarz(A, 0)
 end
 
-function calcMax(solver::Kaczmarz)
-  max = zero(Float64)
-  for i in 1:solver.norm_size
-    new_max = convert(Float64, (solver.diff_vec_sq[i]) * (solver.denom[i]))
-    if new_max > max
-      max = new_max
-    end
-  end
-  return max
+# function initkaczmarz(A, λ::Vector, greedy_randomized, test)
+#   λ = real(eltype(A)).(λ)
+#   A = initikhonov(A, λ)
+#   return initkaczmarz(A, 0, greedy_randomized)
+# end
 
+function prepareGreedyKaczmarz(solver::Kaczmarz)
+  calcDiff(solver)
+  max = calcMax(solver)
+  calcEk(solver, max, solver.theta)
+  calcIndexSet(solver)
+  calcProbSelection(solver)
 end
+
+function calcMax(solver::Kaczmarz)
+  return maximum(solver.diff_vec_sq .* solver.denom)
+end
+
 function calcDiff(solver::Kaczmarz)
-  solver.diff_vec_sq = map((x) -> abs(x)^2, solver.r)
+  solver.diff_vec_sq = map((x) -> abs(x)^2, (solver.r))
   solver.diff_numb = norm(solver.r, 2)^2
   solver.diff_denom = 1.0 / solver.diff_numb
 end
@@ -348,28 +354,17 @@ function calcEk(solver::Kaczmarz, max, theta::Float64)
 end
 function calcIndexSet(solver::Kaczmarz)
   # Calculate e_K * || b - A*x_k ||²
-  lower_bound_const = convert(Float64, solver.e_k * solver.diff_numb)
-  solver.U_k = zeros(Int64, solver.norm_size)
-  for i in 1:solver.norm_size
-  # Calculate lower bound
-    lower_bound = convert(Float64, lower_bound_const * solver.norms[i])
-    # Check if index is in Set
-    if convert(Float64, solver.diff_vec_sq[i]) >= lower_bound
-      solver.U_k[i] = i
-    end
-  end
+  lower_bound_const = solver.e_k * solver.diff_numb
+  solver.U_k .= 1:solver.norm_size
+  map!(x -> solver.diff_vec_sq[x] >= lower_bound_const * solver.norms[x] ? x : zero(eltype(solver.U_k)), solver.U_k, solver.U_k)
 end
-
 
 function calcR(solver::Kaczmarz)
-  solver.r = solver.r - (solver.r[solver.i_k] * solver.B[:, solver.i_k])
+  solver.r = solver.r - ((solver.r[solver.i_k]) * (solver.B[:, solver.i_k]))
 end
-# function calcRZero(solver::Kaczmarz, b::Vector{ComplexF64})
-#   solver.r = copy(b)
-# end
 
 initikhonov(A, λ) = transpose((1 ./ sqrt.(λ)) .* transpose(A)) # optimize structure for row access
-initikhonov(prod::ProdOp{Tc, WeightingOp{T}, matT}, λ) where {T, Tc<:Union{T, Complex{T}}, matT} = ProdOp(prod.A, initikhonov(prod.B, λ))
+initikhonov(prod::ProdOp{Tc,WeightingOp{T},matT}, λ) where {T,Tc<:Union{T,Complex{T}},matT} = ProdOp(prod.A, initikhonov(prod.B, λ))
 ### kaczmarz_update! ###
 
 """
@@ -377,9 +372,9 @@ initikhonov(prod::ProdOp{Tc, WeightingOp{T}, matT}, λ) where {T, Tc<:Union{T, C
 
 This function updates x during the kaczmarz algorithm for dense matrices.
 """
-function kaczmarz_update!(A::DenseMatrix{T}, x::Vector, k::Integer, beta) where T
-  @simd for n=1:size(A,2)
-    @inbounds x[n] += beta*conj(A[k,n])
+function kaczmarz_update!(A::DenseMatrix{T}, x::Vector, k::Integer, beta) where {T}
+  @simd for n = 1:size(A, 2)
+    @inbounds x[n] += beta * conj(A[k, n])
   end
 end
 
@@ -390,75 +385,75 @@ end
 This function updates x during the kaczmarz algorithm for dense matrices.
 """
 function kaczmarz_update!(B::Transpose{T,S}, x::Vector,
-			  k::Integer, beta) where {T,S<:DenseMatrix}
+  k::Integer, beta) where {T,S<:DenseMatrix}
   A = B.parent
-  @inbounds @simd for n=1:size(A,1)
-      x[n] += beta*conj(A[n,k])
+  @inbounds @simd for n = 1:size(A, 1)
+    x[n] += beta * conj(A[n, k])
   end
 end
 
-function kaczmarz_update!(prod::ProdOp{Tc, WeightingOp{T}, matT}, x::Vector, k, beta) where {T, Tc<:Union{T, Complex{T}}, matT}
+function kaczmarz_update!(prod::ProdOp{Tc,WeightingOp{T},matT}, x::Vector, k, beta) where {T,Tc<:Union{T,Complex{T}},matT}
   weight = prod.A.weights[k]
-  kaczmarz_update!(prod.B, x, k, weight*beta) # only for real weights
+  kaczmarz_update!(prod.B, x, k, weight * beta) # only for real weights
 end
 
 # kaczmarz_update! with manual simd optimization
-for (T,W, WS,shufflevectorMask,vσ) in [(Float32,:WF32,:WF32S,:shufflevectorMaskF32,:vσF32),(Float64,:WF64,:WF64S,:shufflevectorMaskF64,:vσF64)]
-    eval(quote
-        const $WS = VectorizationBase.pick_vector_width($T)
-        const $W = Int(VectorizationBase.pick_vector_width($T))
-        const $shufflevectorMask = Val(ntuple(k -> iseven(k-1) ? k : k-2, $W))
-        const $vσ = Vec(ntuple(k -> (-1f0)^(k+1),$W)...)
-        function kaczmarz_update!(A::Transpose{Complex{$T},S}, b::Vector{Complex{$T}}, k::Integer, beta::Complex{$T}) where {S<:DenseMatrix}
-            b = reinterpret($T,b)
-            A = reinterpret($T,A.parent)
+for (T, W, WS, shufflevectorMask, vσ) in [(Float32, :WF32, :WF32S, :shufflevectorMaskF32, :vσF32), (Float64, :WF64, :WF64S, :shufflevectorMaskF64, :vσF64)]
+  eval(quote
+    const $WS = VectorizationBase.pick_vector_width($T)
+    const $W = Int(VectorizationBase.pick_vector_width($T))
+    const $shufflevectorMask = Val(ntuple(k -> iseven(k - 1) ? k : k - 2, $W))
+    const $vσ = Vec(ntuple(k -> (-1.0f0)^(k + 1), $W)...)
+    function kaczmarz_update!(A::Transpose{Complex{$T},S}, b::Vector{Complex{$T}}, k::Integer, beta::Complex{$T}) where {S<:DenseMatrix}
+      b = reinterpret($T, b)
+      A = reinterpret($T, A.parent)
 
-            N = length(b)
-            Nrep, Nrem = divrem(N,4*$W) # main loop
-            Mrep, Mrem = divrem(Nrem,$W) # last iterations
-            idx = MM{$W}(1)
-            iOffset = 4*$W
+      N = length(b)
+      Nrep, Nrem = divrem(N, 4 * $W) # main loop
+      Mrep, Mrem = divrem(Nrem, $W) # last iterations
+      idx = MM{$W}(1)
+      iOffset = 4 * $W
 
-            vβr = vbroadcast($WS, beta.re) * $vσ # vector containing (βᵣ,-βᵣ,βᵣ,-βᵣ,...)
-            vβi = vbroadcast($WS, beta.im) # vector containing (βᵢ,βᵢ,βᵢ,βᵢ,...)
+      vβr = vbroadcast($WS, beta.re) * $vσ # vector containing (βᵣ,-βᵣ,βᵣ,-βᵣ,...)
+      vβi = vbroadcast($WS, beta.im) # vector containing (βᵢ,βᵢ,βᵢ,βᵢ,...)
 
-            GC.@preserve b A begin # protect A and y from GC
-                vptrA = stridedpointer(A)
-                vptrb = stridedpointer(b)
-                for _ = 1:Nrep
-                    Base.Cartesian.@nexprs 4 i -> vb_i = vload(vptrb, ($W*(i-1) + idx,))
-                    Base.Cartesian.@nexprs 4 i -> va_i = vload(vptrA, ($W*(i-1) + idx,k))
-                    Base.Cartesian.@nexprs 4 i -> begin
-                        vb_i = muladd(va_i, vβr, vb_i)
-                        va_i = shufflevector(va_i, $shufflevectorMask)
-                        vb_i = muladd(va_i, vβi, vb_i)
-                    	vstore!(vptrb, vb_i, ($W*(i-1) + idx,))
-                    end
-                    idx += iOffset
-                end
-
-                for _ = 1:Mrep
-	            vb = vload(vptrb, (idx,))
-	            va = vload(vptrA, (idx,k))
-                    vb = muladd(va, vβr, vb)
-                    va = shufflevector(va, $shufflevectorMask)
-                    vb = muladd(va, vβi, vb)
-		            vstore!(vptrb, vb, (idx,))
-                    idx += $W
-                end
-
-                if Mrem!=0
-                    vloadMask = VectorizationBase.mask($T, Mrem)
-                    vb = vload(vptrb, (idx,), vloadMask)
-                    va = vload(vptrA, (idx,k), vloadMask)
-                    vb = muladd(va, vβr, vb)
-                    va = shufflevector(va, $shufflevectorMask)
-                    vb = muladd(va, vβi, vb)
-                    vstore!(vptrb, vb, (idx,), vloadMask)
-                end
-            end # GC.@preserve
+      GC.@preserve b A begin # protect A and y from GC
+        vptrA = stridedpointer(A)
+        vptrb = stridedpointer(b)
+        for _ = 1:Nrep
+          Base.Cartesian.@nexprs 4 i -> vb_i = vload(vptrb, ($W * (i - 1) + idx,))
+          Base.Cartesian.@nexprs 4 i -> va_i = vload(vptrA, ($W * (i - 1) + idx, k))
+          Base.Cartesian.@nexprs 4 i -> begin
+            vb_i = muladd(va_i, vβr, vb_i)
+            va_i = shufflevector(va_i, $shufflevectorMask)
+            vb_i = muladd(va_i, vβi, vb_i)
+            vstore!(vptrb, vb_i, ($W * (i - 1) + idx,))
+          end
+          idx += iOffset
         end
-    end)
+
+        for _ = 1:Mrep
+          vb = vload(vptrb, (idx,))
+          va = vload(vptrA, (idx, k))
+          vb = muladd(va, vβr, vb)
+          va = shufflevector(va, $shufflevectorMask)
+          vb = muladd(va, vβi, vb)
+          vstore!(vptrb, vb, (idx,))
+          idx += $W
+        end
+
+        if Mrem != 0
+          vloadMask = VectorizationBase.mask($T, Mrem)
+          vb = vload(vptrb, (idx,), vloadMask)
+          va = vload(vptrA, (idx, k), vloadMask)
+          vb = muladd(va, vβr, vb)
+          va = shufflevector(va, $shufflevectorMask)
+          vb = muladd(va, vβi, vb)
+          vstore!(vptrb, vb, (idx,), vloadMask)
+        end
+      end # GC.@preserve
+    end
+  end)
 end
 
 #=
@@ -475,10 +470,10 @@ end
 This funtion updates x during the kaczmarz algorithm for sparse matrices.
 """
 function kaczmarz_update!(B::Transpose{T,S}, x::Vector,
-                          k::Integer, beta) where {T,S<:SparseMatrixCSC}
+  k::Integer, beta) where {T,S<:SparseMatrixCSC}
   A = B.parent
-  N = A.colptr[k+1]-A.colptr[k]
-  for n=A.colptr[k]:N-1+A.colptr[k]
-    @inbounds x[A.rowval[n]] += beta*conj(A.nzval[n])
+  N = A.colptr[k+1] - A.colptr[k]
+  for n = A.colptr[k]:N-1+A.colptr[k]
+    @inbounds x[A.rowval[n]] += beta * conj(A.nzval[n])
   end
 end
