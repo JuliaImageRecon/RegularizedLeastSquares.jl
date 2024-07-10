@@ -95,7 +95,7 @@ function Kaczmarz(A
   B = typeof(A)
   norms = zeros(eltype(T), M)
   # setup denom and rowindex
-  if greedy_randomized == true
+  if greedy_randomized
     #A, denom, rowindex, norms = initkaczmarz(A, λ(L2), greedy_randomized, true)
     B = (A * adjoint(A)) + (λ(L2) * I)
     # Calculate all denominators - B * 1/(||A||²)
@@ -274,7 +274,7 @@ function calcProbSelection(solver::Kaczmarz)
       solver.r_probs[i] = (solver.diff_vec_sq[i]) * solver.diff_denom
     end
   end
-  solver.i_k = sample(solver.U_k, ProbabilityWeights(solver.r_probs), 1, replace=false)[1]
+  solver.i_k = sample(Random.GLOBAL_RNG, solver.U_k, ProbabilityWeights(solver.r_probs))
 end
 
 ### initkaczmarz ###
@@ -337,12 +337,12 @@ function prepareGreedyKaczmarz(solver::Kaczmarz)
 end
 
 function calcMax(solver::Kaczmarz)
-  return maximum(solver.diff_vec_sq .* solver.denom)
+  return maximum(i -> solver.diff_vec_sq[i] * solver.denom[i], eachindex(solver.diff_vec_sq))
 end
 
 function calcDiff(solver::Kaczmarz)
-  solver.diff_vec_sq = map((x) -> abs(x)^2, (solver.r))
-  solver.diff_numb = norm(solver.r, 2)^2
+  solver.diff_vec_sq .= abs2.(solver.r)
+  solver.diff_numb = sum(solver.diff_vec_sq)
   solver.diff_denom = 1.0 / solver.diff_numb
 end
 
@@ -360,7 +360,7 @@ function calcIndexSet(solver::Kaczmarz)
 end
 
 function calcR(solver::Kaczmarz)
-  solver.r = solver.r - ((solver.r[solver.i_k]) * (solver.B[:, solver.i_k]))
+  solver.r .-= ((solver.r[solver.i_k]) .* (view(solver.B, :, solver.i_k)))
 end
 
 initikhonov(A, λ) = transpose((1 ./ sqrt.(λ)) .* transpose(A)) # optimize structure for row access
