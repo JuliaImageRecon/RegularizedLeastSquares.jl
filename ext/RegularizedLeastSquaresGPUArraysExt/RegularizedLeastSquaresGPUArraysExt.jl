@@ -1,6 +1,7 @@
 module RegularizedLeastSquaresGPUArraysExt
 
-using RegularizedLeastSquares, RegularizedLeastSquares.LinearAlgebra, GPUArrays
+using RegularizedLeastSquares, RegularizedLeastSquares.LinearAlgebra, RegularizedLeastSquares.LinearOperatorCollection
+using GPUArrays
 
 include("Utils.jl")
 include("ProxTV.jl")
