@@ -76,7 +76,6 @@ Random.seed!(12345)
       end
 
       @testset "Kaczmarz Weighting Matrix" begin
-        # TODO does not work on GPU atm, see https://github.com/JuliaGPU/GPUArrays.jl/issues/543
         M = 12
         N = 8
         A = rand(M, N) + im * rand(M, N)

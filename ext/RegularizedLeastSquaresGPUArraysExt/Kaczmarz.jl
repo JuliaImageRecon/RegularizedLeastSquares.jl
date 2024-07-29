@@ -5,11 +5,17 @@ function RegularizedLeastSquares.iterate_row_index(solver::Kaczmarz, state::Regu
   @allowscalar state.vl[row] += state.αl*state.ɛw
 end
 
-function RegularizedLeastSquares.kaczmarz_update!(A, x::vecT, row, beta) where {T, vecT <: AbstractGPUVector{T}}
+function RegularizedLeastSquares.kaczmarz_update!(A::matT, x::vecT, row, beta) where {T, matT <: AbstractGPUArray{T}, vecT <: AbstractGPUVector{T}}
   x[:] .=  x .+ beta * conj.(view(A, row, :))
 end
 
 function RegularizedLeastSquares.kaczmarz_update!(B::Transpose{T, S}, x::vecT, row, beta) where {T, S <: AbstractGPUArray{T}, vecT <: AbstractGPUVector{T}}
   A = B.parent
   x[:] .=  x .+ beta * conj.(view(A, :, row))
+end
+
+
+function RegularizedLeastSquares.kaczmarz_update!(prod::ProdOp{Tc, WeightingOp{T, vecT}}, x, k, beta) where {T, Tc<:Union{T, Complex{T}}, vecT <: AbstractGPUVector{T}}
+  weight = @allowscalar prod.A.weights[k]
+  RegularizedLeastSquares.kaczmarz_update!(prod.B, x, k, weight*beta) # only for real weights
 end

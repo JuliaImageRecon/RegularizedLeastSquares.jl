@@ -42,6 +42,8 @@ end
 RegularizedLeastSquares.rownorm²(A::AbstractGPUMatrix,row::Int64) = sum(map(abs2, @view A[row, :]))
 RegularizedLeastSquares.rownorm²(B::Transpose{T,S},row::Int64) where {T,S<:AbstractGPUArray} = sum(map(abs2, @view B.parent[:, row]))
 
+RegularizedLeastSquares.rownorm²(A::ProdOp{T, WeightingOp{T2, vecT2}, matT}, row::Int64) where {T, T2, vecT2 <: AbstractGPUArray, matT} = GPUArrays.@allowscalar A.A.weights[row]^2 * rownorm²(A.B, row)
 
 RegularizedLeastSquares.dot_with_matrix_row(A::AbstractGPUMatrix{T}, x::AbstractGPUVector{T}, k::Int64) where {T} = reduce(+, x .* view(A, k, :))
 RegularizedLeastSquares.dot_with_matrix_row(B::Transpose{T,S}, x::AbstractGPUVector{T}, k::Int64) where {T,S<:AbstractGPUArray} = reduce(+, x .* view(B.parent, :, k))
+RegularizedLeastSquares.dot_with_matrix_row(A::ProdOp{T, WeightingOp{T2, vecT2}, matT}, x::AbstractGPUVector{T}, k::Int64) where {T, T2, vecT2 <: AbstractGPUArray, matT} = GPUArrays.@allowscalar A.A.weights[k] * RegularizedLeastSquares.dot_with_matrix_row(A.B, x, k)

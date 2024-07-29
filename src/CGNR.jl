@@ -130,8 +130,8 @@ function init!(solver::CGNR, state::CGNRState{T, Tc, vecTc}, b::vecTc; x0 = 0) w
 end
 
 initCGNR(x₀, A, b) = mul!(x₀, adjoint(A), b)
-initCGNR(x₀, prod::ProdOp{T, <:WeightingOp, matT}, b) where {T, matT} = mul!(x₀, adjoint(prod.B), b .* prod.A.weights)
-initCGNR(x₀, ::Nothing, b) = x₀ .= b
+#initCGNR(x₀, prod::ProdOp{T, <:WeightingOp, matT}, b) where {T, matT} = mul!(x₀, adjoint(prod.B), b)
+initCGNR(x₀, ::Nothing, b) = x₀ .= one(eltype(x₀))
 
 solverconvergence(state::CGNRState) = (; :residual => norm(state.x₀))
 
