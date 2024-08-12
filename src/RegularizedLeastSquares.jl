@@ -171,6 +171,7 @@ solverstate(solver::AbstractLinearSolver) = solver.state
 solverconvergence(solver::AbstractLinearSolver) = solverconvergence(solverstate(solver))
 
 init!(solver::AbstractLinearSolver, b; kwargs...) = init!(solver, solverstate(solver), b; kwargs...)
+iterate(solver::AbstractLinearSolver) = iterate(solver, solverstate(solver))
 
 include("Utils.jl")
 include("Kaczmarz.jl")

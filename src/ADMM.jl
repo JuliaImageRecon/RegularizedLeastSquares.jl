@@ -140,7 +140,7 @@ function ADMM(A
   return ADMM(A, reg, regTrafo, proj, AHA, precon, normalizeReg, vary_rho, verbose, iterations, iterationsCG, state)
 end
 
-function init!(solver::ADMM, state::ADMMState{rT, rvecT, vecT}, b::otherT; kwargs...) where {rT, rvecT, vecT, otherT}
+function init!(solver::ADMM, state::ADMMState{rT, rvecT, vecT}, b::otherT; kwargs...) where {rT, rvecT, vecT, otherT <: AbstractVector}
   x    = similar(b, size(state.x)...)
   xᵒˡᵈ = similar(b, size(state.xᵒˡᵈ)...)
   β    = similar(b, size(state.β)...)
@@ -165,7 +165,7 @@ end
 
 (re-) initializes the ADMM iterator
 """
-function init!(solver::ADMM, state::ADMMState{rT, rvecT, vecT}, b::vecT; x0 = 0) where {rT, rvecT, vecT}
+function init!(solver::ADMM, state::ADMMState{rT, rvecT, vecT}, b::vecT; x0 = 0) where {rT, rvecT, vecT <: AbstractVector}
   state.x .= x0
 
   # right hand side for the x-update
@@ -202,7 +202,7 @@ solverconvergence(state::ADMMState) = (; :primal => state.rᵏ, :dual => state.s
 
 performs one ADMM iteration.
 """
-function iterate(solver::ADMM, state::S = solver.state) where S <: AbstractSolverState{<:ADMM}
+function iterate(solver::ADMM, state::ADMMState)
   done(solver, state) && return nothing
   solver.verbose && println("Outer ADMM Iteration #$iteration")
 

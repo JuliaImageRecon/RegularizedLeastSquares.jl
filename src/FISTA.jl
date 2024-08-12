@@ -91,7 +91,7 @@ function FISTA(A
   return FISTA(A, AHA, reg[1], other, normalizeReg, verbose, restart, iterations, state)
 end
 
-function init!(solver::FISTA, state::FISTAState{rT, vecT}, b::otherT; kwargs...) where {rT, vecT, otherT}
+function init!(solver::FISTA, state::FISTAState{rT, vecT}, b::otherT; kwargs...) where {rT, vecT, otherT <: AbstractVector}
   x = similar(b, size(state.x)...)
   x₀ = similar(b, size(state.x₀)...)
   xᵒˡᵈ = similar(b, size(state.xᵒˡᵈ)...)
@@ -107,7 +107,7 @@ end
 
 (re-) initializes the FISTA iterator
 """
-function init!(solver::FISTA, state::FISTAState{rT, vecT}, b::vecT; x0 = 0, theta=1) where {rT, vecT}
+function init!(solver::FISTA, state::FISTAState{rT, vecT}, b::vecT; x0 = 0, theta=1) where {rT, vecT <: AbstractVector}
   if solver.A === nothing
     state.x₀ .= b
   else
@@ -136,7 +136,7 @@ solverconvergence(state::FISTAState) = (; :residual => norm(state.res))
 
 performs one fista iteration.
 """
-function iterate(solver::FISTA, state = solver.state)
+function iterate(solver::FISTA, state::FISTAState)
   if done(solver, state) return nothing end
 
   # momentum / Nesterov step

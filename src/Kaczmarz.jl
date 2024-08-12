@@ -110,7 +110,7 @@ function Kaczmarz(A
                   Int64(seed), normalizeReg, iterations, state)
 end
 
-function init!(solver::Kaczmarz, state::KaczmarzState{T, vecT}, b::otherT; kwargs...) where {T, vecT, otherT}
+function init!(solver::Kaczmarz, state::KaczmarzState{T, vecT}, b::otherT; kwargs...) where {T, vecT, otherT <: AbstractVector}
   u = similar(b, size(state.u)...)
   x = similar(b, size(state.x)...)
   vl = similar(b, size(state.vl)...)
@@ -125,7 +125,7 @@ end
 
 (re-) initializes the Kacmarz iterator
 """
-function init!(solver::Kaczmarz, state::KaczmarzState{T, vecT}, b::vecT; x0 = 0) where {T, vecT}
+function init!(solver::Kaczmarz, state::KaczmarzState{T, vecT}, b::vecT; x0 = 0) where {T, vecT <: AbstractVector}
   λ_prev = λ(solver.L2)
   solver.L2  = normalize(solver, solver.normalizeReg, solver.L2,  solver.A, b)
   solver.reg = normalize(solver, solver.normalizeReg, solver.reg, solver.A, b)
@@ -169,7 +169,7 @@ end
 solversolution(solver::Kaczmarz) = solver.state.x
 solverconvergence(state::KaczmarzState) = (; :residual => norm(state.vl))
 
-function iterate(solver::Kaczmarz, state = solver.state)
+function iterate(solver::Kaczmarz, state::KaczmarzState)
   if done(solver,state) return nothing end
 
   if solver.randomized
