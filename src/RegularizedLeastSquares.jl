@@ -99,13 +99,13 @@ The keyword `callbacks` allows you to pass a (vector of) callable objects that t
 
 See also [`StoreSolutionCallback`](@ref), [`StoreConvergenceCallback`](@ref), [`CompareSolutionCallback`](@ref) for a number of provided callback options.
 """
-function solve!(solver::AbstractLinearSolver, b; x0 = 0, callbacks = (_, _) -> nothing)
+function solve!(solver::AbstractLinearSolver, b; callbacks = (_, _) -> nothing, kwargs...)
   if !(callbacks isa Vector)
     callbacks = [callbacks]
   end
 
 
-  init!(solver, b; x0)
+  init!(solver, b; kwargs...)
   foreach(cb -> cb(solver, 0), callbacks)
 
   for (iteration, _) = enumerate(solver)
@@ -129,7 +129,7 @@ end
 """
 solve!(cb, solver::AbstractLinearSolver, b; kwargs...) = solve!(solver, b; kwargs..., callbacks = cb)
 
-
+include("MultiThreading.jl")
 
 export AbstractRowActionSolver
 abstract type AbstractRowActionSolver <: AbstractLinearSolver end
@@ -159,7 +159,13 @@ export solversolution, solverconvergence, solverstate
 
 Return the current solution of the solver
 """
-solversolution(solver::AbstractLinearSolver) = solverstate(solver).x
+solversolution(solver::AbstractLinearSolver) = solversolution(solverstate(solver))
+"""
+    solversolution(state::AbstractSolverState)
+
+Return the current solution of the solver's state
+"""
+solversolution(state::AbstractSolverState) = state.x
 """
     solverconvergence(solver::AbstractLinearSolver)
 

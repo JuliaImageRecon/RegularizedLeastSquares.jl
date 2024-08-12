@@ -13,4 +13,5 @@ arrayTypes = areTypesDefined ? arrayTypes : [Array, JLArray]
   include("testProxMaps.jl")
   include("testSolvers.jl")
   include("testRegularization.jl")
+  include("testMultiThreading.jl")
 end
