@@ -65,4 +65,4 @@ function iterate(solver::AbstractLinearSolver, state::MultiThreadingState, activ
   return state.active, state
 end
 
-solversolution(state::Union{SequentialState, MultiThreadingState}) = mapreduce(solversolution, hcat, state.states)
+solversolution(state::AbstractMatrixSolverState) = mapreduce(solversolution, hcat, state.states)
