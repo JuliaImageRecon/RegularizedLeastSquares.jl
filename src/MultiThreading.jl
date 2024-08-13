@@ -16,7 +16,10 @@ function init!(solver::AbstractLinearSolver, state::AbstractSolverState, b::Abst
   states = prepareMatrixStates(solver, state, b)
   multiState = scheduler(states)
   solver.state = multiState
-  init!(solver, multiState, b; kwargs...)
+  for (i, s) in enumerate(solver.state.states)
+    init!(solver, s, b[:, i]; kwargs...)
+  end
+  solver.state.active .= true
 end
 function init!(solver::AbstractLinearSolver, state::AbstractMatrixSolverState, b::AbstractVector; kwargs...)
   singleState = first(state.states)
@@ -30,12 +33,6 @@ function prepareMatrixStates(solver::AbstractLinearSolver, state::AbstractSolver
 end
 prepareMatrixStates(solver::AbstractLinearSolver, state::Union{SequentialState, MultiThreadingState}, b::AbstractMatrix) = prepareMatrixStates(solver, first(state.states), b)
 
-function init!(solver::AbstractLinearSolver, state::AbstractMatrixSolverState, b::AbstractMatrix; kwargs...)
-  for (i, s) in enumerate(state.states)
-    init!(solver, s, b[:, i]; kwargs...)
-  end
-  state.active .= true
-end
 
 function iterate(solver::S, state::AbstractMatrixSolverState) where {S <: AbstractLinearSolver}
   activeIdx = findall(state.active)
