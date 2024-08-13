@@ -41,19 +41,19 @@ function DirectSolver(A; reg::Vector{<:AbstractRegularization} = [L2Regularizati
   return DirectSolver(A, L2, normalizeReg, other, DirectSolverState(x, b))
 end
 
-function init!(solver::DirectSolver, state::DirectSolverState{vecT}, b::otherT; kwargs...) where {vecT, otherT}
+function init!(solver::DirectSolver, state::DirectSolverState{vecT}, b::otherT; kwargs...) where {vecT, otherT <: AbstractVector}
   x = similar(b, size(state.x)...)
   bvecT = similar(b, size(state.b)...)
   solver.state = DirectSolverState(x, bvecT)
   init!(solver, solver.state, b; kwargs...)
 end
-function init!(solver::DirectSolver, state::DirectSolverState{vecT}, b::vecT; x0=0) where vecT
+function init!(solver::DirectSolver, state::DirectSolverState{vecT}, b::vecT; x0=0) where vecT <: AbstractVector
   solver.l2 = normalize(solver, solver.normalizeReg, solver.l2, solver.A, b)
   state.b .= b
   state.x .= x0
 end
 
-function iterate(solver::DirectSolver, state = solver.state)
+function iterate(solver::DirectSolver, state::DirectSolverState)
   A = solver.A
   λ_ = λ(solver.l2)
   lufact = lu(A'*A .+ λ_)
@@ -138,18 +138,18 @@ function PseudoInverse(A::AbstractMatrix, x, b, l2, norm, proj)
   return PseudoInverse(temp, l2, norm, proj, DirectSolverState(x, b))
 end
 
-function init!(solver::PseudoInverse, state::DirectSolverState{vecT}, b::otherT; kwargs...) where {vecT, otherT}
+function init!(solver::PseudoInverse, state::DirectSolverState{vecT}, b::otherT; kwargs...) where {vecT, otherT <: AbstractVector}
   x = similar(b, size(state.x)...)
   bvecT = similar(b, size(state.b)...)
   solver.state = DirectSolverState(x, bvecT)
   init!(solver, solver.state, b; kwargs...)
 end
-function init!(solver::PseudoInverse, state::DirectSolverState{vecT}, b::vecT; x0=0) where vecT
+function init!(solver::PseudoInverse, state::DirectSolverState{vecT}, b::vecT; x0=0) where vecT <: AbstractVector
   solver.l2 = normalize(solver, solver.normalizeReg, solver.l2, solver.svd, b)
   state.b .= b
 end
 
-function iterate(solver::PseudoInverse, state = solver.state)
+function iterate(solver::PseudoInverse, state::DirectSolverState)
   # Inversion by using the pseudoinverse of the SVD
   svd = solver.svd
 

@@ -164,9 +164,9 @@ end
 
 
 function solversolution(solver::Kaczmarz{matT, RN}) where {matT, R<:L2Regularization{<:AbstractVector}, RN <: Union{R, AbstractNestedRegularization{<:R}}}
-  return solver.state.x .* (1 ./ sqrt.(λ(solver.L2)))
+  return solversolution(solver.state) .* (1 ./ sqrt.(λ(solver.L2)))
 end
-solversolution(solver::Kaczmarz) = solver.state.x
+solversolution(solver::Kaczmarz) = solversolution(solver.state)
 solverconvergence(state::KaczmarzState) = (; :residual => norm(state.vl))
 
 function iterate(solver::Kaczmarz, state::KaczmarzState)
