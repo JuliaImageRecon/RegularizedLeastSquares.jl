@@ -1,4 +1,4 @@
-export SequentialState, MultiThreadingState
+export SequentialState, MultiThreadingState, prepareMultiStates
 abstract type AbstractMatrixSolverState{S} <: AbstractSolverState{S} end
 mutable struct SequentialState{S, ST <: AbstractSolverState{S}} <: AbstractMatrixSolverState{S}
   states::Vector{ST}
@@ -30,14 +30,14 @@ function prepareMultiStates(solver::AbstractLinearSolver, state::AbstractSolverS
 end
 prepareMultiStates(solver::AbstractLinearSolver, state::Union{SequentialState, MultiThreadingState}, b::AbstractMatrix) = prepareMultiStates(solver, first(state.states), b)
 
-function init!(solver::AbstractLinearSolver, state::Union{SequentialState, MultiThreadingState}, b::AbstractMatrix; kwargs...)
+function init!(solver::AbstractLinearSolver, state::AbstractMatrixSolverState, b::AbstractMatrix; kwargs...)
   for (i, s) in enumerate(state.states)
     init!(solver, s, b[:, i]; kwargs...)
   end
   state.active .= true
 end
 
-function iterate(solver::S, state::Union{SequentialState, MultiThreadingState}) where {S <: AbstractLinearSolver}
+function iterate(solver::S, state::AbstractMatrixSolverState) where {S <: AbstractLinearSolver}
   activeIdx = findall(state.active)
   if isempty(activeIdx)
     return nothing

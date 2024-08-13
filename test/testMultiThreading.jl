@@ -3,7 +3,7 @@ function testMultiThreadingSolver(; arrayType = Array, scheduler = MultiDataStat
   x = rand(ComplexF32, 2, 4)
   b = A * x
 
-  solvers = [CGNR] # linearSolverList()
+  solvers = linearSolverList()
   @testset "$(solvers[i])" for i = 1:length(solvers)
     S = createLinearSolver(solvers[i], arrayType(A), iterations = 100)
     
