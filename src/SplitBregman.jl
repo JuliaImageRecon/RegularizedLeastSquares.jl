@@ -143,7 +143,7 @@ function SplitBregman(A
   return SplitBregman(A,reg,regTrafo,proj,AHA,precon,normalizeReg,verbose,iterations,iterationsInner,iterationsCG,state)
 end
 
-function init!(solver::SplitBregman, state::SplitBregmanState{rT, rvecT, vecT}, b::otherT; kwargs...) where {rT, rvecT, vecT, otherT}
+function init!(solver::SplitBregman, state::SplitBregmanState{rT, rvecT, vecT}, b::otherT; kwargs...) where {rT, rvecT, vecT, otherT <: AbstractVector}
   y    = similar(b, size(state.y)...)
   x    = similar(b, size(state.x)...)
   β    = similar(b, size(state.β)...)
@@ -167,7 +167,7 @@ end
 
 (re-) initializes the SplitBregman iterator
 """
-function init!(solver::SplitBregman, state::SplitBregmanState{rT, rvecT, vecT}, b::vecT; x0 = 0) where {rT, rvecT, vecT}
+function init!(solver::SplitBregman, state::SplitBregmanState{rT, rvecT, vecT}, b::vecT; x0 = 0) where {rT, rvecT, vecT <: AbstractVector}
   state.x .= x0
 
   # right hand side for the x-update
@@ -201,7 +201,7 @@ end
 
 solverconvergence(state::SplitBregmanState) = (; :primal => state.rᵏ, :dual => state.sᵏ)
 
-function iterate(solver::SplitBregman, state=solver.state)
+function iterate(solver::SplitBregman, state::SplitBregmanState)
   if done(solver, state) return nothing end
   solver.verbose && println("SplitBregman Iteration #$(state.iteration) – Outer iteration $(state.iter_cnt)")
 

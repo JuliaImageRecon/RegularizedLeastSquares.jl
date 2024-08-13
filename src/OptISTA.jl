@@ -104,7 +104,7 @@ function OptISTA(A
   return OptISTA(A, AHA, reg[1], other, normalizeReg, verbose, iterations, state)
 end
 
-function init!(solver::OptISTA, state::OptISTAState{rT, vecT}, b::otherT; kwargs...) where {rT, vecT, otherT}
+function init!(solver::OptISTA, state::OptISTAState{rT, vecT}, b::otherT; kwargs...) where {rT, vecT, otherT <: AbstractVector}
   x = similar(b, size(state.x)...)
   x₀ = similar(b, size(state.x₀)...)
   y = similar(b, size(state.y)...)
@@ -125,7 +125,7 @@ end
 
 (re-) initializes the OptISTA iterator
 """
-function init!(solver::OptISTA, state::OptISTAState{rT, vecT}, b::vecT; x0 = 0, θ=1) where {rT, vecT}
+function init!(solver::OptISTA, state::OptISTAState{rT, vecT}, b::vecT; x0 = 0, θ=1) where {rT, vecT <: AbstractVector}
   if solver.A === nothing
     state.x₀ .= b
   else
@@ -161,7 +161,7 @@ solverconvergence(state::OptISTAState) = (; :residual => norm(state.res))
 
 performs one OptISTA iteration.
 """
-function iterate(solver::OptISTA, state::OptISTAState = solver.state)
+function iterate(solver::OptISTA, state::OptISTAState)
   if done(solver, state) return nothing end
 
   # inertial parameters

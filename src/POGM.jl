@@ -113,7 +113,7 @@ function POGM(A
   return POGM(A, AHA, reg[1], other, normalizeReg, verbose, restart, iterations, state)
 end
 
-function init!(solver::POGM, state::POGMState{rT, vecT}, b::otherT; kwargs...) where {rT, vecT, otherT}
+function init!(solver::POGM, state::POGMState{rT, vecT}, b::otherT; kwargs...) where {rT, vecT, otherT <: AbstractVector}
   x = similar(b, size(state.x)...)
   x₀ = similar(b, size(state.x₀)...)
   xᵒˡᵈ = similar(b, size(state.xᵒˡᵈ)...)
@@ -135,7 +135,7 @@ end
 
 (re-) initializes the POGM iterator
 """
-function init!(solver::POGM, state::POGMState{rT, vecT}, b::vecT; x0 = 0, theta=1) where {rT, vecT}
+function init!(solver::POGM, state::POGMState{rT, vecT}, b::vecT; x0 = 0, theta=1) where {rT, vecT <: AbstractVector}
   if solver.A === nothing
     state.x₀ .= b
   else
@@ -170,7 +170,7 @@ solverconvergence(state::POGMState) = (; :residual => norm(state.res))
 
 performs one POGM iteration.
 """
-function iterate(solver::POGM, state = solver.state)
+function iterate(solver::POGM, state::POGMState)
   if done(solver, state)
     return nothing
   end

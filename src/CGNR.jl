@@ -88,7 +88,7 @@ function CGNR(A
   return CGNR(A, AHA, L2, other, normalizeReg, iterations, state)
 end
 
-function init!(solver::CGNR, state::CGNRState{T, Tc, vecTc}, b::otherTc; kwargs...) where {T, Tc, vecTc, otherTc}
+function init!(solver::CGNR, state::CGNRState{T, Tc, vecTc}, b::otherTc; kwargs...) where {T, Tc, vecTc, otherTc <: AbstractVector{Tc}}
   x = similar(b, size(state.x)...)
   x₀ = similar(b, size(state.x₀)...)
   pl = similar(b, size(state.pl)...)
@@ -104,7 +104,7 @@ end
 
 (re-) initializes the CGNR iterator
 """
-function init!(solver::CGNR, state::CGNRState{T, Tc, vecTc}, b::vecTc; x0 = 0) where {T, Tc <: Union{T, Complex{T}}, vecTc<:AbstractArray{Tc}}
+function init!(solver::CGNR, state::CGNRState{T, Tc, vecTc}, b::vecTc; x0 = 0) where {T, Tc <: Union{T, Complex{T}}, vecTc<:AbstractVector{Tc}}
   state.pl .= 0     #temporary vector
   state.vl .= 0     #temporary vector
   state.αl  = 0     #temporary scalar
@@ -131,7 +131,7 @@ end
 
 initCGNR(x₀, A, b) = mul!(x₀, adjoint(A), b)
 #initCGNR(x₀, prod::ProdOp{T, <:WeightingOp, matT}, b) where {T, matT} = mul!(x₀, adjoint(prod.B), b)
-initCGNR(x₀, ::Nothing, b) = x₀ .= one(eltype(x₀))
+initCGNR(x₀, ::Nothing, b) = x₀ .= b
 
 solverconvergence(state::CGNRState) = (; :residual => norm(state.x₀))
 
@@ -140,7 +140,7 @@ solverconvergence(state::CGNRState) = (; :residual => norm(state.x₀))
 
 performs one CGNR iteration.
 """
-function iterate(solver::CGNR, state=solver.state)
+function iterate(solver::CGNR, state::CGNRState)
   if done(solver, state)
     for r in solver.constr
       prox!(r, state.x)
