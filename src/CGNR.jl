@@ -131,7 +131,7 @@ end
 
 initCGNR(x₀, A, b) = mul!(x₀, adjoint(A), b)
 #initCGNR(x₀, prod::ProdOp{T, <:WeightingOp, matT}, b) where {T, matT} = mul!(x₀, adjoint(prod.B), b)
-initCGNR(x₀, ::Nothing, b) = x₀ .= one(eltype(x₀))
+initCGNR(x₀, ::Nothing, b) = x₀ .= b
 
 solverconvergence(state::CGNRState) = (; :residual => norm(state.x₀))
 
