@@ -1,4 +1,4 @@
-export SequentialState, MultiThreadingState, prepareMultiStates
+export SequentialState, MultiThreadingState, prepareMatrixStates
 abstract type AbstractMatrixSolverState{S} <: AbstractSolverState{S} end
 mutable struct SequentialState{S, ST <: AbstractSolverState{S}} <: AbstractMatrixSolverState{S}
   states::Vector{ST}
@@ -13,7 +13,7 @@ mutable struct MultiThreadingState{S, ST <: AbstractSolverState{S}} <: AbstractM
 end
 
 function init!(solver::AbstractLinearSolver, state::AbstractSolverState, b::AbstractMatrix; scheduler = SequentialState, kwargs...)
-  states = prepareMultiStates(solver, state, b)
+  states = prepareMatrixStates(solver, state, b)
   multiState = scheduler(states)
   solver.state = multiState
   init!(solver, multiState, b; kwargs...)
@@ -24,11 +24,11 @@ function init!(solver::AbstractLinearSolver, state::AbstractMatrixSolverState, b
   init!(solver, singleState, b; kwargs...)
 end
 
-function prepareMultiStates(solver::AbstractLinearSolver, state::AbstractSolverState, b::AbstractMatrix)
+function prepareMatrixStates(solver::AbstractLinearSolver, state::AbstractSolverState, b::AbstractMatrix)
   states = [deepcopy(state) for _ in 1:size(b, 2)]
   return states
 end
-prepareMultiStates(solver::AbstractLinearSolver, state::Union{SequentialState, MultiThreadingState}, b::AbstractMatrix) = prepareMultiStates(solver, first(state.states), b)
+prepareMatrixStates(solver::AbstractLinearSolver, state::Union{SequentialState, MultiThreadingState}, b::AbstractMatrix) = prepareMatrixStates(solver, first(state.states), b)
 
 function init!(solver::AbstractLinearSolver, state::AbstractMatrixSolverState, b::AbstractMatrix; kwargs...)
   for (i, s) in enumerate(state.states)
