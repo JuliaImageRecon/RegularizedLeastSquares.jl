@@ -281,7 +281,7 @@ function converged(solver::ADMM, state::ADMMState)
     (state.rᵏ[i] >= state.σᵃᵇˢ + state.relTol * state.ɛᵖʳⁱ[i]) && return false
     (state.sᵏ[i] >= state.σᵃᵇˢ + state.relTol * state.ɛᵈᵘᵃ[i]) && return false
   end
-  return false
+  return true
 end
 
 @inline done(solver::ADMM, state::ADMMState) = converged(solver, state) || state.iteration >= solver.iterations
