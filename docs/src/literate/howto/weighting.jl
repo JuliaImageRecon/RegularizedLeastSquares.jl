@@ -17,8 +17,12 @@
 using RegularizedLeastSquares, LinearOperatorCollection, LinearAlgebra
 A = rand(32, 16)
 x = rand(16)
-b = A*x
-weights = map(row -> 1/rownorm²(A, row), 1:size(A, 1))
+b = A*x;
+
+# As a weighting matrix, we will use the reciprocal of the row energy of the matrix A.
+weights = map(row -> 1/rownorm²(A, row), 1:size(A, 1));
+
+# First, let us solve the problem with matrices we manually weighted.
 WA = diagm(weights) * A
 solver = createLinearSolver(Kaczmarz, WA; reg = L2Regularization(0.0001), iterations=10)
 x_approx = solve!(solver, weights .* b);

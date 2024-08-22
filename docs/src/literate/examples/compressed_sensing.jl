@@ -19,10 +19,10 @@ using Random, LinearOperatorCollection
 randomIndices = shuffle(eachindex(image))
 sampledIndices = sort(randomIndices[1:div(end, 3)])
 
-# Afterwards we build a sampling operator which samples the image at the selected indices
+# Afterwards we build a sampling operator which samples the image at the selected indices.
 A = SamplingOp(eltype(image), pattern = sampledIndices , shape = size(image));
 
-# Then we apply the sampling operator to the image to obtain the measurement vector
+# Then we apply the sampling operator to the vectorized image to obtain the sampled measurement vector
 b = A*vec(image);
 
 # To visualize our image we can use CairoMakie:
@@ -40,8 +40,10 @@ plot_image(fig[1,2], image .* samplingMask, title = "Sampled Image")
 resize_to_layout!(fig)
 fig
 
+# As we can see in the right image, only a third of the pixels are sampled. The goal of the inverse problem is to recover the original image from this measurement vector.
+
 # ## Solving the Inverse Problem
-# To recover the image from the measurement vector, we solve the TV-regularized least squares problem
+# To recover the image from the measurement vector, we solve the TV-regularized least squares problem:
 # ```math
 # \begin{equation}
 #   \underset{\mathbf{x}}{argmin} \frac{1}{2}\vert\vert \mathbf{A}\mathbf{x}-\mathbf{b} \vert\vert_2^2 + \vert\vert\mathbf{x}\vert\vert_{\lambda\text{TV}} .
@@ -53,7 +55,7 @@ fig
 using RegularizedLeastSquares
 reg = TVRegularization(0.01; shape=size(image));
 
-# To solve this CS problem, the Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) can be used. Thus, we build the corresponding solver
+# We will use the Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) to solve our inverse problem. Thus, we build the corresponding solver
 
 solver = createLinearSolver(FISTA, A; reg=reg, iterations=20);
 

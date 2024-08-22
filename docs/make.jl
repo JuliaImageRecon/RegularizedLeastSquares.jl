@@ -29,7 +29,7 @@ makedocs(
         "Getting Started" => "generated/examples/getting_started.md",
         "Examples" => Any["Compressed Sensing" => "generated/examples/compressed_sensing.md", "Computed Tomography" => "generated/examples/computed_tomography.md"],
         "Solvers" => "solvers.md",
-        "Regularization" => "regularization.md",
+        "Regularization" => "generated/explanations/regularization.md",
         "How to" => Any[
             "Weighting" => "generated/howto/weighting.md",
             "Normal Operator" => "generated/howto/normal_operator.md",
@@ -37,7 +37,7 @@ makedocs(
             "GPU Acceleration" => "generated/howto/gpu_acceleration.md",
             "Efficient Kaczmarz" => "generated/howto/efficient_kaczmarz.md",
             "Callbacks" => "generated/howto/callbacks.md",
-            "Plug-and-Play Regularization" => "plug-and-play.md"
+            "Plug-and-Play Regularization" => "generated/howto/plug-and-play.md"
         ],
         "API Reference" => Any["Solvers" => "API/solvers.md",
         "Regularization Terms" => "API/regularization.md"],

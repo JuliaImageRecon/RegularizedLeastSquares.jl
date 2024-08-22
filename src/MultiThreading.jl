@@ -1,17 +1,32 @@
 export SequentialState, MultiThreadingState, prepareMatrixStates
 abstract type AbstractMatrixSolverState{S} <: AbstractSolverState{S} end
+"""
+    SequentialState(states::Vector{ST}) where {S, ST <: AbstractSolverState{S}}
+
+SequentialState is a scheduler that runs each active state sequentially per iteration.
+"""
 mutable struct SequentialState{S, ST <: AbstractSolverState{S}} <: AbstractMatrixSolverState{S}
   states::Vector{ST}
   active::Vector{Bool}
   SequentialState(states::Vector{ST}) where {S, ST <: AbstractSolverState{S}} = new{S, ST}(states, fill(true, length(states)))
 end
 
+"""
+    MultiThreadingState(states::Vector{ST}) where {S, ST <: AbstractSolverState{S}}
+
+MultiThreadingState is a scheduler that runs each active state in parallel per iteration.
+"""
 mutable struct MultiThreadingState{S, ST <: AbstractSolverState{S}} <: AbstractMatrixSolverState{S}
   states::Vector{ST}
   active::Vector{Bool}
   MultiThreadingState(states::Vector{ST}) where {S, ST <: AbstractSolverState{S}} = new{S, ST}(states, fill(true, length(states)))
 end
 
+"""
+    init!(solver::AbstractLinearSolver, state::AbstractSolverState, b::AbstractMatrix; scheduler = SequentialState, kwargs...)
+
+Initialize the solver with each column of `b` and pass the corresponding states to the scheduler.
+"""
 function init!(solver::AbstractLinearSolver, state::AbstractSolverState, b::AbstractMatrix; scheduler = SequentialState, kwargs...)
   states = prepareMatrixStates(solver, state, b)
   multiState = scheduler(states)

@@ -1,6 +1,5 @@
 # # Multi-Threading
-# There are three different kinds of multi-threading in RegularizedLeastSquares.jl, two of which are transparent to the solvers themselves.
-# In the following examples we will use the Threads.@threads macro for multi-threading, but the concepts are applicable to other multi-threading options as well.
+# There are different ways multi-threading can be used with RegularizedLeastSquares.jl. To use multi-threading in Julia, one needs to start their session with multi-threads, see the [Julia documentation](https://docs.julialang.org/en/v1/manual/multi-threading/) for more information.
 
 # ## Solver Based Multi-Threading
 # This type of multi-threading is transparent to the solver and is applicable if the total solution is composed of individual solutions that can be solved in parallel.
@@ -20,7 +19,7 @@ end
 # ## Operator Based Multi-Threading
 # This type of multi-threading involves linear operators or proximal maps that can be implemnted in parallel.
 # Examples of this include the proximal map of the TV regularization term, which is based on the multi-threaded GradientOp from LinearOperatorCollection.
-# GPU acceleration also falls under this approach.
+# GPU acceleration also falls under this approach, see [GPU Acceleration](gpu_acceleration.md) for more information.
 
 # ## Measurement Based Multi-Threading
 # This level of multi-threading applies the same solver (and its parameters) to multiple measurement vectors or rather a measurement matrix B.
@@ -35,32 +34,35 @@ solver = createLinearSolver(CGNR, A; iterations=32)
 x_approx = solve!(solver, B)
 size(x_approx)
 
-# The previous `solve!` call was still executed sequentially. To execute it in parallel, we have to pass a MultiThreadingState to the `solve!` call:
+# The previous `solve!` call was still executed sequentially. To execute it in parallel, we have to specify a multi-threaded `scheduler` as a keyword-argument of the `solve!` call.
+# RegularizedLeastSquares.jl provides a `MultiThreadingState` scheduler that can be used for this purpose. This scheduler is based on the `Threads.@threads` macro:
 x_multi = solve!(solver, B; scheduler = MultiThreadingState)
 x_approx == x_multi
 
-# It is possible to implement custom scheduling. The following pseudo-code shows how to implement this for the FLoop.jl package:
+# ## Custom Scheduling
+# It is possible to implement custom scheduling. The following code shows how to implement this for the `Threads.@spawn` macro. Usually one this to implement multi-threading with a package such as FLoop.jl or ThreadPools.jl for thread pinning:
 
-# Since most solver have conv. criteria, they can finish at different iteration numbers, which we track with the active flags.
-mutable struct FloopState{S, ST <: AbstractSolverState{S}} <: AbstractMatrixSolverState{S}
-  states::Vector{ST}
-  active::Vector{Bool}
-  FloopState(states::Vector{ST}) where {S, ST <: AbstractSolverState{S}} = new{S, ST}(states, fill(true, length(states)))
-end
+# Since most solver have conv. criteria, they can finish at different iteration numbers, which we track this information with flags.
+ mutable struct SpawnState{S, ST <: AbstractSolverState{S}} <: RegularizedLeastSquares.AbstractMatrixSolverState{S}
+   states::Vector{ST}
+   active::Vector{Bool}
+   SpawnState(states::Vector{ST}) where {S, ST <: AbstractSolverState{S}} = new{S, ST}(states, fill(true, length(states)))
+ end
 
-# To hook into the existing init! code we only have to supply a method that gets a copyable "vector" state. This will invoke our FloopState constructor with copies of the given state.
-prepareMultiStates(solver::AbstractLinearSolver, state::FloopState, b::AbstractMatrix) = prepareMultiStates(solver, first(state.states), b)
+# To hook into the existing init! code we only have to supply a method that gets a copyable "vector" state. This will invoke our SpawnState constructor with copies of the given state.
+ prepareMultiStates(solver::AbstractLinearSolver, state::SpawnState, b::AbstractMatrix) = prepareMultiStates(solver, first(state.states), b);
 
 # We specialise the iterate function which is called with the idx of still active states
-#function iterate(solver::AbstractLinearSolver, state::FloopState, activeIdx)
-#  @floop for i in activeIdx
-#    res = iterate(solver, state.states[i])
-#    if isnothing(res)
-#      state.active[i] = false
-#    end
-#  end
-#  return state.active, state
-#end
+function Base.iterate(solver::AbstractLinearSolver, state::SpawnState, activeIdx)
+  @sync Threads.@spawn for i in activeIdx
+    res = iterate(solver, state.states[i])
+    if isnothing(res)
+      state.active[i] = false
+    end
+  end
+  return state.active, state
+end
 
-# solver = createLinearSolver(CGNR, A, ...)
-# solve!(solver, B; scheduler = FloopState)
+# Now we can simply use the SpawnState scheduler in the solve! call:
+x_custom = solve!(solver, B; scheduler = SpawnState)
+x_approx == x_multi

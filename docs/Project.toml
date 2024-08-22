@@ -1,8 +1,10 @@
 [deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 ImageGeoms = "9ee76f2b-840d-4475-b6d6-e485c9297852"
 ImagePhantoms = "71a99df6-f52c-4da1-bd2a-69d6f37f3252"
+JLArrays = "27aeb0d3-9eb9-45fb-866b-73c2ecf80fcb"
 LinearOperatorCollection = "a4a2c56f-fead-462a-a3ab-85921a5f2575"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
 RadonKA = "86de8297-835b-47df-b249-c04e8db91db5"

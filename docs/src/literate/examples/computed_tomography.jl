@@ -37,6 +37,8 @@ plot_image(fig[1,3], backproject(sinogram, angles), title = "Backprojection")
 resize_to_layout!(fig)
 fig
 
+# In the figure we can see our original image, the sinogram, and the backprojection of the sinogram. The goal of the inverse problem is to recover the original image from the sinogram.
+
 # ## Solving the Inverse Problem
 # To recover the image from the measurement vector, we solve the $l^2_2$-regularized least squares problem
 # ```math
@@ -50,8 +52,8 @@ fig
 using RegularizedLeastSquares
 reg = L2Regularization(0.001);
 
-# To solve this inverse problem, the Conjugate Gradient Normal Residual (CGNR) algorithm can be used. Thus, we build the corresponding solver
-
+# To solve this inverse problem, the Conjugate Gradient Normal Residual (CGNR) algorithm can be used. This solver is based on the normal operator of the Radon operator and uses both the forward and adjoint Radon transform internally.
+# We now build the corresponding solver
 solver = createLinearSolver(CGNR, A; reg=reg, iterations=20);
 
 # and apply it to our measurement vector

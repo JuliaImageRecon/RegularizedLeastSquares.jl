@@ -5,6 +5,9 @@ REPL one can access this documentation by entering the help mode with `?`
 ## solve!
 ```@docs
 RegularizedLeastSquares.solve!(::AbstractLinearSolver, ::Any)
+RegularizedLeastSquares.init!(::AbstractLinearSolver, ::Any)
+RegularizedLeastSquares.init!(::AbstractLinearSolver, ::AbstractSolverState, ::AbstractMatrix)
+
 ```
 
 ## ADMM
@@ -42,8 +45,11 @@ RegularizedLeastSquares.POGM
 RegularizedLeastSquares.SplitBregman
 ```
 
-## Miscellaneous Functions
+## Miscellaneous
 ```@docs
+RegularizedLeastSquares.solverstate
+RegularizedLeastSquares.solversolution
+RegularizedLeastSquares.solverconvergence
 RegularizedLeastSquares.StoreSolutionCallback
 RegularizedLeastSquares.StoreConvergenceCallback
 RegularizedLeastSquares.CompareSolutionCallback

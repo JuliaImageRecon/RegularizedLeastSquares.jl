@@ -1,6 +1,6 @@
 # # Getting Started
 
-# In this example we will go through a simple example from the field of Compressed Sensing to get familiar with RegularizedLeastSquares.jl.
+# In this example we will go through a simple random inverse problem to get familiar with RegularizedLeastSquares.jl.
 
 # ## Installation
 
@@ -12,7 +12,7 @@
 # ```
 # This will download and install the RegularizedLeastSquares.jl package and its dependencies. To install a different version, please consult the [Pkg documentation](https://pkgdocs.julialang.org/dev/managing-packages/#Adding-packages). 
 
-# Once the installation is complete, you can import the package in your code with the `using` keyword:
+# Once the installation is complete, you can import the package with the `using` keyword:
 
 
 using RegularizedLeastSquares
@@ -24,7 +24,7 @@ using RegularizedLeastSquares
 # \end{equation}
 # ```
 # where $\mathbf{A}$ is a linear operator, $\mathbf{y}$ is the measurement vector, and $\mathbf{R(x)}$ is an (optional) regularization term.
-# The aim is to reconstruct the unknown vector $\mathbf{x}$. In this first exampel we will just reconstruct a simple random matrix. For more advanced examples, please refer to the examples.
+# The goal is to retrieve an approximation of the unknown vector $\mathbf{x}$. In this first exampel we will just work with simple random arrays. For more advanced examples, please refer to the examples.
 
 A = rand(32, 16)
 x = rand(16)

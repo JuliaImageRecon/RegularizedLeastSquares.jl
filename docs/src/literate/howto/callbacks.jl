@@ -1,8 +1,9 @@
 # # Callbacks
-# For certain reconstructions it is important to monitor the internal state of the solver. RegularizedLeastSquares.jl provides a callback mechanism to allow developres to access this state after each iteration.
+# For certain optimization it is important to monitor the internal state of the solver. RegularizedLeastSquares.jl provides a callback mechanism to allow developres to access this state after each iteration.
 # The package provides a variety of default callbacks, which for example store the solution after each iteration. More information can be found in the API reference for the `solve!` function.
 
 # In this example we will revist the compressed sensing compressed sensing [example](../examples/compressed_sensing.md) and implement a custom callback using the do-syntax of the `solve!` function.
+# This allows us to implement our callback inline and access the solver state after each iteration.
 
 # We first recreate the operator `A` and the measurement vector `b`:
 using ImagePhantoms, ImageGeoms
@@ -39,9 +40,10 @@ solve!(solver, b) do solver, iteration
     global idx += 1
   end
 end
-resize_to_layout!(fig)
-fig
-
 # In the callback we have to copy the solution, as the solver will update it in place.
 # As is explained in the solver section, each features fields that are intended to be immutable during a `solve!` call and a state that is modified in each iteration.
 # Depending on the solvers parameters and the measurement input, the state can differ in its fields and their type. Ideally, one tries to avoid accessing the state directly and uses the provided functions to access the state.
+
+# The resulting figure shows the reconstructed image after 0, 4, 8, 12, 16 and 20 iterations:
+resize_to_layout!(fig)
+fig
