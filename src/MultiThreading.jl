@@ -1,22 +1,40 @@
 export SequentialState, MultiThreadingState, prepareMatrixStates
 abstract type AbstractMatrixSolverState{S} <: AbstractSolverState{S} end
+"""
+    SequentialState(states::Vector{ST}) where {S, ST <: AbstractSolverState{S}}
+
+SequentialState is a scheduler that runs each active state sequentially per iteration.
+"""
 mutable struct SequentialState{S, ST <: AbstractSolverState{S}} <: AbstractMatrixSolverState{S}
   states::Vector{ST}
   active::Vector{Bool}
   SequentialState(states::Vector{ST}) where {S, ST <: AbstractSolverState{S}} = new{S, ST}(states, fill(true, length(states)))
 end
 
+"""
+    MultiThreadingState(states::Vector{ST}) where {S, ST <: AbstractSolverState{S}}
+
+MultiThreadingState is a scheduler that runs each active state in parallel per iteration.
+"""
 mutable struct MultiThreadingState{S, ST <: AbstractSolverState{S}} <: AbstractMatrixSolverState{S}
   states::Vector{ST}
   active::Vector{Bool}
   MultiThreadingState(states::Vector{ST}) where {S, ST <: AbstractSolverState{S}} = new{S, ST}(states, fill(true, length(states)))
 end
 
+"""
+    init!(solver::AbstractLinearSolver, state::AbstractSolverState, b::AbstractMatrix; scheduler = SequentialState, kwargs...)
+
+Initialize the solver with each column of `b` and pass the corresponding states to the scheduler.
+"""
 function init!(solver::AbstractLinearSolver, state::AbstractSolverState, b::AbstractMatrix; scheduler = SequentialState, kwargs...)
   states = prepareMatrixStates(solver, state, b)
   multiState = scheduler(states)
   solver.state = multiState
-  init!(solver, multiState, b; kwargs...)
+  for (i, s) in enumerate(solver.state.states)
+    init!(solver, s, b[:, i]; kwargs...)
+  end
+  solver.state.active .= true
 end
 function init!(solver::AbstractLinearSolver, state::AbstractMatrixSolverState, b::AbstractVector; kwargs...)
   singleState = first(state.states)
@@ -30,12 +48,6 @@ function prepareMatrixStates(solver::AbstractLinearSolver, state::AbstractSolver
 end
 prepareMatrixStates(solver::AbstractLinearSolver, state::Union{SequentialState, MultiThreadingState}, b::AbstractMatrix) = prepareMatrixStates(solver, first(state.states), b)
 
-function init!(solver::AbstractLinearSolver, state::AbstractMatrixSolverState, b::AbstractMatrix; kwargs...)
-  for (i, s) in enumerate(state.states)
-    init!(solver, s, b[:, i]; kwargs...)
-  end
-  state.active .= true
-end
 
 function iterate(solver::S, state::AbstractMatrixSolverState) where {S <: AbstractLinearSolver}
   activeIdx = findall(state.active)

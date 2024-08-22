@@ -15,7 +15,7 @@ using StatsBase
 using LinearOperatorCollection
 using InteractiveUtils
 
-export AbstractLinearSolver, createLinearSolver, init!, deinit, solve!, linearSolverList, linearSolverListReal, applicableSolverList, power_iterations
+export AbstractLinearSolver, AbstractSolverState, createLinearSolver, init!, deinit, solve!, linearSolverList, linearSolverListReal, applicableSolverList, power_iterations
 
 abstract type AbstractLinearSolver end
 abstract type AbstractSolverState{S} end
@@ -173,9 +173,19 @@ Return a named tuple of the solvers current convergence metrics
 """
 function solverconvergence end
 
+"""
+    solverstate(solver::AbstractLinearSolver)
+
+Return the current state of the solver
+"""
 solverstate(solver::AbstractLinearSolver) = solver.state
 solverconvergence(solver::AbstractLinearSolver) = solverconvergence(solverstate(solver))
 
+"""
+    init!(solver::AbstractLinearSolver, b; kwargs...)
+  
+Prepare the solver for iteration based on the given data vector `b` and `kwargs`.
+"""
 init!(solver::AbstractLinearSolver, b; kwargs...) = init!(solver, solverstate(solver), b; kwargs...)
 iterate(solver::AbstractLinearSolver) = iterate(solver, solverstate(solver))
 
