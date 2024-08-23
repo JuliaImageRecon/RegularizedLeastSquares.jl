@@ -204,7 +204,7 @@ performs one ADMM iteration.
 """
 function iterate(solver::ADMM, state::ADMMState)
   done(solver, state) && return nothing
-  solver.verbose && println("Outer ADMM Iteration #$iteration")
+  solver.verbose && println("Outer ADMM Iteration #$(state.iteration)")
 
   # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 Σ_i||Φi*x+ui-zi||²
   # <=> (A'A+ρ Σ_i Φi'Φi)*x = A'b+ρΣ_i Φi'(zi-ui)
@@ -264,10 +264,10 @@ function iterate(solver::ADMM, state::ADMMState)
     end
 
     if solver.verbose
-      println("rᵏ[$i]/ɛᵖʳⁱ[$i] = $(solver.rᵏ[i]/solver.ɛᵖʳⁱ[i])")
-      println("sᵏ[$i]/ɛᵈᵘᵃ[$i] = $(solver.sᵏ[i]/solver.ɛᵈᵘᵃ[i])")
-      println("Δ[$i]/Δᵒˡᵈ[$i]  = $(solver.Δ[i]/Δᵒˡᵈ)")
-      println("new ρ[$i]      = $(solver.ρ[i])")
+      println("rᵏ[$i]/ɛᵖʳⁱ[$i] = $(state.rᵏ[i]/state.ɛᵖʳⁱ[i])")
+      println("sᵏ[$i]/ɛᵈᵘᵃ[$i] = $(state.sᵏ[i]/state.ɛᵈᵘᵃ[i])")
+      println("Δ[$i]/Δᵒˡᵈ[$i]  = $(state.Δ[i]/Δᵒˡᵈ)")
+      println("new ρ[$i]      = $(state.ρ[i])")
       flush(stdout)
     end
   end

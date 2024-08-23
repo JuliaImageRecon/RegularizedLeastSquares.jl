@@ -154,7 +154,7 @@ function iterate(solver::FISTA, state::FISTAState)
   state.x .-= state.ρ .* state.res
 
   state.rel_res_norm = norm(state.res) / state.norm_x₀
-  solver.verbose && println("Iteration $iteration; rel. residual = $(state.rel_res_norm)")
+  solver.verbose && println("Iteration $(state.iteration); rel. residual = $(state.rel_res_norm)")
 
   # the two lines below are equivalent to the ones above and non-allocating, but require the 5-argument mul! function to implemented for AHA, i.e. if AHA is LinearOperator, it requires LinearOperators.jl v2
   # mul!(solver.x, solver.AHA, solver.xᵒˡᵈ, -solver.ρ, 1)
@@ -170,7 +170,7 @@ function iterate(solver::FISTA, state::FISTAState)
   # gradient restart conditions
   if solver.restart == :gradient
     if real(state.res ⋅ (state.x .- state.xᵒˡᵈ) ) > 0 #if momentum is at an obtuse angle to the negative gradient
-      solver.verbose && println("Gradient restart at iter $iteration")
+      solver.verbose && println("Gradient restart at iter $(state.iteration)")
       state.theta = 1
     end
   end

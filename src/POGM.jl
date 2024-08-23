@@ -183,7 +183,7 @@ function iterate(solver::POGM, state::POGMState)
   state.x .-= state.ρ .* state.res
 
   state.rel_res_norm = norm(state.res) / state.norm_x₀
-  solver.verbose && println("Iteration $iteration; rel. residual = $(state.rel_res_norm)")
+  solver.verbose && println("Iteration $(state.iteration); rel. residual = $(state.rel_res_norm)")
 
   # inertial parameters
   state.thetaᵒˡᵈ = state.theta
@@ -222,7 +222,7 @@ function iterate(solver::POGM, state::POGMState)
   if solver.restart == :gradient
     state.w .+= state.y .+ state.ρ ./ state.γ .* (state.x .- state.z)
     if real((state.w ⋅ state.x - state.w ⋅ state.z) / state.γ - state.w ⋅ state.res) < 0
-      solver.verbose && println("Gradient restart at iter $iteration")
+      solver.verbose && println("Gradient restart at iter $(state.iteration)")
       state.σ = 1
       state.theta = 1
     else # decreasing γ
