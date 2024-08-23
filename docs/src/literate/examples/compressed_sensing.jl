@@ -46,7 +46,7 @@ fig
 # To recover the image from the measurement vector, we solve the TV-regularized least squares problem:
 # ```math
 # \begin{equation}
-#   \underset{\mathbf{x}}{argmin} \frac{1}{2}\vert\vert \mathbf{A}\mathbf{x}-\mathbf{b} \vert\vert_2^2 + \vert\vert\mathbf{x}\vert\vert_{\lambda\text{TV}} .
+#   \underset{\mathbf{x}}{argmin} \frac{1}{2}\vert\vert \mathbf{A}\mathbf{x}-\mathbf{b} \vert\vert_2^2 + \lambda\vert\vert\mathbf{x}\vert\vert_{\text{TV}} .
 # \end{equation}
 # ```
 

@@ -23,7 +23,7 @@ using RegularizedLeastSquares
 #   \underset{\mathbf{x}}{argmin} \frac{1}{2}\vert\vert \mathbf{A}\mathbf{x}-\mathbf{b} \vert\vert_2^2 + \mathbf{R(x)} .
 # \end{equation}
 # ```
-# where $\mathbf{A}$ is a linear operator, $\mathbf{y}$ is the measurement vector, and $\mathbf{R(x)}$ is an (optional) regularization term.
+# where $\mathbf{A}$ is a linear operator, $\mathbf{b}$ is the measurement vector, and $\mathbf{R(x)}$ is an (optional) regularization term.
 # The goal is to retrieve an approximation of the unknown vector $\mathbf{x}$. In this first exampel we will just work with simple random arrays. For more advanced examples, please refer to the examples.
 
 A = rand(32, 16)
@@ -41,11 +41,11 @@ isapprox(x, x_approx, rtol = 0.001)
 # The CGNR algorithm can solve optimzation problems of the form:
 # ```math
 # \begin{equation}
-#   \underset{\mathbf{x}}{argmin} \frac{1}{2}\vert\vert \mathbf{A}\mathbf{x}-\mathbf{b} \vert\vert_2^2 + \vert\vert\mathbf{x}\vert\vert^2_2 .
+#   \underset{\mathbf{x}}{argmin} \frac{1}{2}\vert\vert \mathbf{A}\mathbf{x}-\mathbf{b} \vert\vert_2^2 + \lambda\vert\vert\mathbf{x}\vert\vert^2_2 .
 # \end{equation}
 # ```
 
-# The corresponding solver can be built with the L2 regularization term:
+# The corresponding solver can be built with the $l^2_2$-regularization term:
 solver = createLinearSolver(CGNR, A; reg = L2Regularization(0.0001), iterations=32);
 x_approx = solve!(solver, b)
 isapprox(x, x_approx, rtol = 0.001)

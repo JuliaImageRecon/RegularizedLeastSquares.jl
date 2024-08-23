@@ -83,3 +83,4 @@ SolverVariant(A; kwargs...) = Solver(A, VariantState(kwargs...))
 function iterate(solver::Solver, state::VarianteState)
   # Custom iteration
 end
+```

@@ -11,7 +11,7 @@
 # In the following, we will solve a weighted least squares problem of the form:
 # ```math
 # \begin{equation}
-#   \underset{\mathbf{x}}{argmin} \frac{1}{2}\vert\vert \mathbf{A}\mathbf{x}-\mathbf{b} \vert\vert_\mathbf{W}^2 + \vert\vert\mathbf{x}\vert\vert^2_2 .
+#   \underset{\mathbf{x}}{argmin} \frac{1}{2}\vert\vert \mathbf{A}\mathbf{x}-\mathbf{b} \vert\vert_\mathbf{W}^2 + \lambda\vert\vert\mathbf{x}\vert\vert^2_2 .
 # \end{equation}
 # ```
 using RegularizedLeastSquares, LinearOperatorCollection, LinearAlgebra
