@@ -217,6 +217,25 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
     =#
 end
 
+function testVerboseSolvers(; arrayType = Array, elType = Float32)
+    A = rand(elType, 3, 2)
+    x = rand(elType, 2)
+    b = A * x
+
+    solvers = [ADMM, FISTA, POGM, OptISTA, SplitBregman]
+
+    for solver in solvers
+        @test try
+            S = createLinearSolver(solver, arrayType(A), iterations = 3, verbose = true)
+            solve!(S, arrayType(b))
+            true
+        catch e
+            @error e
+            false
+        end
+    end
+end
+
 
 @testset "Test Solvers" begin
     for arrayType in arrayTypes
@@ -240,4 +259,5 @@ end
             end
         end
     end
+    testVerboseSolvers()
 end

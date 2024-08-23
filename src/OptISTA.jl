@@ -184,7 +184,7 @@ function iterate(solver::OptISTA, state::OptISTAState)
   state.y .-= state.ρ * state.γ .* state.res
 
   state.rel_res_norm = norm(state.res) / state.norm_x₀
-  solver.verbose && println("Iteration $iteration; rel. residual = $(state.rel_res_norm)")
+  solver.verbose && println("Iteration $(state.iteration); rel. residual = $(state.rel_res_norm)")
 
   # proximal map
   prox!(solver.reg, state.y, state.ρ * state.γ * λ(solver.reg))
