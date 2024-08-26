@@ -3,5 +3,6 @@
 *.jl.mem
 docs/build/
 docs/site/
+docs/src/generated/
 
 Manifest.toml

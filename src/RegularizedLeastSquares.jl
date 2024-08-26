@@ -15,9 +15,10 @@ using StatsBase
 using LinearOperatorCollection
 using InteractiveUtils
 
-export AbstractLinearSolver, createLinearSolver, init, deinit, solve!, linearSolverList, linearSolverListReal, applicableSolverList
+export AbstractLinearSolver, AbstractSolverState, createLinearSolver, init!, deinit, solve!, linearSolverList, linearSolverListReal, applicableSolverList, power_iterations
 
 abstract type AbstractLinearSolver end
+abstract type AbstractSolverState{S} end
 
 """
     solve!(solver::AbstractLinearSolver, b; x0 = 0, callbacks = (_, _) -> nothing)
@@ -98,13 +99,13 @@ The keyword `callbacks` allows you to pass a (vector of) callable objects that t
 
 See also [`StoreSolutionCallback`](@ref), [`StoreConvergenceCallback`](@ref), [`CompareSolutionCallback`](@ref) for a number of provided callback options.
 """
-function solve!(solver::AbstractLinearSolver, b; x0 = 0, callbacks = (_, _) -> nothing)
+function solve!(solver::AbstractLinearSolver, b; callbacks = (_, _) -> nothing, kwargs...)
   if !(callbacks isa Vector)
     callbacks = [callbacks]
   end
 
 
-  init!(solver, b; x0)
+  init!(solver, b; kwargs...)
   foreach(cb -> cb(solver, 0), callbacks)
 
   for (iteration, _) = enumerate(solver)
@@ -128,7 +129,7 @@ end
 """
 solve!(cb, solver::AbstractLinearSolver, b; kwargs...) = solve!(solver, b; kwargs..., callbacks = cb)
 
-
+include("MultiThreading.jl")
 
 export AbstractRowActionSolver
 abstract type AbstractRowActionSolver <: AbstractLinearSolver end
@@ -152,13 +153,19 @@ include("Transforms.jl")
 include("Regularization/Regularization.jl")
 include("proximalMaps/ProximalMaps.jl")
 
-export solversolution, solverconvergence
+export solversolution, solverconvergence, solverstate
 """
     solversolution(solver::AbstractLinearSolver)
 
 Return the current solution of the solver
 """
-solversolution(solver::AbstractLinearSolver) = solver.x
+solversolution(solver::AbstractLinearSolver) = solversolution(solverstate(solver))
+"""
+    solversolution(state::AbstractSolverState)
+
+Return the current solution of the solver's state
+"""
+solversolution(state::AbstractSolverState) = state.x
 """
     solverconvergence(solver::AbstractLinearSolver)
 
@@ -166,10 +173,26 @@ Return a named tuple of the solvers current convergence metrics
 """
 function solverconvergence end
 
+"""
+    solverstate(solver::AbstractLinearSolver)
+
+Return the current state of the solver
+"""
+solverstate(solver::AbstractLinearSolver) = solver.state
+solverconvergence(solver::AbstractLinearSolver) = solverconvergence(solverstate(solver))
+
+"""
+    init!(solver::AbstractLinearSolver, b; kwargs...)
+  
+Prepare the solver for iteration based on the given data vector `b` and `kwargs`.
+"""
+init!(solver::AbstractLinearSolver, b; kwargs...) = init!(solver, solverstate(solver), b; kwargs...)
+iterate(solver::AbstractLinearSolver) = iterate(solver, solverstate(solver))
+
 include("Utils.jl")
 include("Kaczmarz.jl")
-include("DAXKaczmarz.jl")
-include("DAXConstrained.jl")
+#include("DAXKaczmarz.jl")
+#include("DAXConstrained.jl")
 include("CGNR.jl")
 include("Direct.jl")
 include("FISTA.jl")
@@ -177,7 +200,7 @@ include("OptISTA.jl")
 include("POGM.jl")
 include("ADMM.jl")
 include("SplitBregman.jl")
-include("PrimalDualSolver.jl")
+#include("PrimalDualSolver.jl")
 
 include("Callbacks.jl")
 
@@ -187,7 +210,8 @@ include("deprecated.jl")
 Return a list of all available linear solvers
 """
 function linearSolverList()
-  filter(s -> s ∉ [DaxKaczmarz, DaxConstrained, PrimalDualSolver], linearSolverListReal())
+  #filter(s -> s ∉ [DaxKaczmarz, DaxConstrained, PrimalDualSolver], linearSolverListReal())
+  linearSolverListReal()
 end
 
 function linearSolverListReal()
@@ -239,12 +263,12 @@ See also [`isapplicable`](@ref), [`linearSolverList`](@ref).
 """
 applicableSolverList(args...) = filter(solver -> isapplicable(solver, args...), linearSolverListReal())
 
-function filterKwargs(T::Type, kwargs)
+function filterKwargs(T::Type, kwargWarning, kwargs)
   table = methods(T)
   keywords = union(Base.kwarg_decl.(table)...)
   filtered = filter(in(keywords), keys(kwargs))
 
-  if length(filtered) < length(kwargs)
+  if length(filtered) < length(kwargs) && kwargWarning
     filteredout = filter(!in(keywords), keys(kwargs))
     @warn "The following arguments were passed but filtered out: $(join(filteredout, ", ")). Please watch closely if this introduces unexpexted behaviour in your code."
   end
@@ -260,12 +284,12 @@ regularized linear systems. All solvers return an approximate solution to Ax = b
 
 TODO: give a hint what solvers are available
 """
-function createLinearSolver(solver::Type{T}, A; kwargs...) where {T<:AbstractLinearSolver}
-  return solver(A; filterKwargs(T, kwargs)...)
+function createLinearSolver(solver::Type{T}, A; kwargWarning::Bool = true, kwargs...) where {T<:AbstractLinearSolver}
+  return solver(A; filterKwargs(T,kwargWarning,kwargs)...)
 end
 
-function createLinearSolver(solver::Type{T}; AHA, kwargs...) where {T<:AbstractLinearSolver}
-  return solver(; filterKwargs(T, kwargs)..., AHA = AHA)
+function createLinearSolver(solver::Type{T}; AHA, kwargWarning::Bool = true, kwargs...) where {T<:AbstractLinearSolver}
+  return solver(; filterKwargs(T,kwargWarning,kwargs)..., AHA = AHA)
 end
 
 end

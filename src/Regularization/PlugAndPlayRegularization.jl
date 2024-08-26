@@ -24,16 +24,16 @@ struct PlugAndPlayRegularization{T, M, I} <: AbstractParameterizedRegularization
 end
 PlugAndPlayRegularization(model, shape; kwargs...) = PlugAndPlayRegularization(one(Float32); kwargs..., model = model, shape = shape)
 
-function prox!(self::PlugAndPlayRegularization, x::AbstractArray{Tc}, λ::T) where {T, Tc <: Complex{T}}
+function prox!(self::PlugAndPlayRegularization, x::AbstractArray{Complex{T}}, λ::T) where {T <: Real}
     if self.ignoreIm
-        x[:] = prox!(self, real.(x), λ) + imag.(x) * one(T)im
+        copyto!(x, prox!(self, real.(x), λ) + imag.(x) * one(T)im)
     else
-        x[:] = prox!(self, real.(x), λ) + prox!(self, imag.(x), λ) * one(T)im
+        copyto!(x, prox!(self, real.(x), λ) + prox!(self, imag.(x), λ) * one(T)im)
     end
     return x
 end
 
-function prox!(self::PlugAndPlayRegularization, x::AbstractArray{T}, λ::T) where {T}
+function prox!(self::PlugAndPlayRegularization, x::AbstractArray{T}, λ::T) where {T <: Real}
 
     if λ != self.λ && (λ < 0.0 || λ > 1.0)
         temp = clamp(λ, zero(T), one(T))
@@ -50,7 +50,7 @@ function prox!(self::PlugAndPlayRegularization, x::AbstractArray{T}, λ::T) wher
     out = out - λ * (out - self.model(out))
     out = RegularizedLeastSquares.inverse_transform(tf, out)
 
-    x[:] = vec(out)
+    copyto!(x, vec(out))
     return x
 end
 

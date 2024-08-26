@@ -2,9 +2,16 @@ using RegularizedLeastSquares, LinearAlgebra, RegularizedLeastSquares.LinearOper
 # Packages for testing only
 using Random, Test
 using FFTW
+using JLArrays
 
-include("testCreation.jl")
-include("testKaczmarz.jl")
-include("testProxMaps.jl")
-include("testSolvers.jl")
-include("testRegularization.jl")
+areTypesDefined = @isdefined arrayTypes
+arrayTypes = areTypesDefined ? arrayTypes : [Array, JLArray]
+
+@testset "RegularizedLeastSquares" begin
+  include("testCreation.jl")
+  include("testKaczmarz.jl")
+  include("testProxMaps.jl")
+  include("testSolvers.jl")
+  include("testRegularization.jl")
+  include("testMultiThreading.jl")
+end

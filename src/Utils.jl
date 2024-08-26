@@ -99,7 +99,7 @@ function dot_with_matrix_row(B::Transpose{T,S},
   tmp
 end
 
-function dot_with_matrix_row(prod::ProdOp{T, <:WeightingOp, matT}, x::Vector{T}, k) where {T, matT}
+function dot_with_matrix_row(prod::ProdOp{T, <:WeightingOp, matT}, x::AbstractVector{T}, k) where {T, matT}
   A = prod.B
   return prod.A.weights[k]*dot_with_matrix_row(A, x, k)
 end
@@ -111,35 +111,35 @@ end
 """
 This function enforces the constraint of a real solution.
 """
-function enfReal!(x::AbstractArray{T}, mask=ones(Bool, length(x))) where {T<:Complex}
+function enfReal!(x::AbstractArray{T}) where {T<:Complex}
   #Returns x as complex vector with imaginary part set to zero
   @simd for i in 1:length(x)
-    @inbounds mask[i] && (x[i] = complex(x[i].re))
+    @inbounds (x[i] = complex(x[i].re))
   end
 end
 
 """
 This function enforces the constraint of a real solution.
 """
-enfReal!(x::AbstractArray{T}, mask=ones(Bool, length(x))) where {T<:Real} = nothing
+enfReal!(x::AbstractArray{T}) where {T<:Real} = nothing
 
 """
 This function enforces positivity constraints on its input.
 """
-function enfPos!(x::AbstractArray{T}, mask=ones(Bool, length(x))) where {T<:Complex}
+function enfPos!(x::AbstractArray{T}) where {T<:Complex}
   #Return x as complex vector with negative parts projected onto 0
   @simd for i in 1:length(x)
-    @inbounds (x[i].re < 0 && mask[i]) && (x[i] = im*x[i].im)
+    @inbounds (x[i].re < 0) && (x[i] = im*x[i].im)
   end
 end
 
 """
 This function enforces positivity constraints on its input.
 """
-function enfPos!(x::AbstractArray{T}, mask=ones(Bool, length(x))) where {T<:Real}
+function enfPos!(x::AbstractArray{T}) where {T<:Real}
   #Return x as complex vector with negative parts projected onto 0
   @simd for i in 1:length(x)
-    @inbounds (x[i] < 0 && mask[i]) && (x[i] = zero(T))
+    @inbounds (x[i] < 0) && (x[i] = zero(T))
   end
 end
 
@@ -242,23 +242,28 @@ function nrmsd(I,Ireco)
 end
 
 """
-    power_iterations(AᴴA; rtol=1e-2, maxiter=30, verbose=false)
+    power_iterations(AᴴA; rtol=1e-3, maxiter=30, verbose=false)
 
 Power iterations to determine the maximum eigenvalue of a normal operator or square matrix.
+For custom AᴴA which are not an abstract array or an `AbstractLinearOperator` one can pass a vector `b` of `size(AᴴA, 2)` to be used during the computation. 
 
 # Arguments
 * `AᴴA`                 - operator or matrix; has to be square
+* b                     - (optional), vector to be used during computation
 
 # Keyword Arguments
-* `rtol=1e-2`           - relative tolerance; function terminates if the change of the max. eigenvalue is smaller than this values
+* `rtol=1e-3`           - relative tolerance; function terminates if the change of the max. eigenvalue is smaller than this values
 * `maxiter=30`          - maximum number of power iterations
 * `verbose=false`       - print maximum eigenvalue if `true`
 
 # Output
 maximum eigenvalue of the operator
 """
-function power_iterations(AᴴA; rtol=1e-2, maxiter=30, verbose=false)
-  b = randn(eltype(AᴴA), size(AᴴA,2))
+power_iterations(AᴴA::AbstractArray; kwargs...) = power_iterations(AᴴA, similar(AᴴA, size(AᴴA, 2)); kwargs...)
+power_iterations(AᴴA::AbstractLinearOperator; kwargs...) = power_iterations(AᴴA, similar(LinearOperators.storage_type(AᴴA), size(AᴴA, 2)); kwargs...)
+function power_iterations(AᴴA, b; rtol=1e-3, maxiter=30, verbose=false)
+  copyto!(b, randn(eltype(b), size(AᴴA, 2)))
+  
   bᵒˡᵈ = similar(b)
   λ = Inf
 
@@ -273,8 +278,8 @@ function power_iterations(AᴴA; rtol=1e-2, maxiter=30, verbose=false)
     mul!(b, AᴴA, bᵒˡᵈ)
 
     λᵒˡᵈ = λ
-    λ = (bᵒˡᵈ' * b) / (bᵒˡᵈ' * bᵒˡᵈ)
-    verbose && println("iter = $i; λ = $λ")
+    λ = abs(bᵒˡᵈ' * b) # λ is real-valued for Hermitian matrices
+    verbose && println("iter = $i; λ = $λ; abs(λ/λᵒˡᵈ - 1) = $(abs(λ/λᵒˡᵈ - 1)) <? $rtol")
     abs(λ/λᵒˡᵈ - 1) < rtol && return λ
   end
 
