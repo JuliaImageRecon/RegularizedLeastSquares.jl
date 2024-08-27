@@ -1,18 +1,23 @@
 # Solvers
-RegularizedLeastSquares.jl provides a variety of solvers, which are used in fields such as MPI and MRI. The following is a non-exhaustive list of the implemented solvers:
+RegularizedLeastSquares.jl provides a variety of solvers, which are used in fields such as MPI and MRI. The following gives an overview of implemented solvers and roughly which regularization terms are applicable for them:
 
-* Kaczmarz algorithm (`Kaczmarz`, also called Algebraic reconstruction technique)
-* Conjugate Gradients Normal Residual method (`CGNR`)
-* Fast Iterative Shrinkage Thresholding Algorithm (`FISTA`)
-* Alternating Direction of Multipliers Method (`ADMM`)
+| Solver | Regularization |
+|--------|----------------------|
+| `Kaczmarz` (Also called Algebraic reconstruction technique) | $l_2^2$ and one additional term |
+| Conjugate Gradients Normal Residual method (`CGNR`) | $l_2^2$ |
+| Fast Iterative Shrinkage Thresholding Algorithm (`FISTA`) | Any one term |
+| Optimal Iterative Shrinkage Thresholding Algorithm (`OptISTA`)| Any one term |
+|Proximal Optimized Gradient Method (`POGM`)| Any one term |
+| Alternating Direction of Multipliers Method (`ADMM`) | Several terms |
+|`SplitBregman`| Several terms |
+|`DirectSolver`| $l_2^2$ |
+|`PseudoInverse`| $l_2^2$ |
 
-The solvers are organized in a type-hierarchy and inherit from:
+It is also possible to provide custom terms by implementing a proximal mapping. Generally, these algorithms are correct for regularization terms that are convex and possibly non-smooth. See [Regularization](generated/explanations/regularization.md), for more information on regularization terms. 
 
-```julia
-abstract type AbstractLinearSolver
-```
+For convenience reasons, all solvers accept projection regularization terms, such as a constraint to the positive numbers. Depending on the solver, such a term is either considered during every iteration or just in the last iteration. 
 
-The type hierarchy is further differentiated into solver categories such as `AbstractRowAtionSolver`, `AbstractPrimalDualSolver` or `AbstractProximalGradientSolver`. A list of all available solvers can be returned by the `linearSolverList` function.
+A list of all available solvers can be returned by the `linearSolverList` function.
 
 ## Solver Construction
 To create a solver, one can invoke the method `createLinearSolver` as in
@@ -52,6 +57,14 @@ for (iteration, x_approx) in enumerate(solver)
 end
 ```
 ## Solver Internals
+The solvers are organized in a type-hierarchy and inherit from:
+
+```julia
+abstract type AbstractLinearSolver
+```
+
+The type hierarchy is further differentiated into solver categories such as `AbstractRowAtionSolver`, `AbstractPrimalDualSolver` or `AbstractProximalGradientSolver`. 
+
 The fields of a solver can be divided into two groups. The first group are intended to be immutable fields that do not change during iterations, the second group are mutable fields that do change. Examples of the first group are the operator itself and examples of the second group are the current solution or the number of the current iteration.
 
 The second group is usually encapsulated in its own state struct:

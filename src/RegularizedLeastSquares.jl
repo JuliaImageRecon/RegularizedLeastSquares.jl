@@ -51,14 +51,14 @@ julia> x = [0.5932234523399985; 0.2697534345340015];
 
 julia> b = A * x;
 
-julia> S = ADMM(A);
+julia> S = ADMM(A, reg = L1Regularization(0.0001));
 
 julia> x_approx = solve!(S, b)
 2-element Vector{Float64}:
- 0.5932234523399984
- 0.26975343453400163
+ 0.5932171509222105
+ 0.26971370566079866
 ```
-Here, we use [`L1Regularization`](@ref), which is default for [`ADMM`](@ref). All regularization options can be found in [API for Regularizers](@ref).
+Here, we use [`L1Regularization`](@ref). All regularization options can be found in [API for Regularizers](@ref).
 
 The following example solves the same problem, but stores the solution `x` of each interation in `tr`:
 ```jldoctest solveExample
