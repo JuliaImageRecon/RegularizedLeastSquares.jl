@@ -80,7 +80,6 @@ function Kaczmarz(A
   if λ(L2) isa Vector && !(normalizeReg isa NoNormalization || normalizeReg isa SystemMatrixBasedNormalization)
     error("Tikhonov matrix for Kaczmarz is only valid with no or system matrix based normalization")
   end
-
   indices = findsinks(AbstractProjectionRegularization, reg)
   other = AbstractRegularization[reg[i] for i in indices]
   deleteat!(reg, indices)
@@ -136,7 +135,6 @@ function Kaczmarz(A
   diff_vec_sq = zeros(eltype(T), M)
   diff_numb = zero(eltype(T))
   diff_denom = zero(eltype(T))
-  r_probs = zeros(real(eltype(T)), M)
 
   return Kaczmarz(A, u, L2, other, denom, rowindex, rowIndexCycle, x, vl, εw, τl, αl,
     randomized, subMatrixSize, probabilities, shuffleRows,
@@ -188,7 +186,7 @@ function init!(solver::Kaczmarz, b; x0=0)
     if x0 == 0
       solver.r = copy(b)
     else
-      # If x0 is set not to zero Vector
+      # If x0 is not set to zero Vector
       copy_b = copy(b)
       Ax = A * solver.x
       Ax_reg = Ax .- solver.εw
@@ -214,7 +212,6 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
   else
     usedIndices = solver.rowIndexCycle
   end
-
   for i in usedIndices
     row = solver.rowindex[i]
     iterate_row_index(solver, solver.A, row, i)
@@ -231,19 +228,19 @@ iterate_row_index(solver::Kaczmarz, A::AbstractLinearSolver, row, index) = itera
 function iterate_row_index(solver::Kaczmarz, A, row, index)
   if solver.greedy_randomized
     prepareGreedyKaczmarz(solver)
-    iterate_row_index_greedy(solver, solver.A, solver.i_k, solver.i_k)
+    iterate_row_index_greedy(solver, solver.i_k)
     row = solver.i_k
   else
     solver.τl = dot_with_matrix_row(A, solver.x, row)
     solver.αl = solver.denom[index] * (solver.u[row] - solver.τl - solver.ɛw * solver.vl[row])
-    solver.vl[row] += solver.αl * solver.ɛw
   end
+  solver.vl[row] += solver.αl * solver.ɛw
   kaczmarz_update!(A, solver.x, row, solver.αl)
 end
 
-iterate_row_index_greedy(solver::Kaczmarz, A::AbstractLinearSolver, row, index) = iterate_row_index_greedy(solver, Matrix(A[row, :]), row, index)
-function iterate_row_index_greedy(solver::Kaczmarz, A, row, index)
-  solver.αl = solver.denom[index] * (solver.r[row])
+iterate_row_index_greedy(solver::Kaczmarz, index) = iterate_row_index_greedy(solver, index)
+function iterate_row_index_greedy(solver::Kaczmarz, index)
+  solver.αl = solver.denom[index] * (solver.r[index])
   calcR(solver)
 end
 
@@ -265,17 +262,7 @@ function rowProbabilities(A, rowindex)
 end
 
 
-#Calculate next useable index
-function calcProbSelection(solver::Kaczmarz)
-  #r_denom = 1.0 / (norm(solver.r)^2)
-  solver.r_probs .= zero(eltype(solver.r_probs)) # Inhalt auf 0 setzen statt allokieren solver.r_probs .= zero(eltype(solver.r_probs))
-  for i in solver.U_k
-    if (i != 0)
-      solver.r_probs[i] = (solver.diff_vec_sq[i]) * solver.diff_denom
-    end
-  end
-  solver.i_k = sample(Random.GLOBAL_RNG, solver.U_k, ProbabilityWeights(solver.r_probs))
-end
+
 
 ### initkaczmarz ###
 
@@ -336,14 +323,14 @@ function prepareGreedyKaczmarz(solver::Kaczmarz)
   calcProbSelection(solver)
 end
 
-function calcMax(solver::Kaczmarz)
-  return maximum(i -> solver.diff_vec_sq[i] * solver.denom[i], eachindex(solver.diff_vec_sq))
-end
-
 function calcDiff(solver::Kaczmarz)
   solver.diff_vec_sq .= abs2.(solver.r)
   solver.diff_numb = sum(solver.diff_vec_sq)
   solver.diff_denom = 1.0 / solver.diff_numb
+end
+
+function calcMax(solver::Kaczmarz)
+  return maximum(i -> solver.diff_vec_sq[i] * solver.denom[i], eachindex(solver.diff_vec_sq))
 end
 
 function calcEk(solver::Kaczmarz, max, theta::Nothing)
@@ -356,7 +343,14 @@ function calcIndexSet(solver::Kaczmarz)
   # Calculate e_K * || b - A*x_k ||²
   lower_bound_const = solver.e_k * solver.diff_numb
   solver.U_k .= 1:solver.norm_size
-  map!(x -> solver.diff_vec_sq[x] >= lower_bound_const * solver.norms[x] ? x : zero(eltype(solver.U_k)), solver.U_k, solver.U_k)
+  map!(x -> solver.diff_vec_sq[x] >= lower_bound_const * solver.norms[x] ? solver.diff_vec_sq[x] : zero(eltype(solver.diff_vec_sq)), solver.r_probs, solver.U_k)
+end
+
+#Calculate next useable index
+function calcProbSelection(solver::Kaczmarz)
+  r_denom = 1.0 / (sum(solver.r_probs))
+  map!(x -> solver.r_probs[x] == zero(eltype(solver.r_probs)) ? zero(eltype(solver.r_probs)) : solver.diff_vec_sq[x] * r_denom, solver.r_probs, 1:solver.norm_size)
+  solver.i_k = sample(Random.GLOBAL_RNG, 1:solver.norm_size, ProbabilityWeights(solver.r_probs))
 end
 
 function calcR(solver::Kaczmarz)
