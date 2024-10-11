@@ -187,10 +187,10 @@ function init!(solver::Kaczmarz, b; x0=0)
       solver.r = copy(b)
     else
       # If x0 is not set to zero Vector
-      copy_b = copy(b)
+      solver.r = copy(b)
       Ax = A * solver.x
       Ax_reg = Ax .- solver.εw
-      solver.r = copy_b - Ax_reg
+      solver.r = solve.r - Ax_reg
     end
   end
 end
@@ -209,6 +209,8 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
 
   if solver.randomized
     usedIndices = Int.(StatsBase.sample!(Random.GLOBAL_RNG, solver.rowIndexCycle, weights(solver.probabilities), zeros(solver.subMatrixSize), replace=false))
+  elseif solver.greedy_randomized
+    usedIndices = 1:solver.subMatrixSize
   else
     usedIndices = solver.rowIndexCycle
   end
@@ -221,8 +223,13 @@ function iterate(solver::Kaczmarz, iteration::Int=0)
     prox!(r, solver.x)
   end
 
+  if solver.greedy_randomized
+    solver.r .= solver.u - (solver.A * solver.x) - (solver.ɛw * solver.vl)
+  end
+
   return solver.vl, iteration + 1
 end
+
 
 iterate_row_index(solver::Kaczmarz, A::AbstractLinearSolver, row, index) = iterate_row_index(solver, Matrix(A[row, :]), row, index)
 function iterate_row_index(solver::Kaczmarz, A, row, index)
