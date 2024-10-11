@@ -323,41 +323,39 @@ end
 # end
 
 function prepareGreedyKaczmarz(solver::Kaczmarz)
-  calcDiff(solver)
-  max = calcMax(solver)
-  calcEk(solver, max, solver.theta)
-  calcIndexSet(solver)
-  calcProbSelection(solver)
-end
-
-function calcDiff(solver::Kaczmarz)
-  solver.diff_vec_sq .= abs2.(solver.r)
-  solver.diff_numb = sum(solver.diff_vec_sq)
+  # Compute e_k
+  solver.r_probs .= abs2.(solver.r)
+  solver.diff_numb = sum(solver.r_probs)
   solver.diff_denom = 1.0 / solver.diff_numb
+  # Inplace maximum(diff_vec_sq .* denom)
+  max = maximum(Broadcast.instantiate(Broadcast.broadcasted(*, solver.r_probs, solver.denom)))
+  solver.e_k = calcEk(solver, max, solver.theta)
+
+  # Determine the index set of positive integers
+  lower_bound_const = solver.e_k * solver.diff_numb
+  # zero zeros below lower_bound_const and accumulate valid ones 
+  r_sum = zero(eltype(solver.r_probs))
+  for i in eachindex(solver.r_probs)
+    val = solver.r_probs[i]
+    tmp = ifelse(val >= lower_bound_const * solver.norms[i], val, zero(eltype(solver.r_probs)))
+    solver.r_probs[i] = tmp
+    r_sum += tmp
+  end
+
+  # Calculate the probability of selection
+  r_denom = 1.0 / r_sum
+  solver.r_probs .*= r_denom
+
+  # Select row
+  solver.i_k = sample(Random.GLOBAL_RNG, ProbabilityWeights(solver.r_probs, r_sum * r_denom))
 end
 
-function calcMax(solver::Kaczmarz)
-  return maximum(i -> solver.diff_vec_sq[i] * solver.denom[i], eachindex(solver.diff_vec_sq))
-end
 
 function calcEk(solver::Kaczmarz, max, theta::Nothing)
-  solver.e_k = (0.5) * (((solver.diff_denom) * max) + solver.Fnorm)
+  return (0.5) * (((solver.diff_denom) * max) + solver.Fnorm)
 end
 function calcEk(solver::Kaczmarz, max, theta::Float64)
-  solver.e_k = ((theta * ((solver.diff_denom) * max)) + ((1 - theta) * solver.Fnorm))
-end
-function calcIndexSet(solver::Kaczmarz)
-  # Calculate e_K * || b - A*x_k ||²
-  lower_bound_const = solver.e_k * solver.diff_numb
-  solver.U_k .= 1:solver.norm_size
-  map!(x -> solver.diff_vec_sq[x] >= lower_bound_const * solver.norms[x] ? solver.diff_vec_sq[x] : zero(eltype(solver.diff_vec_sq)), solver.r_probs, solver.U_k)
-end
-
-#Calculate next useable index
-function calcProbSelection(solver::Kaczmarz)
-  r_denom = 1.0 / (sum(solver.r_probs))
-  map!(x -> solver.r_probs[x] == zero(eltype(solver.r_probs)) ? zero(eltype(solver.r_probs)) : solver.diff_vec_sq[x] * r_denom, solver.r_probs, 1:solver.norm_size)
-  solver.i_k = sample(Random.GLOBAL_RNG, 1:solver.norm_size, ProbabilityWeights(solver.r_probs))
+  return ((theta * ((solver.diff_denom) * max)) + ((1 - theta) * solver.Fnorm))
 end
 
 function calcR(solver::Kaczmarz)
