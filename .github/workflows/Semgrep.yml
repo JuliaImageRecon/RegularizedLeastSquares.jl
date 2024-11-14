@@ -1,0 +1,66 @@
+# Based on:
+# https://semgrep.dev/docs/semgrep-ci/sample-ci-configs#github-actions
+# https://0xdbe.github.io/GitHub-HowToEnableCodeScanningWithSemgrep/
+# https://medium.com/@mostafa.elnakeb/supercharging-your-code-quality-with-semgrep-sast-in-github-actions-c8f30eb26655
+# Name of this GitHub Actions workflow.
+name: Semgrep OSS scan
+
+on:
+  # Scan on-demand through GitHub Actions interface:
+  workflow_dispatch:
+    branches:
+      - main
+  # Schedule the CI job (this method uses cron syntax):
+  schedule:
+    - cron: '0 0 * * 1' # Run at start of week 
+    
+jobs:
+  semgrep:
+    # User definable name of this GitHub Actions job.
+    name: semgrep-oss/scan
+    # If you are self-hosting, change the following `runs-on` value: 
+    runs-on: ubuntu-latest
+
+    steps:
+        # Checkout the repository.
+      - name: Clone source code
+        uses: actions/checkout@v4
+
+        # Checkout custom rules
+      - name: Checkout custom rules
+        uses: actions/checkout@v4
+        with:
+          repository: JuliaComputing/semgrep-rules-julia
+          ref: main
+          path: ./JuliaRules
+
+        # Prepare Python
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+        # Install Semgrep
+      - name: Install Semgrep
+        run: python3 -m pip install semgrep
+
+        # Run Semgrep
+      - name: Scan with Semgrep
+        run: | 
+            semgrep scan \
+                --config ./JuliaRules/rules \
+                --metrics=off \
+                --sarif --output report.sarif \
+                --oss-only \
+                --exclude=JuliaRules
+    
+      - name: Save Semgrep report
+        uses: actions/upload-artifact@v4
+        with:
+          name: report.sarif
+          path: report.sarif
+      
+      - name: Upload Semgrep report
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: report.sarif
+          category: semgrep
