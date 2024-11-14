@@ -9,7 +9,7 @@ on:
   # Scan on-demand through GitHub Actions interface:
   workflow_dispatch:
     branches:
-      - main
+      - master
   # Schedule the CI job (this method uses cron syntax):
   schedule:
     - cron: '0 0 * * 1' # Run at start of week 
