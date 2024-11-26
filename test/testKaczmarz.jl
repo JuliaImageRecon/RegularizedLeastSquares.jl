@@ -37,18 +37,6 @@ Random.seed!(12345)
 
       # Test Tikhonov regularization matrix
       @testset "Kaczmarz Tikhonov matrix" begin
-        A = rand(3, 2) + im * rand(3, 2)
-        x = rand(2) + im * rand(2)
-        b = A * x
-
-        regMatrix = rand(2) # Tikhonov matrix
-
-        solver = Kaczmarz
-        S = createLinearSolver(solver, arrayType(A), iterations=200, reg=[L2Regularization(arrayType(regMatrix))])
-        x_approx = Array(solve!(S, arrayType(b)))
-        #@info "Testing solver $solver ...: $x  == $x_approx"
-        @test norm(x - x_approx) / norm(x) ≈ 0 atol = 0.1
-
         ## Test spatial regularization
         M = 12
         N = 8
@@ -62,17 +50,25 @@ Random.seed!(12345)
 
         # @show A, x, regMatrix
         # use regularization matrix
-
-        S = createLinearSolver(solver, arrayType(A), iterations=100, reg=[L2Regularization(arrayType(regMatrix))])
+        S = createLinearSolver(Kaczmarz, arrayType(A), iterations=100, reg=[L2Regularization(arrayType(regMatrix))])
         x_matrix = Array(solve!(S, arrayType(b)))
 
         # use standard reconstruction
-        S = createLinearSolver(solver, arrayType(A * Diagonal(1 ./ sqrt.(regMatrix))), iterations=100)
+        S = createLinearSolver(Kaczmarz, arrayType(A * Diagonal(1 ./ sqrt.(regMatrix))), reg = [L2Regularization(1.0)], iterations=100)
         x_approx = Array(solve!(S, arrayType(b))) ./ sqrt.(regMatrix)
 
         # test
         #@info "Testing solver $solver ...: $x_matrix  == $x_approx"
         @test norm(x_approx - x_matrix) / norm(x_approx) ≈ 0 atol = 0.1
+
+        # Compare reg. matrix of equal elements to standard reco
+        λ = rand()
+        S = createLinearSolver(Kaczmarz, arrayType(A), iterations=100, reg=[L2Regularization(λ)])
+        x_standard = Array(solve!(S, arrayType(b)))
+
+        S = createLinearSolver(Kaczmarz, arrayType(A), iterations=100, reg=[L2Regularization(arrayType(fill(λ, N)))])
+        x_matrix = Array(solve!(S, arrayType(b)))
+        @test isapprox(x_standard, x_matrix)
       end
 
       @testset "Kaczmarz Weighting Matrix" begin
