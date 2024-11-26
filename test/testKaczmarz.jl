@@ -66,7 +66,7 @@ Random.seed!(12345)
         S = createLinearSolver(Kaczmarz, arrayType(A), iterations=100, reg=[L2Regularization(λ)])
         x_standard = Array(solve!(S, arrayType(b)))
 
-        S = createLinearSolver(Kaczmarz, arrayType(A), iterations=100, reg=[L2Regularization(fill(λ, N))])
+        S = createLinearSolver(Kaczmarz, arrayType(A), iterations=100, reg=[L2Regularization(arrayType(fill(λ, N)))])
         x_matrix = Array(solve!(S, arrayType(b)))
         @test isapprox(x_standard, x_matrix)
       end
