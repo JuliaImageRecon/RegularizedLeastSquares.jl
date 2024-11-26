@@ -50,11 +50,11 @@ Random.seed!(12345)
 
         # @show A, x, regMatrix
         # use regularization matrix
-        S = createLinearSolver(solver, arrayType(A), iterations=100, reg=[L2Regularization(arrayType(regMatrix))])
+        S = createLinearSolver(Kaczmarz, arrayType(A), iterations=100, reg=[L2Regularization(arrayType(regMatrix))])
         x_matrix = Array(solve!(S, arrayType(b)))
 
         # use standard reconstruction
-        S = createLinearSolver(solver, arrayType(A * Diagonal(1 ./ sqrt.(regMatrix))), reg = [L2Regularization(1.0)], iterations=100)
+        S = createLinearSolver(Kaczmarz, arrayType(A * Diagonal(1 ./ sqrt.(regMatrix))), reg = [L2Regularization(1.0)], iterations=100)
         x_approx = Array(solve!(S, arrayType(b))) ./ sqrt.(regMatrix)
 
         # test
@@ -63,10 +63,10 @@ Random.seed!(12345)
 
         # Compare reg. matrix of equal elements to standard reco
         λ = rand()
-        S = createLinearSolver(solver, arrayType(A), iterations=100, reg=[L2Regularization(λ)])
+        S = createLinearSolver(Kaczmarz, arrayType(A), iterations=100, reg=[L2Regularization(λ)])
         x_standard = Array(solve!(S, arrayType(b)))
 
-        S = createLinearSolver(solver, arrayType(A), iterations=100, reg=[L2Regularization(fill(λ, N))])
+        S = createLinearSolver(Kaczmarz, arrayType(A), iterations=100, reg=[L2Regularization(fill(λ, N))])
         x_matrix = Array(solve!(S, arrayType(b)))
         @test isapprox(x_standard, x_matrix)
       end
