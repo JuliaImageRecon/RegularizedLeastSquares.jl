@@ -14,22 +14,22 @@ b = A*x
 
 solver = createLinearSolver(CGNR, A; AHA = adjoint(A) * A, reg = L2Regularization(0.0001), iterations=32);
 x_approx = solve!(solver, b)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">16-element Vector{Float64}:
- -0.36114181646403076
-  1.301281200446072
- -0.08422842396648203
- -1.0140319289302482
- -0.4630864155023963
- -0.08922523075447159
- -1.0166299649528139
-  1.1634757153346789
- -0.1682907870335553
-  0.25264331915065014
-  0.4787420180283147
- -0.44126974439127664
-  2.258761908627233
-  1.1287214664750718
- -1.3122420796194265
-  2.0340685666394425</code></pre><p>The normal operator can also be computed using the <code>normalOperator</code> function from LinearOperatorCollection.jl. This is useful if the normal operator is not directly available or shouldn&#39;t be stored in memory. This function is opinionated and attempts to optimize the resulting operator for iterative applications. Specifying a custom method for a custom operator allows one to control this optimization.</p><p>An example of such an optimization is a matrix-free weighting of <span>$\mathbf{A}$</span> as shown in the <a href="../weighting/">Weighting</a> example:</p><pre><code class="language-julia hljs">using LinearOperatorCollection
+ -0.0068608070013497
+  1.510279950134171
+  0.49677947685196944
+ -0.29238871075776907
+ -0.14926922665854075
+ -0.8421615508547345
+ -1.8313349719860372
+ -0.8129575646583957
+ -1.1621652734708936
+ -0.9202900795547184
+ -3.3334695517379638
+  0.8755477495614541
+  0.2826186041481316
+  0.03444547199721013
+  0.8938219826009284
+  0.6428792462082689</code></pre><p>The normal operator can also be computed using the <code>normalOperator</code> function from LinearOperatorCollection.jl. This is useful if the normal operator is not directly available or shouldn&#39;t be stored in memory. This function is opinionated and attempts to optimize the resulting operator for iterative applications. Specifying a custom method for a custom operator allows one to control this optimization.</p><p>An example of such an optimization is a matrix-free weighting of <span>$\mathbf{A}$</span> as shown in the <a href="../weighting/">Weighting</a> example:</p><pre><code class="language-julia hljs">using LinearOperatorCollection
 weights = rand(32)
 WA = ProdOp(WeightingOp(weights), A)
 AHA = LinearOperatorCollection.normalOperator(WA)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Linear operator
@@ -50,19 +50,19 @@ AHA = LinearOperatorCollection.normalOperator(WA)</code></pre><pre class="docume
   \mathbf{A}^*\tilde{\mathbf{W}}\mathbf{A}
 \end{equation}\]</p><p>The optimized normal operator can then be passed to the solver:</p><pre><code class="language-julia hljs">solver = createLinearSolver(CGNR, WA; AHA = AHA, reg = L2Regularization(0.0001), iterations=32);
 x_approx2 = solve!(solver, weights .* b)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">16-element Vector{Float64}:
- -0.36107204936377074
-  1.3013554093952597
- -0.08426670465279733
- -1.013960287096054
- -0.4630962222598162
- -0.08906954738075112
- -1.0165494748064565
-  1.1634332743979154
- -0.16821219775431212
-  0.25253727796842024
-  0.47875481510102674
- -0.44131534727830374
-  2.258745883409155
-  1.128815867556167
- -1.3121973040900439
-  2.0339414345243445</code></pre><p>Of course it is also possible to optimize a normal operator with other means and pass it to the solver via the AHA keyword argument.</p><p>It is also possible to only supply the normal operator to these solvers, however on then needs to supply <span>$\mathbf{A^*b}$</span> intead of <span>$\mathbf{b}$</span>.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../weighting/">« Weighting</a><a class="docs-footer-nextpage" href="../multi_threading/">Multi-Threading »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Tuesday 26 November 2024 15:52">Tuesday 26 November 2024</span>. Using Julia version 1.11.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ -0.006837192826844945
+  1.5102911602957558
+  0.49676488524402884
+ -0.2924115178495965
+ -0.1493748074846615
+ -0.8421717429978992
+ -1.8313337287492306
+ -0.812867349035906
+ -1.1621124027528222
+ -0.9202872349850199
+ -3.3333631998587387
+  0.8755119410460656
+  0.28257824769546835
+  0.03441534824774462
+  0.8937820594281263
+  0.6429089170204695</code></pre><p>Of course it is also possible to optimize a normal operator with other means and pass it to the solver via the AHA keyword argument.</p><p>It is also possible to only supply the normal operator to these solvers, however on then needs to supply <span>$\mathbf{A^*b}$</span> intead of <span>$\mathbf{b}$</span>.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../weighting/">« Weighting</a><a class="docs-footer-nextpage" href="../multi_threading/">Multi-Threading »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Tuesday 26 November 2024 15:53">Tuesday 26 November 2024</span>. Using Julia version 1.11.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
