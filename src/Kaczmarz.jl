@@ -155,7 +155,7 @@ function init!(solver::Kaczmarz, state::KaczmarzState{T, vecT}, b::vecT; x0 = 0)
 
   state.u .= b
   if λ_ isa AbstractVector
-    state.ɛw = 0
+    state.ɛw = one(T)
   else
     state.ɛw = sqrt(λ_)
   end
@@ -240,12 +240,18 @@ function initkaczmarz(A,λ)
   return A, denom, rowindex
 end
 function initkaczmarz(A, λ::AbstractVector)
+  # Instead of ||Ax - b||² + λ||x||² we solve ||Ax - b||² + λ||Lx||² where L is a diagonal matrix
+  # See Per Christian Hansen: Rank-Deficient and Discrete Ill-Posed Problems, Chapter 2.3 Transformation to Standard Form
+  # -> ||Âc - u||² + λ||c||² with Â = AL⁻¹, c = Lx
+  # We put this into the standard extended system of equation with λ = 1
+  # In the end we need to multiply the solution with L⁻¹ 
   λ = real(eltype(A)).(λ)
   A = initikhonov(A, λ)
-  return initkaczmarz(A, 0)
+  return initkaczmarz(A, one(eltype(λ)))
 end
 
-initikhonov(A, λ) = transpose((1 ./ sqrt.(λ)) .* transpose(A)) # optimize structure for row access
+# A * inv(λ), specialised for diagm(λ)
+initikhonov(A, λ::AbstractVector) =  transpose((1 ./ sqrt.(λ)) .* transpose(A)) # optimize structure for row access
 initikhonov(prod::ProdOp{Tc, <:WeightingOp, matT}, λ) where {T, Tc<:Union{T, Complex{T}}, matT} = ProdOp(prod.A, initikhonov(prod.B, λ))
 ### kaczmarz_update! ###
 
