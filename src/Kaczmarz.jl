@@ -95,14 +95,8 @@ function Kaczmarz(A
   norms = zeros(eltype(T), M)
   # setup denom and rowindex
   if greedy_randomized
-    #A, denom, rowindex, norms = initkaczmarz(A, λ(L2), greedy_randomized, true)
     B = (A * adjoint(A)) + (λ(L2) * I)
-    # Calculate all denominators - B * 1/(||A||²)
-    # if λ(L2) isa Vector
-    #   A, denom, rowindex, norms = initkaczmarz(A, λ(L2), greedy_randomized, true)
-    # else
     A, denom, rowindex, norms = initkaczmarz(A, λ(L2), greedy_randomized)
-    #end
     for x in 1:M
       B[:, x] = (B[:, x]) * denom[x]
     end
@@ -315,12 +309,6 @@ function initkaczmarz(A, λ::Vector)
   A = initikhonov(A, λ)
   return initkaczmarz(A, 0)
 end
-
-# function initkaczmarz(A, λ::Vector, greedy_randomized, test)
-#   λ = real(eltype(A)).(λ)
-#   A = initikhonov(A, λ)
-#   return initkaczmarz(A, 0, greedy_randomized)
-# end
 
 function prepareGreedyKaczmarz(solver::Kaczmarz)
   # Compute e_k
