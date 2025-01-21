@@ -1,7 +1,7 @@
 name = "RegularizedLeastSquares"
 uuid = "1e9c538a-f78c-5de5-8ffb-0b6dbe892d23"
 authors = ["Tobias Knopp <tobias@knoppweb.de>"]
-version = "0.16.6"
+version = "0.16.7"
 
 [deps]
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
@@ -30,7 +30,7 @@ JLArrays = "27aeb0d3-9eb9-45fb-866b-73c2ecf80fcb"
 
 [compat]
 IterativeSolvers = "0.9"
-julia = "1.9"
+julia = "1.10"
 StatsBase = "0.33, 0.34"
 VectorizationBase = "0.19, 0.21"
 FFTW = "1.0"
