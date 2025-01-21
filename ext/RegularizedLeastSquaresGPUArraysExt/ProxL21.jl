@@ -2,10 +2,11 @@ function RegularizedLeastSquares.proxL21!(x::vecT, λ::T, slices::Int64) where {
   sliceLength = div(length(x),slices)
   groupNorm = copyto!(similar(x, Float32, sliceLength), [Float32(norm(x[i:sliceLength:end])) for i=1:sliceLength])
 
-  gpu_call(x, λ, groupNorm, sliceLength) do ctx, x_, λ_, groupNorm_, sliceLength_
-    i = @linearidx(x_)
-    @inbounds x_[i] = x_[i]*max( (groupNorm_[mod1(i,sliceLength_)]-λ_)/groupNorm_[mod1(i,sliceLength_)],0)
-    return nothing
+  @kernel inbounds = true cpu = false function proxL21_kernel(x, λ, groupNorm, sliceLength)
+    i = @index(Global, Linear)
+    x[i] = x[i]*max( (groupNorm[mod1(i,sliceLength)]-λ)/groupNorm[mod1(i,sliceLength)],0)
   end
+  kernel! = proxL21_kernel(get_backend(x))
+  kernel!(x, λ, groupNorm, sliceLength, ndrange = length(x))
   return x
 end
