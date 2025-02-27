@@ -88,7 +88,7 @@ function OptISTA(A
   θn = (1 + sqrt(1 + 8 * θn^2)) / 2
 
   # Prepare regularization terms
-  reg = isa(reg, AbstractVector) ? reg : [reg]
+  reg = copy(isa(reg, AbstractVector) ? reg : [reg])
   indices = findsinks(AbstractProjectionRegularization, reg)
   other = [reg[i] for i in indices]
   deleteat!(reg, indices)

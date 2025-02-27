@@ -94,15 +94,16 @@ function ADMM(A
   T  = eltype(AHA)
   rT = real(T)
 
-  reg = isa(reg, AbstractVector) ? reg : [reg]
-  regTrafo = isa(regTrafo, AbstractVector) ? regTrafo : [regTrafo]
-  @assert length(reg) == length(regTrafo) "reg and regTrafo must have the same length"
+  reg = copy(isa(reg, AbstractVector) ? reg : [reg])
+  regTrafo = copy(isa(regTrafo, AbstractVector) ? regTrafo : [regTrafo])
 
   indices = findsinks(AbstractProjectionRegularization, reg)
   proj = [reg[i] for i in indices]
   proj = identity.(proj)
   deleteat!(reg, indices)
-  deleteat!(regTrafo, indices)
+  #deleteat!(regTrafo, indices)
+
+  @assert length(reg) == length(regTrafo) "reg and regTrafo must have the same length"
 
   if typeof(rho) <: Number
     rho = [rT.(rho) for _ ∈ eachindex(reg)]
