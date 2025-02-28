@@ -60,7 +60,7 @@ function Kaczmarz(A
   T = real(eltype(A))
 
   # Prepare regularization terms
-  reg = isa(reg, AbstractVector) ? reg : [reg]
+  reg = copy(isa(reg, AbstractVector) ? reg : [reg])
   reg = normalize(Kaczmarz, normalizeReg, reg, A, nothing)
   idx = findsink(L2Regularization, reg)
   if isnothing(idx)

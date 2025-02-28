@@ -97,7 +97,7 @@ function POGM(A
   res = similar(x)
   res[1] = Inf # avoid spurious convergence in first iterations
 
-  reg = isa(reg, AbstractVector) ? reg : [reg]
+  reg = copy(isa(reg, AbstractVector) ? reg : [reg])
   indices = findsinks(AbstractProjectionRegularization, reg)
   other = [reg[i] for i in indices]
   deleteat!(reg, indices)

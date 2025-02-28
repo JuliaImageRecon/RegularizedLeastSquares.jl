@@ -50,7 +50,7 @@ function PrimalDualSolver(A::Matrix{T}
                         ) where T
   M,N = size(A)
 
-  reg = isa(reg, AbstractVector) ? reg : [reg]
+  reg = copy(isa(reg, AbstractVector) ? reg : [reg])
 
   if reg[1] isa L1Regularization
     gradientOp = opEye(T,N) #UniformScaling(one(T))
