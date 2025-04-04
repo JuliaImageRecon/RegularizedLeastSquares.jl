@@ -145,7 +145,7 @@ function Kaczmarz(A
     diff_vec_sq = zeros(eltype(T), M)
     diff_numb = zero(eltype(T))
     diff_denom = zero(eltype(T))  
-    state = GreedyKaczmarzState(u, x, vl, εw, τl, αl, 0, U_k, theta, e_k, norms, norm_size, Fnorm, r, i_k, diff_vec_sq, diff_numb, diff_denom, r_probs)
+    state = GreedyKaczmarzState(u, x, vl, εw, τl, αl, 0, U_k, theta, e_k, norms, norm_size, Fnorm, r, B, diff_vec_sq, diff_numb, diff_denom, r_probs)
   end
 
   return Kaczmarz(A, L2, other, denom, rowindex, rowIndexCycle,
@@ -275,7 +275,7 @@ function iterate(solver::Kaczmarz, state::GreedyKaczmarzState)
   if done(solver,state) return nothing end
 
   unused = 1
-  for i in OneTo(solver.subMatrixSize)
+  for i in Base.OneTo(solver.subMatrixSize)
     iterate_row_index(solver, state, solver.A, unused, i)
   end
 
@@ -284,9 +284,7 @@ function iterate(solver::Kaczmarz, state::GreedyKaczmarzState)
   end
 
   # Update residuals after proximal map application
-  if solver.greedy_randomized
-    solver.r .= solver.u - (solver.A * solver.x) - (solver.ɛw * solver.vl)
-  end
+  state.r .= state.u - (solver.A * state.x) - (state.ɛw * state.vl)
 
   state.iteration += 1
   return state.x, state
@@ -302,7 +300,7 @@ end
 function iterate_row_index(solver::Kaczmarz, state::GreedyKaczmarzState, A, _, index)
   row = prepareGreedyKaczmarz(solver, state)
   state.αl = solver.denom[index] * (state.r[index])
-  state.r .-= ((state.r[i]) .* (view(state.B, :, i)))
+  state.r .-= ((state.r[row]) .* (view(state.B, :, row)))
   state.τl = dot_with_matrix_row(A,state.x,row)
   state.αl = solver.denom[index]*(state.u[row]-state.τl-state.ɛw*state.vl[row])
   kaczmarz_update!(A,state.x,row,state.αl)
@@ -390,7 +388,7 @@ function prepareGreedyKaczmarz(solver::Kaczmarz, state::GreedyKaczmarzState)
   state.diff_denom = 1.0 / state.diff_numb
   # Inplace maximum(diff_vec_sq .* denom)
   max = maximum(Broadcast.instantiate(Broadcast.broadcasted(*, state.r_probs, solver.denom)))
-  state.e_k = calcEk(solver, max, state.theta)
+  state.e_k = calcEk(state, max, state.theta)
 
   # Determine the index set of positive integers
   lower_bound_const = state.e_k * state.diff_numb

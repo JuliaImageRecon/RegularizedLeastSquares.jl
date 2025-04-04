@@ -112,6 +112,10 @@ Random.seed!(12345)
         S = createLinearSolver(solver, arrayType(A), iterations=2000, randomized=true)
         x_approx = Array(solve!(S, arrayType(b)))
         @test norm(x - x_approx) / norm(x) ≈ 0 atol = 0.1
+
+        S = createLinearSolver(solver, arrayType(A), iterations=200, greedy_randomized=true)
+        x_approx = Array(solve!(S, arrayType(b)))
+        @test norm(x - x_approx) / norm(x) ≈ 0 atol = 0.1
       end
     end
   end
