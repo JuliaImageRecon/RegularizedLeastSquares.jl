@@ -29,7 +29,7 @@ mutable struct KaczmarzState{T, vecT <: AbstractArray{T}} <: AbstractSolverState
   iteration::Int64
 end
 
-mutable struct GreedyKaczmarzState{T, vecT <: AbstractArray{T}, vecU <: AbstractArray{U}, vecI <: AbstractArray{Int64}} <: AbstractSolverState{Kaczmarz}
+mutable struct GreedyKaczmarzState{T, vecT <: AbstractArray{T}, matAHA <: AbstractMatrix{T}, U, vecU <: AbstractArray{U}, vecI <: AbstractArray{Int64}} <: AbstractSolverState{Kaczmarz}
   u::vecT
   x::vecT
   vl::vecT
@@ -247,9 +247,6 @@ end
 function solversolution(solver::Kaczmarz{matT, RN}) where {matT, R<:L2Regularization{<:AbstractVector}, RN <: Union{R, AbstractNestedRegularization{<:R}}}
   return solversolution(solver.state) .* (1 ./ sqrt.(λ(solver.L2)))
 end
-function solversolution(solver::Kaczmarz{matT,RN}) where {matT,R<:L2Regularization{<:Vector},RN<:Union{R,AbstractNestedRegularization{<:R}}}
-  return solver.x .* (1 ./ sqrt.(λ(solver.L2)))
-end
 solversolution(solver::Kaczmarz) = solversolution(solver.state)
 solverconvergence(state::KaczmarzState) = (; :residual => norm(state.vl))
 
@@ -295,7 +292,6 @@ function iterate(solver::Kaczmarz, state::GreedyKaczmarzState)
   return state.x, state
 end
 
-iterate_row_index(solver::Kaczmarz, state::AbstractSolverState{Kaczmarz}, A::AbstractLinearSolver, row, index) = iterate_row_index(solver, Matrix(A[row, :]), row, index) 
 function iterate_row_index(solver::Kaczmarz, state::KaczmarzState, A, row, index)
   state.τl = dot_with_matrix_row(A,state.x,row)
   state.αl = solver.denom[index]*(state.u[row]-state.τl-state.ɛw*state.vl[row])
@@ -306,7 +302,7 @@ end
 function iterate_row_index(solver::Kaczmarz, state::GreedyKaczmarzState, A, _, index)
   row = prepareGreedyKaczmarz(solver, state)
   state.αl = solver.denom[index] * (state.r[index])
-  calcR(state, row)
+  state.r .-= ((state.r[i]) .* (view(state.B, :, i)))
   state.τl = dot_with_matrix_row(A,state.x,row)
   state.αl = solver.denom[index]*(state.u[row]-state.τl-state.ɛw*state.vl[row])
   kaczmarz_update!(A,state.x,row,state.αl)
@@ -423,10 +419,6 @@ function calcEk(state::GreedyKaczmarzState, max, theta::Float64)
   return ((theta * ((state.diff_denom) * max)) + ((1 - theta) * state.Fnorm))
 end
 
-function calcR(state::GreedyKaczmarzState, i)
-  state.r .-= ((state.r[i]) .* (view(state.B, :, i)))
-end
-
 ### kaczmarz_update! ###
 
 """
@@ -454,9 +446,9 @@ function kaczmarz_update!(B::Transpose{T,S}, x::Vector,
   end
 end
 
-function kaczmarz_update!(prod::ProdOp{Tc,WeightingOp{T},matT}, x::Vector, k, beta) where {T,Tc<:Union{T,Complex{T}},matT}
+function kaczmarz_update!(prod::ProdOp{Tc, WeightingOp{T, vecT}}, x, k, beta) where {T, Tc<:Union{T, Complex{T}}, vecT}
   weight = prod.A.weights[k]
-  kaczmarz_update!(prod.B, x, k, weight * beta) # only for real weights
+  kaczmarz_update!(prod.B, x, k, weight*beta) # only for real weights
 end
 
 # kaczmarz_update! with manual simd optimization
