@@ -436,8 +436,8 @@ end
 
 This function updates x during the kaczmarz algorithm for dense matrices.
 """
-function kaczmarz_update!(B::Transpose{T,S}, x::Vector,
-  k::Integer, beta) where {T,S<:DenseMatrix}
+function kaczmarz_update!(B::Transpose{T,S}, x::V,
+  k::Integer, beta) where {T,S<:DenseMatrix,V<:DenseVector}
   A = B.parent
   @inbounds @simd for n = 1:size(A, 1)
     x[n] += beta * conj(A[n, k])
