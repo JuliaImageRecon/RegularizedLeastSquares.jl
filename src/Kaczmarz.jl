@@ -181,9 +181,9 @@ function init!(solver::Kaczmarz, state::KaczmarzState{T, vecT}, b::vecT; x0 = 0)
   if λ_ != λ_prev
     # A must be unchanged, since we do not store the original SM
     _, solver.denom, solver.rowindex = initkaczmarz(solver.A, λ_)
-    solver.rowIndexCycle = collect(1:length(rowindex))
+    solver.rowIndexCycle = collect(1:length(solver.rowindex))
     if solver.randomized
-      solver.probabilities = T.(rowProbabilities(solver.A, rowindex))
+      solver.probabilities = T.(rowProbabilities(solver.A, solver.rowindex))
     end
   end
 
