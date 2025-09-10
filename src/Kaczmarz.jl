@@ -219,6 +219,8 @@ function init!(solver::Kaczmarz, state::GreedyKaczmarzState{T, vecT}, b::vecT; x
     error("Measurement based regularization normalization is not supported for Greedy Kaczmarz")
   end
 
+  Random.seed!(solver.seed)
+
   # start vector
   state.x .= x0
   state.vl .= 0
