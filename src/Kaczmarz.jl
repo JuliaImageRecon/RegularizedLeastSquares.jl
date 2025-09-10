@@ -227,7 +227,7 @@ function init!(solver::Kaczmarz, state::GreedyKaczmarzState{T, vecT}, b::vecT; x
 
   state.u .= b
   if λ_ isa AbstractVector
-    state.ɛw = one(T)
+    state.ɛw = zero(T)
   else
     state.ɛw = sqrt(λ_)
   end
@@ -303,8 +303,6 @@ function iterate_row_index(solver::Kaczmarz, state::GreedyKaczmarzState, A, _, i
   row = prepareGreedyKaczmarz(solver, state)
   state.αl = solver.denom[index] * (state.r[index])
   state.r .-= ((state.r[row]) .* (view(state.B, :, row)))
-  state.τl = dot_with_matrix_row(A,state.x,row)
-  state.αl = solver.denom[index]*(state.u[row]-state.τl-state.ɛw*state.vl[row])
   kaczmarz_update!(A,state.x,row,state.αl)
   state.vl[row] += state.αl*state.ɛw
 end
