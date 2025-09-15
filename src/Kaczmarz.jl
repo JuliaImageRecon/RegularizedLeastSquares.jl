@@ -301,10 +301,10 @@ end
 
 function iterate_row_index(solver::Kaczmarz, state::GreedyKaczmarzState, A, _, index)
   row = prepareGreedyKaczmarz(solver, state)
-  state.αl = solver.denom[index] * (state.r[index])
-  state.r .-= ((state.r[row]) .* (view(state.B, :, row)))
+  state.αl = solver.denom[row] * (state.r[row])
   kaczmarz_update!(A,state.x,row,state.αl)
   state.vl[row] += state.αl*state.ɛw
+  state.r .-= ((state.r[row]) .* (view(state.B, :, row)))
 end
 
 
