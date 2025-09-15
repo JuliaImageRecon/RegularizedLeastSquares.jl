@@ -27,6 +27,7 @@ mutable struct KaczmarzState{T, vecT <: AbstractArray{T}} <: AbstractSolverState
   τl::T
   αl::T
   iteration::Int64
+  usedIndices::Vector{Int64}
 end
 
 mutable struct GreedyKaczmarzState{T, vecT <: AbstractArray{T}, matAHA <: AbstractMatrix{T}, U, vecU <: AbstractArray{U}, vecI <: AbstractArray{Int64}} <: AbstractSolverState{Kaczmarz}
@@ -37,6 +38,7 @@ mutable struct GreedyKaczmarzState{T, vecT <: AbstractArray{T}, matAHA <: Abstra
   τl::T
   αl::T
   iteration::Int64
+  usedIndices::Vector{Int64}
   U_k::vecI
   theta::Union{Nothing,Float64}
   e_k::U
@@ -116,14 +118,16 @@ function Kaczmarz(A
   else
     A, denom, rowindex = initkaczmarz(A, λ(L2))
   end
-
+  
+  subMatrixSize = round(Int, subMatrixFraction * M)
   rowIndexCycle = collect(1:length(rowindex))
   probabilities = eltype(denom)[]
+  usedIndices = rowIndexCycle
   if randomized
     probabilities = T.(rowProbabilities(A, rowindex))
+    usedIndices = zeros(Int64, subMatrixSize)
   end
 
-  subMatrixSize = round(Int, subMatrixFraction * M)
 
   u = zeros(eltype(A), M)
   x = zeros(eltype(A), N)
@@ -133,7 +137,7 @@ function Kaczmarz(A
   αl = zero(eltype(A))
 
   if !greedy_randomized
-    state = KaczmarzState(u, x, vl, εw, τl, αl, 0)
+    state = KaczmarzState(u, x, vl, εw, τl, αl, 0, usedIndices)
   else
     e_k = zero(eltype(denom))
     norm_size = M
@@ -145,7 +149,7 @@ function Kaczmarz(A
     diff_vec_sq = zeros(eltype(T), M)
     diff_numb = zero(eltype(T))
     diff_denom = zero(eltype(T))  
-    state = GreedyKaczmarzState(u, x, vl, εw, τl, αl, 0, U_k, theta, e_k, norms, norm_size, Fnorm, r, B, diff_vec_sq, diff_numb, diff_denom, r_probs)
+    state = GreedyKaczmarzState(u, x, vl, εw, τl, αl, 0, zeros(Int64, subMatrixSize), U_k, theta, e_k, norms, norm_size, Fnorm, r, B, diff_vec_sq, diff_numb, diff_denom, r_probs)
   end
 
   return Kaczmarz(A, L2, other, denom, rowindex, rowIndexCycle,
@@ -159,7 +163,7 @@ function init!(solver::Kaczmarz, state::KaczmarzState{T, vecT}, b::otherT; kwarg
   x = similar(b, size(state.x)...)
   vl = similar(b, size(state.vl)...)
 
-  state = KaczmarzState(u, x, vl, state.εw, state.τl, state.αl, state.iteration)
+  state = KaczmarzState(u, x, vl, state.εw, state.τl, state.αl, state.iteration, state.usedIndices)
   solver.state = state
   init!(solver, state, b; kwargs...)
 end
@@ -190,8 +194,11 @@ function init!(solver::Kaczmarz, state::KaczmarzState{T, vecT}, b::vecT; x0 = 0)
   if solver.shuffleRows || solver.randomized
     Random.seed!(solver.seed)
   end
-  if solver.shuffleRows
+  if solver.randomized
+    state.usedIndices .= 0
+  elseif solver.shuffleRows
     shuffle!(solver.rowIndexCycle)
+    state.usedIndices = solver.rowIndexCycle
   end
 
   # start vector
@@ -224,6 +231,7 @@ function init!(solver::Kaczmarz, state::GreedyKaczmarzState{T, vecT}, b::vecT; x
   # start vector
   state.x .= x0
   state.vl .= 0
+  state.usedIndices .= 0
 
   state.u .= b
   if λ_ isa AbstractVector
@@ -256,11 +264,9 @@ function iterate(solver::Kaczmarz, state::KaczmarzState)
   if done(solver,state) return nothing end
 
   if solver.randomized
-    usedIndices = Int.(StatsBase.sample!(Random.GLOBAL_RNG, solver.rowIndexCycle, weights(solver.probabilities), zeros(solver.subMatrixSize), replace=false))
-  else
-    usedIndices = solver.rowIndexCycle
+    StatsBase.sample!(Random.GLOBAL_RNG, solver.rowIndexCycle, weights(solver.probabilities), state.usedIndices, replace=false)
   end
-  for i in usedIndices
+  for i in state.usedIndices
     row = solver.rowindex[i]
     iterate_row_index(solver, state, solver.A, row, i)
   end
@@ -276,9 +282,8 @@ end
 function iterate(solver::Kaczmarz, state::GreedyKaczmarzState)
   if done(solver,state) return nothing end
 
-  unused = 1
-  for i in Base.OneTo(solver.subMatrixSize)
-    iterate_row_index(solver, state, solver.A, unused, i)
+  for i in 1:length(state.usedIndices)
+    iterate_row_index(solver, state, solver.A, i)
   end
 
   for r in solver.reg
@@ -299,12 +304,13 @@ function iterate_row_index(solver::Kaczmarz, state::KaczmarzState, A, row, index
   state.vl[row] += state.αl*state.ɛw
 end
 
-function iterate_row_index(solver::Kaczmarz, state::GreedyKaczmarzState, A, _, index)
+function iterate_row_index(solver::Kaczmarz, state::GreedyKaczmarzState, A, index)
   row = prepareGreedyKaczmarz(solver, state)
   state.αl = solver.denom[row] * (state.r[row])
   kaczmarz_update!(A,state.x,row,state.αl)
   state.vl[row] += state.αl*state.ɛw
   state.r .-= ((state.r[row]) .* (view(state.B, :, row)))
+  state.usedIndices[index] = row
 end
 
 
