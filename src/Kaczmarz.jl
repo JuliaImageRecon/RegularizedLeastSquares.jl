@@ -291,7 +291,9 @@ function iterate(solver::Kaczmarz, state::GreedyKaczmarzState)
   end
 
   # Update residuals after proximal map application
-  state.r .= state.u - (solver.A * state.x) - (state.ɛw * state.vl)
+  # More memory efficient state.r .= state.u - (solver.A * state.x) - (state.ɛw * state.vl)
+  state.r .= state.u .- (state.ɛw .* state.vl)
+  mul!(state.r, solver.A, state.x, -one(eltype(state.x)), one(eltype(state.x)))
 
   state.iteration += 1
   return state.x, state
@@ -399,13 +401,12 @@ function prepareGreedyKaczmarz(solver::Kaczmarz, state::GreedyKaczmarzState)
   # Determine the index set of positive integers
   lower_bound_const = state.e_k * state.diff_numb
   # zero zeros below lower_bound_const and accumulate valid ones 
-  r_sum = zero(eltype(state.r_probs))
-  for i in eachindex(state.r_probs)
-    val = state.r_probs[i]
-    tmp = ifelse(val >= lower_bound_const * state.norms[i], val, zero(eltype(state.r_probs)))
-    state.r_probs[i] = tmp
-    r_sum += tmp
+  @simd for i in eachindex(state.r_probs)
+    val = @inbounds state.r_probs[i]
+    tmp = @inbounds ifelse(val >= lower_bound_const * state.norms[i], val, zero(eltype(state.r_probs)))
+    @inbounds state.r_probs[i] = tmp
   end
+  r_sum = sum(state.r_probs)
 
   # Calculate the probability of selection
   r_denom = 1.0 / r_sum
