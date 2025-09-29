@@ -244,6 +244,18 @@ function iterate(solver::ADMM, state::ADMMState)
     state.u[i] .-= state.z[i]
 
     # update convergence criteria (one for each constraint)
+    # The following commented lines are a readable calculation of the convergence criteria. However, they allocate a substantial amount of memory, and we use a less readable, but less allocating code that hijacks the variables xᵒˡᵈ and zᵒˡᵈ as they are unused at this stage of the iteration.
+    # state.rᵏ[i] = norm(solver.regTrafo[i] * state.x - state.z[i])  # primal residual (x-z)
+    # state.sᵏ[i] = norm(state.ρ[i] * adjoint(solver.regTrafo[i]) * (state.z[i] .- state.zᵒˡᵈ[i])) # dual residual (concerning f(x))
+
+    # state.ɛᵖʳⁱ[i] = max(norm(solver.regTrafo[i] * state.x), norm(state.z[i]))
+    # state.ɛᵈᵘᵃ[i] = norm(state.ρ[i] * adjoint(solver.regTrafo[i]) * state.u[i])
+
+    # Δᵒˡᵈ = state.Δ[i]
+    # state.Δ[i] = norm(state.x    .- state.xᵒˡᵈ   ) +
+    #               norm(state.z[i] .- state.zᵒˡᵈ[i]) +
+    #               norm(state.u[i] .- state.uᵒˡᵈ[i])
+
     state.xᵒˡᵈ .= state.x .- state.xᵒˡᵈ
     state.zᵒˡᵈ[i] .= state.z[i] .- state.zᵒˡᵈ[i]
     state.uᵒˡᵈ[i] .= state.u[i] .- state.uᵒˡᵈ[i]
