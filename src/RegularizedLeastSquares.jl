@@ -5,11 +5,12 @@ using LinearAlgebra
 import LinearAlgebra.BLAS: gemv, gemv!
 import LinearAlgebra: BlasFloat, normalize!, norm, rmul!, lmul!
 using SparseArrays
+using ShiftedArrays
 using IterativeSolvers
 using Random
 using VectorizationBase
 using VectorizationBase: shufflevector, zstridedpointer
-using FLoops
+using OhMyThreads: @tasks, @local
 using LinearOperators: opEye
 using StatsBase
 using LinearOperatorCollection
@@ -183,7 +184,7 @@ solverconvergence(solver::AbstractLinearSolver) = solverconvergence(solverstate(
 
 """
     init!(solver::AbstractLinearSolver, b; kwargs...)
-  
+
 Prepare the solver for iteration based on the given data vector `b` and `kwargs`.
 """
 init!(solver::AbstractLinearSolver, b; kwargs...) = init!(solver, solverstate(solver), b; kwargs...)
