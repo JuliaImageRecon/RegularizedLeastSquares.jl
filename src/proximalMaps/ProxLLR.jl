@@ -48,56 +48,42 @@ function proxLLRNonOverlapping!(reg::LLRRegularization{TR,N,TI}, x::Union{Abstra
     block_idx = CartesianIndices(blockSize)
     K = size(x)[end]
 
-    if randshift
-        # Random.seed!(1234)
-        shift_idx = (Tuple(rand(block_idx))..., 0)
-        xs = circshift(x, shift_idx)
-    else
-        xs = x
-    end
-
-    ext = mod.(shape, blockSize)
-    pad = mod.(blockSize .- ext, blockSize)
-    if any(pad .!= 0)
-        xp = similar(x, eltype(x), (shape .+ pad)..., K)
-        fill!(xp, zero(eltype(x)))
-        xp[CartesianIndices(x)] .= xs
-    else
-        xp = xs
-    end
+    xs = randshift ? ShiftedArrays.circshift(x, rand(block_idx)) : x
 
     bthreads = BLAS.get_num_threads()
     try
         BLAS.set_num_threads(1)
-        blocks = CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
-        xᴸᴸᴿ = [similar(x, prod(blockSize), K) for _ = 1:length(blocks)]
-        let xp = xp # Avoid boxing error
-            @floop for (id, i) ∈ enumerate(blocks)
-                @views xᴸᴸᴿ[id] .= reshape(xp[i.+block_idx, :], :, K)
-                ub = sqrt(norm(xᴸᴸᴿ[id]' * xᴸᴸᴿ[id], Inf)) #upper bound on singular values given by matrix infinity norm
+        @tasks for idx_center ∈ CartesianIndices(StepRange.(TI(0), blockSize, shape .- 1))
+            @local begin
+                xᴸᴸᴿ = similar(x, prod(blockSize), K)
+                xᴸᴸᴿ² = similar(x, K, K)
+            end
+
+            idx = idx_center .+ block_idx
+
+            # remove out-of bounds idx and fill the corresponding xᴸᴸᴿ entries with 0
+            idx = CartesianIndices(ntuple(i -> idx.indices[i].start:min(idx.indices[i].stop, shape[i]), length(shape)))
+            xᴸᴸᴿ[1:length(idx), :] .= reshape(view(xs, idx, :), :, K)
+            xᴸᴸᴿ[length(idx)+1:end, :] .= 0
+
+            if any(xᴸᴸᴿ .!= 0)
+                mul!(xᴸᴸᴿ², xᴸᴸᴿ', xᴸᴸᴿ)
+                ub = sqrt(norm(xᴸᴸᴿ², Inf)) #upper bound on singular values given by matrix infinity norm
                 if λ >= ub #save time by skipping the SVT as recommended by Ong/Lustig, IEEE 2016
-                    xp[i.+block_idx, :] .= 0
+                    xs[idx, :] .= 0
                 else # threshold singular values
-                    SVDec = svd!(xᴸᴸᴿ[id])
+                    SVDec = svd!(xᴸᴸᴿ)
                     prox!(L1Regularization, SVDec.S, λ)
-                    xp[i.+block_idx, :] .= reshape(SVDec.U * Diagonal(SVDec.S) * SVDec.Vt, blockSize..., :)
+                    SVDec.Vt .*= SVDec.S
+                    mul!(xᴸᴸᴿ, SVDec.U, SVDec.Vt)
+                    @views xs[idx, :] .= reshape(xᴸᴸᴿ[1:length(idx), :], size(idx)..., :)
                 end
             end
         end
     finally
         BLAS.set_num_threads(bthreads)
     end
-
-    if any(pad .!= 0)
-        xs .= xp[CartesianIndices(xs)]
-    end
-
-    if randshift
-        x .= circshift(xs, -1 .* shift_idx)
-    end
-
-    x = vec(x)
-    return x
+    return vec(x)
 end
 
 """
