@@ -1,5 +1,5 @@
 using AMDGPU
 
-arrayTypes = [ROCArray]
+arrayType = ROCArray
 
 include(joinpath(@__DIR__(), "..", "runtests.jl"))
