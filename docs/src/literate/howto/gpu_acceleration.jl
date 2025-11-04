@@ -1,10 +1,7 @@
 # # GPU Acceleration
+gpu = Array; #hide
 # RegularizedLeastSquares.jl supports generic GPU acceleration. This means that the user can use any GPU array type that supports the GPUArrays interface. This includes [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl), [AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl), and [Metal.jl](https://github.com/JuliaGPU/Metal.jl).
-# In this example we will use the package JLArrays.jl which provides a reference implementation for GPUArrays, that can runs on CPUs.
-using JLArrays
-gpu = JLArray;
-
-# To use the following examples on an actual GPU, load the appropraite package replace `JLArray` with the respective GPU array type, for example:
+# To perform a reconstruction on the GPU, one has to load a GPU backend package such as CUDA and specify the GPU array type:
 # ```julia
 # using CUDA
 # gpu = CuArray
