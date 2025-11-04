@@ -14,23 +14,23 @@ Regularization term implementing the proximal map for locally low rank (LLR) reg
 * `randshift::Bool=true`         - randomly shifts the patches to ensure translation invariance
 * `fullyOverlapping::Bool=false` - choose between fully overlapping block or non-overlapping blocks
 """
-struct LLRRegularization{T, N, TI} <: AbstractParameterizedRegularization{T} where {N, TI<:Integer}
-  λ::T
-  shape::NTuple{N,TI}
-  blockSize::NTuple{N,TI}
-  randshift::Bool
-  fullyOverlapping::Bool
-  L::Int64
+struct LLRRegularization{T,N,TI} <: AbstractParameterizedRegularization{T} where {N,TI<:Integer}
+    λ::T
+    shape::NTuple{N,TI}
+    blockSize::NTuple{N,TI}
+    randshift::Bool
+    fullyOverlapping::Bool
+    L::Int64
 end
-LLRRegularization(λ;  shape::NTuple{N,TI}, blockSize::NTuple{N,TI} = ntuple(_ -> 2, N), randshift::Bool = true, fullyOverlapping::Bool = false, L::Int64 = 1, kargs...) where {N,TI<:Integer} =
- LLRRegularization(λ, shape, blockSize, randshift, fullyOverlapping, L)
+LLRRegularization(λ; shape::NTuple{N,TI}, blockSize::NTuple{N,TI}=ntuple(_ -> 2, N), randshift::Bool=true, fullyOverlapping::Bool=false, L::Int64=1, kargs...) where {N,TI<:Integer} =
+    LLRRegularization(λ, shape, blockSize, randshift, fullyOverlapping, L)
 
 """
     prox!(reg::LLRRegularization, x, λ)
 
 performs the proximal map for LLR regularization using singular-value-thresholding
 """
-function prox!(reg::LLRRegularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T <: Real}
+function prox!(reg::LLRRegularization, x::Union{AbstractArray{T},AbstractArray{Complex{T}}}, λ::T) where {T<:Real}
     reg.fullyOverlapping ? proxLLROverlapping!(reg, x, λ) : proxLLRNonOverlapping!(reg, x, λ)
 end
 
@@ -39,7 +39,7 @@ end
 
 performs the proximal map for LLR regularization using singular-value-thresholding on non-overlapping blocks
 """
-function proxLLRNonOverlapping!(reg::LLRRegularization{TR, N, TI}, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {TR, N, TI, T}
+function proxLLRNonOverlapping!(reg::LLRRegularization{TR,N,TI}, x::Union{AbstractArray{T},AbstractArray{Complex{T}}}, λ::T) where {TR,N,TI,T}
     shape = reg.shape
     blockSize = reg.blockSize
     randshift = reg.randshift
@@ -105,7 +105,7 @@ end
 
 returns the value of the LLR-regularization term. The norm is only implemented for 2D, non-fully overlapping blocks.
 """
-function norm(reg::LLRRegularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T <: Real}
+function norm(reg::LLRRegularization, x::Union{AbstractArray{T},AbstractArray{Complex{T}}}, λ::T) where {T<:Real}
     shape = reg.shape
     blockSize = reg.blockSize
     randshift = reg.randshift
@@ -117,8 +117,8 @@ function norm(reg::LLRRegularization, x::Union{AbstractArray{T}, AbstractArray{C
         normᴸᴸᴿ += blockNuclearNorm(
             x[(i-1)*Nvoxel*K+1:i*Nvoxel*K],
             shape;
-            blockSize = blockSize,
-            randshift = randshift,
+            blockSize,
+            randshift,
         )
     end
 
@@ -128,8 +128,8 @@ end
 function blockNuclearNorm(
     x::Vector{T},
     shape::NTuple{N,TI};
-    blockSize::NTuple{N,TI} = ntuple(_ -> 2, N),
-    randshift::Bool = true,
+    blockSize::NTuple{N,TI}=ntuple(_ -> 2, N),
+    randshift::Bool=true,
     kargs...,
 ) where {N,T,TI<:Integer}
     x = reshape(x, tuple(shape..., floor(Int64, length(x) / prod(shape))))
@@ -170,7 +170,7 @@ proxLLROverlapping!(reg::LLRRegularization, x, λ)
 
 performs the proximal map for LLR regularization using singular-value-thresholding with fully overlapping blocks
 """
-function proxLLROverlapping!(reg::LLRRegularization{TR, N, TI}, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {TR, N, TI, T}
+function proxLLROverlapping!(reg::LLRRegularization{TR,N,TI}, x::Union{AbstractArray{T},AbstractArray{Complex{T}}}, λ::T) where {TR,N,TI,T}
     shape = reg.shape
     blockSize = reg.blockSize
 

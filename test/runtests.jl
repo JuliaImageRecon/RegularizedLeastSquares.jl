@@ -2,10 +2,9 @@ using RegularizedLeastSquares, LinearAlgebra, RegularizedLeastSquares.LinearOper
 # Packages for testing only
 using Random, Test
 using FFTW
-using JLArrays
 
-areTypesDefined = @isdefined arrayTypes
-arrayTypes = areTypesDefined ? arrayTypes : [Array, JLArray]
+isTypeDefined = @isdefined arrayType
+arrayType = isTypeDefined ? arrayType : Array
 
 @testset "RegularizedLeastSquares" begin
   include("testCreation.jl")

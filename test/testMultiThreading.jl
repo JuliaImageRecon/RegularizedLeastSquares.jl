@@ -1,15 +1,15 @@
-function testMultiThreadingSolver(; arrayType = Array, scheduler = MultiDataState)
+function testMultiThreadingSolver(; arrayType=Array, scheduler=MultiDataState)
   A = rand(ComplexF32, 3, 2)
   x = rand(ComplexF32, 2, 4)
   b = A * x
 
   solvers = linearSolverList()
   @testset "$(solvers[i])" for i = 1:length(solvers)
-    S = createLinearSolver(solvers[i], arrayType(A), iterations = 100)
-    
+    S = createLinearSolver(solvers[i], arrayType(A), iterations=100)
+
     x_sequential = hcat([Array(solve!(S, arrayType(b[:, j]))) for j = 1:size(b, 2)]...)
     @test x_sequential ≈ x rtol = 0.1
-    
+
     x_approx = Array(solve!(S, arrayType(b), scheduler=scheduler))
     @test x_approx ≈ x rtol = 0.1
 
@@ -20,12 +20,10 @@ function testMultiThreadingSolver(; arrayType = Array, scheduler = MultiDataStat
 end
 
 @testset "Test MultiThreading Support" begin
-  for arrayType in arrayTypes
-    @testset "$arrayType" begin
-      for scheduler in [SequentialState, MultiThreadingState]
-        @testset "$scheduler" begin
-          testMultiThreadingSolver(; arrayType, scheduler)
-        end
+  @testset "$arrayType" begin
+    for scheduler in [SequentialState, MultiThreadingState]
+      @testset "$scheduler" begin
+        testMultiThreadingSolver(; arrayType, scheduler)
       end
     end
   end

@@ -1,6 +1,6 @@
 Random.seed!(12345)
 
-function testRealLinearSolver(; arrayType = Array, elType = Float32)
+function testRealLinearSolver(; arrayType=Array, elType=Float32)
     A = rand(elType, 3, 2)
     x = rand(elType, 2)
     b = A * x
@@ -9,7 +9,7 @@ function testRealLinearSolver(; arrayType = Array, elType = Float32)
 
     @testset for solver in solvers
         @test try
-            S = createLinearSolver(solver, arrayType(A), iterations = 200)
+            S = createLinearSolver(solver, arrayType(A), iterations=200)
             x_approx = Array(solve!(S, arrayType(b)))
             @info "Testing solver $solver: $x ≈ $x_approx"
             @test x_approx ≈ x rtol = 0.1
@@ -17,11 +17,11 @@ function testRealLinearSolver(; arrayType = Array, elType = Float32)
         catch e
             @error e
             false
-        end skip = arrayType != Array && solver <: AbstractDirectSolver # 
+        end skip = arrayType != Array && solver <: AbstractDirectSolver #
     end
 end
 
-function testComplexLinearSolver(; arrayType = Array, elType = Float32)
+function testComplexLinearSolver(; arrayType=Array, elType=Float32)
     A = rand(elType, 3, 2) + im * rand(elType, 3, 2)
     x = rand(elType, 2) + im * rand(elType, 2)
     b = A * x
@@ -30,7 +30,7 @@ function testComplexLinearSolver(; arrayType = Array, elType = Float32)
 
     @testset for solver in solvers
         @test try
-            S = createLinearSolver(solver, arrayType(A), iterations = 100)
+            S = createLinearSolver(solver, arrayType(A), iterations=100)
             x_approx = Array(solve!(S, arrayType(b)))
             @info "Testing solver $solver: $x ≈ $x_approx"
             @test x_approx ≈ x rtol = 0.1
@@ -42,17 +42,17 @@ function testComplexLinearSolver(; arrayType = Array, elType = Float32)
     end
 end
 
-function testComplexLinearAHASolver(; arrayType = Array, elType = Float32)
+function testComplexLinearAHASolver(; arrayType=Array, elType=Float32)
     A = rand(elType, 3, 2) + im * rand(elType, 3, 2)
     x = rand(elType, 2) + im * rand(elType, 2)
-    AHA = A'*A
+    AHA = A' * A
     b = AHA * x
 
     solvers = filter(s -> s ∉ [DirectSolver, PseudoInverse, Kaczmarz], linearSolverListReal())
 
     @testset for solver in solvers
         @test try
-            S = createLinearSolver(solver, nothing; AHA=arrayType(AHA), iterations = 100)
+            S = createLinearSolver(solver, nothing; AHA=arrayType(AHA), iterations=100)
             x_approx = Array(solve!(S, arrayType(b)))
             @info "Testing solver $solver: $x ≈ $x_approx"
             @test x_approx ≈ x rtol = 0.1
@@ -64,7 +64,7 @@ function testComplexLinearAHASolver(; arrayType = Array, elType = Float32)
     end
 end
 
-function testConvexLinearSolver(; arrayType = Array, elType = Float32)
+function testConvexLinearSolver(; arrayType=Array, elType=Float32)
     # fully sampled operator, image and data
     N = 256
     numPeaks = 5
@@ -85,9 +85,9 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
         S = createLinearSolver(
             solver,
             F;
-            reg = reg,
-            iterations = 200,
-            normalizeReg = NoNormalization(),
+            reg=reg,
+            iterations=200,
+            normalizeReg=NoNormalization(),
         )
         x_approx = Array(solve!(S, b))
         @info "Testing solver $solver w/o restart: relative error = $(norm(x - x_approx) / norm(x))"
@@ -98,10 +98,10 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
             S = createLinearSolver(
                 solver,
                 F;
-                reg = reg,
-                iterations = 200,
-                normalizeReg = NoNormalization(),
-                restart = :gradient,
+                reg=reg,
+                iterations=200,
+                normalizeReg=NoNormalization(),
+                restart=:gradient,
             )
             x_approx = Array(solve!(S, b))
             @info "Testing solver $solver w/ gradient restart: relative error = $(norm(x - x_approx) / norm(x))"
@@ -114,9 +114,9 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
         S = createLinearSolver(
             solver,
             F .* scale_F;
-            reg = reg,
-            iterations = 200,
-            normalizeReg = MeasurementBasedNormalization(),
+            reg=reg,
+            iterations=200,
+            normalizeReg=MeasurementBasedNormalization(),
         )
         x_approx = Array(solve!(S, b))
         x_approx .*= scale_F
@@ -130,12 +130,12 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
     S = createLinearSolver(
         solver,
         F;
-        reg = reg,
-        iterations = 200,
-        normalizeReg = NoNormalization(),
-        rho = 1e6,
-        vary_rho = :balance,
-        verbose = false,
+        reg=reg,
+        iterations=200,
+        normalizeReg=NoNormalization(),
+        rho=1e6,
+        vary_rho=:balance,
+        verbose=false,
     )
     x_approx = Array(solve!(S, b))
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
@@ -144,12 +144,12 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
     S = createLinearSolver(
         solver,
         F;
-        reg = reg,
-        iterations = 200,
-        normalizeReg = NoNormalization(),
-        rho = 1e-6,
-        vary_rho = :balance,
-        verbose = false,
+        reg=reg,
+        iterations=200,
+        normalizeReg=NoNormalization(),
+        rho=1e-6,
+        vary_rho=:balance,
+        verbose=false,
     )
     x_approx = Array(solve!(S, b))
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
@@ -159,12 +159,12 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
     S = createLinearSolver(
         solver,
         F;
-        reg = reg,
-        iterations = 200,
-        normalizeReg = NoNormalization(),
-        rho = 1e-6,
-        vary_rho = :PnP,
-        verbose = false,
+        reg=reg,
+        iterations=200,
+        normalizeReg=NoNormalization(),
+        rho=1e-6,
+        vary_rho=:PnP,
+        verbose=false,
     )
     x_approx = Array(solve!(S, b))
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
@@ -176,11 +176,11 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
     S = createLinearSolver(
         solver,
         F;
-        reg = reg,
-        iterations = 5,
-        iterationsInner = 40,
-        rho = 1.0,
-        normalizeReg = NoNormalization(),
+        reg=reg,
+        iterations=5,
+        iterationsInner=40,
+        rho=1.0,
+        normalizeReg=NoNormalization(),
     )
     x_approx = Array(solve!(S, b))
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
@@ -190,11 +190,11 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
     S = createLinearSolver(
         solver,
         F;
-        reg = reg,
-        iterations = 5,
-        iterationsInner = 40,
-        rho = 1.0,
-        normalizeReg = MeasurementBasedNormalization(),
+        reg=reg,
+        iterations=5,
+        iterationsInner=40,
+        rho=1.0,
+        normalizeReg=MeasurementBasedNormalization(),
     )
     x_approx = Array(solve!(S, b))
     @info "Testing solver $solver: relative error = $(norm(x - x_approx) / norm(x))"
@@ -217,7 +217,7 @@ function testConvexLinearSolver(; arrayType = Array, elType = Float32)
     =#
 end
 
-function testVerboseSolvers(; arrayType = Array, elType = Float32)
+function testVerboseSolvers(; arrayType=Array, elType=Float32)
     A = rand(elType, 3, 2)
     x = rand(elType, 2)
     b = A * x
@@ -226,7 +226,7 @@ function testVerboseSolvers(; arrayType = Array, elType = Float32)
 
     for solver in solvers
         @test try
-            S = createLinearSolver(solver, arrayType(A), iterations = 3, verbose = true)
+            S = createLinearSolver(solver, arrayType(A), iterations=3, verbose=true)
             solve!(S, arrayType(b))
             true
         catch e
@@ -238,24 +238,22 @@ end
 
 
 @testset "Test Solvers" begin
-    for arrayType in arrayTypes
-        @testset "$arrayType" begin
+    @testset "$arrayType" begin
         for elType in [Float32, Float64]
-                @testset "Real Linear Solver: $elType" begin
-                    testRealLinearSolver(; arrayType, elType)
-                end
+            @testset "Real Linear Solver: $elType" begin
+                testRealLinearSolver(; arrayType, elType)
+            end
 
-                @testset "Complex Linear Solver: $elType" begin
-                    testComplexLinearSolver(; arrayType, elType)
-                end
+            @testset "Complex Linear Solver: $elType" begin
+                testComplexLinearSolver(; arrayType, elType)
+            end
 
-                @testset "Complex Linear Solver w/ AHA Interface: $elType" begin
-                    testComplexLinearAHASolver(; arrayType, elType)
-                end
+            @testset "Complex Linear Solver w/ AHA Interface: $elType" begin
+                testComplexLinearAHASolver(; arrayType, elType)
+            end
 
-                @testset "General Convex Solver: $elType" begin
-                    testConvexLinearSolver(; arrayType, elType)
-                end
+            @testset "General Convex Solver: $elType" begin
+                testConvexLinearSolver(; arrayType, elType)
             end
         end
     end

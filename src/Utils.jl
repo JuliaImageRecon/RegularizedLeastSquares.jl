@@ -62,7 +62,7 @@ end
 
 
 function dot_with_matrix_row(B::Transpose{T,S},
-                       x::Vector{T}, k::Int64) where {T<:Complex,S<:DenseMatrix}
+                       x::V, k::Int64) where {T<:Complex,S<:DenseMatrix{T},V<:DenseVector{T}}
   A = B.parent
   BLAS.dotu(length(x), pointer(A,(LinearIndices(size(A)))[1,k]), 1, pointer(x,1), 1)
 end
@@ -79,7 +79,7 @@ end
 This funtion calculates ∑ᵢ Aᵢₖxᵢ for dense matrices.
 """
 function dot_with_matrix_row(B::Transpose{T,S},
-      x::Vector{T}, k::Int64) where {T<:Real,S<:DenseMatrix}
+      x::V, k::Int64) where {T<:Real,S<:DenseMatrix{T},V<:DenseVector{T}}
   A = B.parent
   BLAS.dot(length(x), pointer(A,(LinearIndices(size(A)))[1,k]), 1, pointer(x,1), 1)
 end

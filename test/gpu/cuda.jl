@@ -1,5 +1,5 @@
 using CUDA
 
-arrayTypes = [CuArray]
+arrayType = CuArray
 
 include(joinpath(@__DIR__(), "..", "runtests.jl"))
