@@ -9,8 +9,13 @@ function RegularizedLeastSquares.kaczmarz_update!(A::matT, x::vecT, row, beta) w
   x[:] .=  x .+ beta * conj.(view(A, row, :))
 end
 
-function RegularizedLeastSquares.kaczmarz_update!(B::Transpose{T, S}, x::vecT, row, beta) where {T, S <: AbstractGPUArray{T}, vecT <: AbstractGPUVector{T}}
-  A = B.parent
+function RegularizedLeastSquares.kaczmarz_update!(B::Transpose{T,S}, x::V, row::Integer, beta) where {T,S<:AbstractGPUArray{T},V<:AbstractGPUArray{T}}
+  A = parent(B)
+  x[:] .=  x .+ beta * conj.(view(A, :, row))
+end
+
+function RegularizedLeastSquares.kaczmarz_update!(B::Transpose{Complex{T},S}, x::V, row::Integer, beta::Complex{T}) where {T, S<:AbstractGPUMatrix{Complex{T}},V<:AbstractGPUVector{Complex{T}}}
+  A = parent(B)
   x[:] .=  x .+ beta * conj.(view(A, :, row))
 end
 
