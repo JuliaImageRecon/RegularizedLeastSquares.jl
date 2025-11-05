@@ -15,7 +15,8 @@ mutable struct ADMM{matT,opT,R,ropT,P,preconT} <: AbstractPrimalDualSolver
   state::AbstractSolverState{<:ADMM}
 end
 
-mutable struct ADMMState{rT <: Real, rvecT <: AbstractVector{rT}, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}} <: AbstractSolverState{ADMM}
+mutable struct ADMMState{rT <: Real, rvecT <: AbstractVector{rT}, vecT <: Union{AbstractVector{rT}, AbstractVector{Complex{rT}}}, op} <: AbstractSolverState{ADMM}
+  compositeAHA::op
   # fields and operators for x update
   β::vecT
   β_y::vecT
@@ -136,7 +137,27 @@ function ADMM(A
   # normalization parameters
   reg = normalize(ADMM, normalizeReg, reg, A, nothing)
 
-  state = ADMMState(β, β_y, x, xᵒˡᵈ, z, zᵒˡᵈ, u, uᵒˡᵈ, rho, 0, cgStateVars, rᵏ, sᵏ, ɛᵖʳⁱ, ɛᵈᵘᵃ, rT(0), Δ, rT(absTol), rT(relTol), rT(tolInner))
+  compositeAHA = AHA
+  for i ∈ eachindex(regTrafo)
+    # Prepare compositeAHA += rho[i] * adjoint(regTrafo[i]) * regTrafo[i]
+    # s.t. we can simply update rho inplace during iterations
+    # NormalOp is not capable of 5-arg mul!, so we compute normal "normally"
+    normal = adjoint(regTrafo[i]) * regTrafo[i]
+    normalTimesRho = LinearOperator{eltype(normal)}(
+      size(normal, 1),
+      size(normal, 2),
+      normal isa LinearOperator ? normal.symmetric : false,
+      normal isa LinearOperator ? normal.hermitian : false,
+      # NormalOp is not capable of 5-arg mul!
+      (res, v, α, β) -> mul!(res, normal, v, rho[i] * α, β),
+      (res, u, α, β) -> mul!(res, transpose(normal), u, rho[i] * α, β),
+      (res, w, α, β) -> mul!(res, adjoint(normal), w, rho[i]' * α, β),
+      S = LinearOperators.storage_type(normal),
+    )
+    compositeAHA += normalTimesRho
+  end
+
+  state = ADMMState(compositeAHA, β, β_y, x, xᵒˡᵈ, z, zᵒˡᵈ, u, uᵒˡᵈ, rho, 0, cgStateVars, rᵏ, sᵏ, ɛᵖʳⁱ, ɛᵈᵘᵃ, rT(0), Δ, rT(absTol), rT(relTol), rT(tolInner))
 
   return ADMM(A, reg, regTrafo, proj, AHA, precon, normalizeReg, vary_rho, verbose, iterations, iterationsCG, state)
 end
@@ -154,7 +175,7 @@ function init!(solver::ADMM, state::ADMMState{rT, rvecT, vecT}, b::otherT; kwarg
 
   cgStateVars = CGStateVariables(zero(x),similar(x),similar(x))
 
-  state = ADMMState(β, β_y, x, xᵒˡᵈ, z, zᵒˡᵈ, u, uᵒˡᵈ, state.ρ, state.iteration, cgStateVars,
+  state = ADMMState(state.compositeAHA, β, β_y, x, xᵒˡᵈ, z, zᵒˡᵈ, u, uᵒˡᵈ, state.ρ, state.iteration, cgStateVars,
       state.rᵏ, state.sᵏ, state.ɛᵖʳⁱ, state.ɛᵈᵘᵃ, state.σᵃᵇˢ, state.Δ, state.absTol, state.relTol, state.tolInner)
 
   solver.state = state
@@ -210,11 +231,10 @@ function iterate(solver::ADMM, state::ADMMState)
   # 1. solve arg min_x 1/2|| Ax-b ||² + ρ/2 Σ_i||Φi*x+ui-zi||²
   # <=> (A'A+ρ Σ_i Φi'Φi)*x = A'b+ρΣ_i Φi'(zi-ui)
   state.β .= state.β_y
-  AHA = solver.AHA
+  AHA = state.compositeAHA
   for i ∈ eachindex(solver.reg)
     mul!(state.β, adjoint(solver.regTrafo[i]), state.z[i],  state.ρ[i], 1)
     mul!(state.β, adjoint(solver.regTrafo[i]), state.u[i], -state.ρ[i], 1)
-    AHA += state.ρ[i] * adjoint(solver.regTrafo[i]) * solver.regTrafo[i]
   end
   solver.verbose && println("conjugated gradients: ")
   state.xᵒˡᵈ .= state.x
