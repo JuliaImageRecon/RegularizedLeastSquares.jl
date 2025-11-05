@@ -24,24 +24,24 @@ solve!(solver, b) do solver, iteration
     global idx += 1
   end
 end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">65536-element Vector{Float32}:
- 4.0663305f-19
- 7.4199166f-19
- 1.6072344f-18
- 3.507963f-18
- 7.876767f-18
- 1.8535189f-17
- 4.4428066f-17
- 1.04228066f-16
- 2.3128256f-16
- 4.768626f-16
+ 6.0923f-19
+ 9.666278f-19
+ 1.9069354f-18
+ 4.294233f-18
+ 1.04984514f-17
+ 2.5666225f-17
+ 5.8806414f-17
+ 1.2505474f-16
+ 2.672005f-16
+ 6.283892f-16
  ⋮
- 6.2341726f-16
- 2.6786266f-16
- 1.1743764f-16
- 5.58763f-17
- 2.841498f-17
- 1.413441f-17
- 6.540543f-18
- 2.9606184f-18
- 1.6339796f-18</code></pre><p>In the callback we have to copy the solution, as the solver will update it in place. As is explained in the solver section, each features fields that are intended to be immutable during a <code>solve!</code> call and a state that is modified in each iteration. Depending on the solvers parameters and the measurement input, the state can differ in its fields and their type. Ideally, one tries to avoid accessing the state directly and uses the provided functions to access the state.</p><p>The resulting figure shows the reconstructed image after 0, 4, 8, 12, 16 and 20 iterations:</p><pre><code class="language-julia hljs">resize_to_layout!(fig)
-fig</code></pre><img src="f68cd0fc.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../efficient_kaczmarz/">« Efficient Kaczmarz</a><a class="docs-footer-nextpage" href="../plug-and-play/">Plug-and-Play Regularization »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.15.0 on <span class="colophon-date" title="Wednesday 5 November 2025 15:51">Wednesday 5 November 2025</span>. Using Julia version 1.12.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ 5.3945866f-16
+ 2.5361688f-16
+ 1.2709396f-16
+ 6.4519095f-17
+ 3.128529f-17
+ 1.4165521f-17
+ 5.9994376f-18
+ 2.5251078f-18
+ 1.29397f-18</code></pre><p>In the callback we have to copy the solution, as the solver will update it in place. As is explained in the solver section, each features fields that are intended to be immutable during a <code>solve!</code> call and a state that is modified in each iteration. Depending on the solvers parameters and the measurement input, the state can differ in its fields and their type. Ideally, one tries to avoid accessing the state directly and uses the provided functions to access the state.</p><p>The resulting figure shows the reconstructed image after 0, 4, 8, 12, 16 and 20 iterations:</p><pre><code class="language-julia hljs">resize_to_layout!(fig)
+fig</code></pre><img src="9c71588d.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../efficient_kaczmarz/">« Efficient Kaczmarz</a><a class="docs-footer-nextpage" href="../plug-and-play/">Plug-and-Play Regularization »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.15.0 on <span class="colophon-date" title="Wednesday 5 November 2025 16:19">Wednesday 5 November 2025</span>. Using Julia version 1.12.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
