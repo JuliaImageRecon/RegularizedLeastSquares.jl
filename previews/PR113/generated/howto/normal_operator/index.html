@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Normal Operator · RegularizedLeastSquares.jl</title><meta name="title" content="Normal Operator · RegularizedLeastSquares.jl"/><meta property="og:title" content="Normal Operator · RegularizedLeastSquares.jl"/><meta property="twitter:title" content="Normal Operator · RegularizedLeastSquares.jl"/><meta name="description" content="Documentation for RegularizedLeastSquares.jl."/><meta property="og:description" content="Documentation for RegularizedLeastSquares.jl."/><meta property="twitter:description" content="Documentation for RegularizedLeastSquares.jl."/><meta property="og:url" content="https://github.com/JuliaImageRecon/RegularizedLeastSquares.jl/generated/howto/normal_operator/"/><meta property="twitter:url" content="https://github.com/JuliaImageRecon/RegularizedLeastSquares.jl/generated/howto/normal_operator/"/><link rel="canonical" href="https://github.com/JuliaImageRecon/RegularizedLeastSquares.jl/generated/howto/normal_operator/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">RegularizedLeastSquares.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../examples/getting_started/">Getting Started</a></li><li><input class="collapse-toggle" id="menuitem-3" type="checkbox"/><label class="tocitem" for="menuitem-3"><span class="docs-label">Examples</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/compressed_sensing/">Compressed Sensing</a></li><li><a class="tocitem" href="../../examples/computed_tomography/">Computed Tomography</a></li></ul></li><li><a class="tocitem" href="../../../solvers/">Solvers</a></li><li><a class="tocitem" href="../../explanations/regularization/">Regularization</a></li><li><input class="collapse-toggle" id="menuitem-6" type="checkbox" checked/><label class="tocitem" for="menuitem-6"><span class="docs-label">How to</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../weighting/">Weighting</a></li><li class="is-active"><a class="tocitem" href>Normal Operator</a></li><li><a class="tocitem" href="../multi_threading/">Multi-Threading</a></li><li><a class="tocitem" href="../gpu_acceleration/">GPU Acceleration</a></li><li><a class="tocitem" href="../efficient_kaczmarz/">Efficient Kaczmarz</a></li><li><a class="tocitem" href="../callbacks/">Callbacks</a></li><li><a class="tocitem" href="../plug-and-play/">Plug-and-Play Regularization</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-7" type="checkbox"/><label class="tocitem" for="menuitem-7"><span class="docs-label">API Reference</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../API/solvers/">Solvers</a></li><li><a class="tocitem" href="../../../API/regularization/">Regularization Terms</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">How to</a></li><li class="is-active"><a href>Normal Operator</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Normal Operator</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/JuliaImageRecon/RegularizedLeastSquares.jl/blob/master/docs/src/literate/howto/normal_operator.jl#" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Normal-Operator"><a class="docs-heading-anchor" href="#Normal-Operator">Normal Operator</a><a id="Normal-Operator-1"></a><a class="docs-heading-anchor-permalink" href="#Normal-Operator" title="Permalink"></a></h1><p>Many solvers in RegularizedLeastSquares.jl are based on the normal operator <span>$\mathbf{A}^*\mathbf{A}$</span> of the linear operator <span>$\mathbf{A}$</span>.</p><p>Solvers such as ADMM, FISTA and POGM generally solve optimization problems of the form:</p><p class="math-container">\[\begin{equation}
+  \underset{\mathbf{x}}{argmin} \mathbf{f(x)}+ \mathbf{R(x)}
+\end{equation}\]</p><p>and require the gradient of the function <span>$\mathbf{f(x)}$</span>. In this package we specialise the function <span>$\mathbf{f(x)}$</span> to the least squares norm:</p><p class="math-container">\[\begin{equation}
+  \mathbf{f(x)} = \frac{1}{2}\vert\vert \mathbf{A}\mathbf{x}-\mathbf{b} \vert\vert^2_2
+\end{equation}\]</p><p>The gradient of this function is:</p><p class="math-container">\[\begin{equation}
+  \nabla \mathbf{f(x)} = \mathbf{A}^*(\mathbf{A}\mathbf{x}-\mathbf{b}) = \mathbf{A}^*\mathbf{Ax} - \mathbf{A}^*\mathbf{b}
+\end{equation}\]</p><p>Similarily, the conjugate gradient normal residual (CGNR) algorithm applies conjugate gradient algorithm to:</p><p class="math-container">\[\begin{equation}
+  \mathbf{A}^*\mathbf{A}\mathbf{x} = \mathbf{A}^*\mathbf{b}
+\end{equation}\]</p><p>The normal operator can be passed directly to these solvers, otherwise it is computed internally.</p><pre><code class="language-julia hljs">using RegularizedLeastSquares
+A = randn(32, 16)
+x = randn(16)
+b = A*x
+
+solver = createLinearSolver(CGNR, A; AHA = adjoint(A) * A, reg = L2Regularization(0.0001), iterations=32);
+x_approx = solve!(solver, b)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">16-element Vector{Float64}:
+  0.17976391103003647
+ -0.2320740508049953
+  2.531369560272607
+  0.39899618241886886
+ -1.5451365211324253
+ -0.1193290766698685
+  0.04400608365640288
+ -0.20830509997921584
+  0.8151147271732638
+  0.2017869677753494
+ -0.40887307190666017
+ -1.0570718241198527
+ -0.7137822015388334
+  1.665416719702979
+  1.6252223592237354
+ -1.1278697879290824</code></pre><p>The normal operator can also be computed using the <code>normalOperator</code> function from LinearOperatorCollection.jl. This is useful if the normal operator is not directly available or shouldn&#39;t be stored in memory. This function is opinionated and attempts to optimize the resulting operator for iterative applications. Specifying a custom method for a custom operator allows one to control this optimization.</p><p>An example of such an optimization is a matrix-free weighting of <span>$\mathbf{A}$</span> as shown in the <a href="../weighting/">Weighting</a> example:</p><pre><code class="language-julia hljs">using LinearOperatorCollection
+weights = rand(32)
+WA = ProdOp(WeightingOp(weights), A)
+AHA = LinearOperatorCollection.normalOperator(WA)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Linear operator
+  nrow: 16
+  ncol: 16
+  eltype: Float64
+  symmetric: false
+  hermitian: false
+  nprod:   0
+  ntprod:  0
+  nctprod: 0
+
+</code></pre><p>Without an optimization a matrix-free product would apply the following operator each iteration:</p><p class="math-container">\[\begin{equation}
+  (\mathbf{WA})^*\mathbf{WA} = \mathbf{A}^*\mathbf{W}^*\mathbf{W}\mathbf{A}
+\end{equation}\]</p><p>This is not efficient and instead the normal operator can be optimized by initially computing the weights:</p><p class="math-container">\[\begin{equation}
+  \tilde{\mathbf{W}} = \mathbf{W}^*\mathbf{W}
+\end{equation}\]</p><p>and then applying the following each iteration:</p><p class="math-container">\[\begin{equation}
+  \mathbf{A}^*\tilde{\mathbf{W}}\mathbf{A}
+\end{equation}\]</p><p>The optimized normal operator can then be passed to the solver:</p><pre><code class="language-julia hljs">solver = createLinearSolver(CGNR, WA; AHA = AHA, reg = L2Regularization(0.0001), iterations=32);
+x_approx2 = solve!(solver, weights .* b)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">16-element Vector{Float64}:
+  0.17976228267282957
+ -0.2320245710846651
+  2.531313619585827
+  0.3989969047630077
+ -1.5451186822639675
+ -0.11932525971059259
+  0.0439963123918295
+ -0.20829071449347195
+  0.8150575738837724
+  0.20181856846368704
+ -0.4088272541184042
+ -1.0570966245148534
+ -0.7137828748333245
+  1.6654103804449205
+  1.6252263799077338
+ -1.1278184959696338</code></pre><p>Of course it is also possible to optimize a normal operator with other means and pass it to the solver via the AHA keyword argument.</p><p>It is also possible to only supply the normal operator to these solvers, however on then needs to supply <span>$\mathbf{A^*b}$</span> intead of <span>$\mathbf{b}$</span>.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../weighting/">« Weighting</a><a class="docs-footer-nextpage" href="../multi_threading/">Multi-Threading »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.15.0 on <span class="colophon-date" title="Wednesday 5 November 2025 18:14">Wednesday 5 November 2025</span>. Using Julia version 1.12.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
