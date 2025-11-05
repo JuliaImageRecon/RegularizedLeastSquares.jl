@@ -258,7 +258,8 @@ function solversolution(solver::Kaczmarz{matT, RN}) where {matT, R<:L2Regulariza
   return solversolution(solver.state) .* (1 ./ sqrt.(λ(solver.L2)))
 end
 solversolution(solver::Kaczmarz) = solversolution(solver.state)
-solverconvergence(state::KaczmarzState) = (; :residual => norm(state.vl))
+solverconvergence(solver::Kaczmarz) = solverconvergence(solver, solverstate(solver))
+solverconvergence(solver::Kaczmarz, state::KaczmarzState) = (; :residual => norm(solver.A * solversolution(solver) - state.u))
 
 function iterate(solver::Kaczmarz, state::KaczmarzState)
   if done(solver,state) return nothing end
