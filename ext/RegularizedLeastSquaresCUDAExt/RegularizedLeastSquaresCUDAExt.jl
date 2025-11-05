@@ -4,6 +4,5 @@ using RegularizedLeastSquares, RegularizedLeastSquares.LinearAlgebra, Regularize
 using CUDA, CUDA.CUSPARSE
 
 include("NormalizedRegularization.jl")
-include("ProxLLR.jl")
 
 end # module

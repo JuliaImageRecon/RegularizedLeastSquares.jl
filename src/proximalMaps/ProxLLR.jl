@@ -4,6 +4,7 @@ export LLRRegularization
     LLRRegularization
 
 Regularization term implementing the proximal map for locally low rank (LLR) regularization using singular-value-thresholding.
+Computation is always performed on the CPU. If the input is a GPU array, it is temporarily moved to the CPU.
 
 # Arguments
 * `λ`                  - regularization paramter
@@ -37,7 +38,7 @@ end
 """
     proxLLRNonOverlapping!(reg::LLRRegularization, x, λ)
 
-performs the proximal map for LLR regularization using singular-value-thresholding on non-overlapping blocks
+performs the proximal map for LLR regularization using singular-value-thresholding on non-overlapping blocks.
 """
 function proxLLRNonOverlapping!(reg::LLRRegularization{TR,N,TI}, x::Union{AbstractArray{T},AbstractArray{Complex{T}}}, λ::T) where {TR,N,TI,T}
     shape = reg.shape
