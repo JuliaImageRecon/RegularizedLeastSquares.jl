@@ -306,9 +306,7 @@ end
     @testset "TV Prox Directional" testDirectionalTVprox(; arrayType)
     @testset "Positive Prox" testPositive(; arrayType)
     @testset "Projection Prox" testProj(; arrayType)
-    if arrayType != ROCArray
-      @testset "Nuclear Prox" testNuclear(; arrayType)
-    end
+    @testset "Nuclear Prox" testNuclear(; arrayType)
     @testset "LLR Prox: $arrayType" testLLR(; arrayType)
     @testset "LLR Prox Overlapping: $arrayType" testLLROverlapping(; arrayType)
     @testset "LLR Prox 3D: $arrayType" testLLR_3D(; arrayType)
