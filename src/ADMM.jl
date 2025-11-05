@@ -1,11 +1,12 @@
 export ADMM
 
-mutable struct ADMM{matT,opT,R,ropT,P,preconT} <: AbstractPrimalDualSolver
+mutable struct ADMM{matT,opT,R,ropT,P,preconT, rvecT} <: AbstractPrimalDualSolver
   A::matT
   reg::Vector{R}
   regTrafo::Vector{ropT}
   proj::Vector{P}
   AHA::opT
+  rho::rvecT
   precon::preconT
   normalizeReg::AbstractRegularizationNormalization
   vary_ρ::Symbol
@@ -159,7 +160,7 @@ function ADMM(A
 
   state = ADMMState(compositeAHA, β, β_y, x, xᵒˡᵈ, z, zᵒˡᵈ, u, uᵒˡᵈ, rho, 0, cgStateVars, rᵏ, sᵏ, ɛᵖʳⁱ, ɛᵈᵘᵃ, rT(0), Δ, rT(absTol), rT(relTol), rT(tolInner))
 
-  return ADMM(A, reg, regTrafo, proj, AHA, precon, normalizeReg, vary_rho, verbose, iterations, iterationsCG, state)
+  return ADMM(A, reg, regTrafo, proj, AHA, copy(rho), precon, normalizeReg, vary_rho, verbose, iterations, iterationsCG, state)
 end
 
 function init!(solver::ADMM, state::ADMMState{rT, rvecT, vecT}, b::otherT; kwargs...) where {rT, rvecT, vecT, otherT <: AbstractVector}
@@ -210,6 +211,8 @@ function init!(solver::ADMM, state::ADMMState{rT, rvecT, vecT}, b::vecT; x0 = 0)
   state.ɛᵈᵘᵃ .= 0
   state.σᵃᵇˢ = sqrt(length(b)) * state.absTol
   state.Δ .= Inf
+
+  state.ρ .= solver.rho
 
   state.iteration = 0
   # normalization of regularization parameters
