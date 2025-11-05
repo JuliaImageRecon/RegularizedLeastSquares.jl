@@ -9,15 +9,20 @@ function RegularizedLeastSquares.kaczmarz_update!(A::matT, x::vecT, row, beta) w
   x[:] .=  x .+ beta * conj.(view(A, row, :))
 end
 
-function RegularizedLeastSquares.kaczmarz_update!(B::Transpose{T,S}, x::V, row::Integer, beta) where {T,S<:AbstractGPUArray{T},V<:AbstractGPUArray{T}}
+function RegularizedLeastSquares.kaczmarz_update!(B::Transpose{T,S}, x::V, row::Integer, beta::T) where {T,S<:AbstractGPUArray{T},V<:AbstractGPUArray{T}}
   A = parent(B)
   x[:] .=  x .+ beta * conj.(view(A, :, row))
+end
+# The following functions are necessery because the previous one is overshadowed by the very specific densevector implementation in the main package
+for T in [Float32, Float64]
+  eval(quote
+    function RegularizedLeastSquares.kaczmarz_update!(B::Transpose{Complex{$T},S}, x::V, row::Integer, beta::Complex{$T}) where {S<:AbstractGPUMatrix{Complex{$T}},V<:AbstractGPUVector{Complex{$T}}}
+      A = parent(B)
+      x[:] .=  x .+ beta * conj.(view(A, :, row))
+    end
+  end)
 end
 
-function RegularizedLeastSquares.kaczmarz_update!(B::Transpose{Complex{T},S}, x::V, row::Integer, beta::Complex{T}) where {T, S<:AbstractGPUMatrix{Complex{T}},V<:AbstractGPUVector{Complex{T}}}
-  A = parent(B)
-  x[:] .=  x .+ beta * conj.(view(A, :, row))
-end
 
 
 function RegularizedLeastSquares.kaczmarz_update!(prod::ProdOp{Tc, WeightingOp{T, vecT}}, x, k, beta) where {T, Tc<:Union{T, Complex{T}}, vecT <: AbstractGPUVector{T}}
