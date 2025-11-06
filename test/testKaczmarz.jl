@@ -115,21 +115,14 @@ Random.seed!(12345)
         S = createLinearSolver(solver, arrayType(A), iterations=200, greedy_randomized=true)
         x_approx = Array(solve!(S, arrayType(b)))
         @test norm(x - x_approx) / norm(x) ≈ 0 atol = 0.1
+      end
 
-        if arrayType == Array # Greedy Kaczmarz is not defined for GPUs atm
-          S = createLinearSolver(solver, arrayType(A), iterations=200, greedy_randomized=true)
-          x_approx = Array(solve!(S, arrayType(b)))
-          @test norm(x - x_approx) / norm(x) ≈ 0 atol = 0.1
-        end
-
-        # Normalization
-        for strategy in [SystemMatrixBasedNormalization(), MeasurementBasedNormalization()]
-          l2 = L2Regularization(0.1)
-          S = createLinearSolver(solver, arrayType(A), iterations=200, randomized=true, reg = l2, normalizeReg = strategy)
-          x_approx = Array(solve!(S, arrayType(b)))
-          @test norm(x - x_approx) / norm(x) ≈ 0 atol = 0.1
-        end
-
+      # Normalization
+      for strategy in [SystemMatrixBasedNormalization(), MeasurementBasedNormalization()]
+        l2 = L2Regularization(0.1)
+        S = createLinearSolver(solver, arrayType(A), iterations=200, randomized=true, reg = l2, normalizeReg = strategy)
+        x_approx = Array(solve!(S, arrayType(b)))
+        @test norm(x - x_approx) / norm(x) ≈ 0 atol = 0.1
       end
     end
   end
