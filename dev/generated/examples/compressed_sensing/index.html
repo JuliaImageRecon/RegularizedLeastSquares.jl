@@ -6,25 +6,25 @@ size(image)</code></pre><pre class="documenter-example-output"><code class="nohi
 randomIndices = shuffle(eachindex(image))
 sampledIndices = sort(randomIndices[1:div(end, 3)])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">21845-element Vector{Int64}:
      3
-     6
-    10
+     4
+     5
+     7
+    12
     14
-    17
-    18
-    23
-    25
-    26
-    29
+    19
+    21
+    35
+    36
      ⋮
+ 65514
+ 65521
  65524
- 65525
  65526
  65527
  65528
+ 65529
  65530
- 65532
- 65533
- 65536</code></pre><p>Afterwards we build a sampling operator which samples the image at the selected indices.</p><pre><code class="language-julia hljs">A = SamplingOp(eltype(image), pattern = sampledIndices , shape = size(image));</code></pre><p>Then we apply the sampling operator to the vectorized image to obtain the sampled measurement vector</p><pre><code class="language-julia hljs">b = A*vec(image);</code></pre><p>To visualize our image we can use CairoMakie:</p><pre><code class="language-julia hljs">using CairoMakie
+ 65533</code></pre><p>Afterwards we build a sampling operator which samples the image at the selected indices.</p><pre><code class="language-julia hljs">A = SamplingOp(eltype(image), pattern = sampledIndices , shape = size(image));</code></pre><p>Then we apply the sampling operator to the vectorized image to obtain the sampled measurement vector</p><pre><code class="language-julia hljs">b = A*vec(image);</code></pre><p>To visualize our image we can use CairoMakie:</p><pre><code class="language-julia hljs">using CairoMakie
 function plot_image(figPos, img; title = &quot;&quot;, width = 150, height = 150)
   ax = CairoMakie.Axis(figPos; yreversed=true, title, width, height)
   hidedecorations!(ax)
@@ -36,30 +36,30 @@ samplingMask = fill(false, size(image))
 samplingMask[sampledIndices] .= true
 plot_image(fig[1,2], image .* samplingMask, title = &quot;Sampled Image&quot;)
 resize_to_layout!(fig)
-fig</code></pre><img src="3e4dcaf0.png" alt="Example block output"/><p>As we can see in the right image, only a third of the pixels are sampled. The goal of the inverse problem is to recover the original image from this measurement vector.</p><h2 id="Solving-the-Inverse-Problem"><a class="docs-heading-anchor" href="#Solving-the-Inverse-Problem">Solving the Inverse Problem</a><a id="Solving-the-Inverse-Problem-1"></a><a class="docs-heading-anchor-permalink" href="#Solving-the-Inverse-Problem" title="Permalink"></a></h2><p>To recover the image from the measurement vector, we solve the TV-regularized least squares problem:</p><p class="math-container">\[\begin{equation}
+fig</code></pre><img src="9ac9699b.png" alt="Example block output"/><p>As we can see in the right image, only a third of the pixels are sampled. The goal of the inverse problem is to recover the original image from this measurement vector.</p><h2 id="Solving-the-Inverse-Problem"><a class="docs-heading-anchor" href="#Solving-the-Inverse-Problem">Solving the Inverse Problem</a><a id="Solving-the-Inverse-Problem-1"></a><a class="docs-heading-anchor-permalink" href="#Solving-the-Inverse-Problem" title="Permalink"></a></h2><p>To recover the image from the measurement vector, we solve the TV-regularized least squares problem:</p><p class="math-container">\[\begin{equation}
   \underset{\mathbf{x}}{argmin} \frac{1}{2}\vert\vert \mathbf{A}\mathbf{x}-\mathbf{b} \vert\vert_2^2 + \lambda\vert\vert\mathbf{x}\vert\vert_{\text{TV}} .
 \end{equation}\]</p><p>For this purpose we build a TV regularizer with regularization parameter <span>$λ=0.01$</span></p><pre><code class="language-julia hljs">using RegularizedLeastSquares
 reg = TVRegularization(0.01; shape=size(image));</code></pre><p>We will use the Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) to solve our inverse problem. Thus, we build the corresponding solver</p><pre><code class="language-julia hljs">solver = createLinearSolver(FISTA, A; reg=reg, iterations=20);</code></pre><p>and apply it to our measurement vector</p><pre><code class="language-julia hljs">img_approx = solve!(solver,b)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">65536-element Vector{Float32}:
- 1.6782215f-18
- 2.9986203f-18
- 6.525591f-18
- 1.4651576f-17
- 3.2512023f-17
- 7.0392726f-17
- 1.4959433f-16
- 3.1428337f-16
- 6.543733f-16
- 1.3415382f-15
+ 1.3385305f-18
+ 2.3574852f-18
+ 5.167419f-18
+ 1.1561287f-17
+ 2.4902954f-17
+ 5.2641854f-17
+ 1.1326137f-16
+ 2.4298326f-16
+ 5.03276f-16
+ 1.0272847f-15
  ⋮
- 1.6727712f-16
- 7.59926f-17
- 3.5305035f-17
- 1.7145075f-17
- 8.650887f-18
- 4.279139f-18
- 1.9934155f-18
- 9.175069f-19
- 5.1579757f-19</code></pre><p>To visualize the reconstructed image, we need to reshape the result vector to the correct shape. Afterwards we can use CairoMakie again:</p><pre><code class="language-julia hljs">img_approx = reshape(img_approx,size(image));
+ 5.57306f-16
+ 2.634912f-16
+ 1.1950603f-16
+ 5.18021f-17
+ 2.1707886f-17
+ 9.1259305f-18
+ 4.1046997f-18
+ 2.0223691f-18
+ 1.2100515f-18</code></pre><p>To visualize the reconstructed image, we need to reshape the result vector to the correct shape. Afterwards we can use CairoMakie again:</p><pre><code class="language-julia hljs">img_approx = reshape(img_approx,size(image));
 plot_image(fig[1,3], img_approx, title = &quot;Reconstructed Image&quot;)
 resize_to_layout!(fig)
-fig</code></pre><img src="2bbc487a.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../getting_started/">« Getting Started</a><a class="docs-footer-nextpage" href="../computed_tomography/">Computed Tomography »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Thursday 18 December 2025 08:56">Thursday 18 December 2025</span>. Using Julia version 1.12.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+fig</code></pre><img src="164702e8.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../getting_started/">« Getting Started</a><a class="docs-footer-nextpage" href="../computed_tomography/">Computed Tomography »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Thursday 18 December 2025 08:57">Thursday 18 December 2025</span>. Using Julia version 1.12.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
