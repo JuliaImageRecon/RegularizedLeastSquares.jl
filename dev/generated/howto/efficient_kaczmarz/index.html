@@ -5,44 +5,44 @@ x = randn(256)
 b = A*x;</code></pre><p>The <code>dot_with_matrix_row</code> function calculates the dot product between a row of A and the current approximate solution of x:</p><pre><code class="language-julia hljs">row = 1
 isapprox(RegularizedLeastSquares.dot_with_matrix_row(A, x, row), sum(A[row, :] .* x))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre><p>Since in Julia, dense arrays are stored in column-major order, such a row-based operation is quite inefficient. A workaround is to transpose the matrix then pass it to a Kaczmarz solver.</p><pre><code class="language-julia hljs">At = collect(transpose(A))
 A_eff = transpose(At)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">256×256 transpose(::Matrix{Float64}) with eltype Float64:
- -1.31841     0.464512    2.42372   …  -0.0945286   0.471259    0.570839
-  1.3711     -1.9538      0.900866      1.91157    -0.108455   -0.747888
-  1.91357    -1.17461     0.348358      0.278152   -0.125971    1.25915
- -2.11938     1.63108    -0.318206     -0.22226     0.317672   -0.762615
- -0.727183    0.0874219   0.681325      0.518665   -0.954246    0.0553033
- -0.624659    0.721199   -1.14028   …   0.949141    0.500782   -1.04
- -1.1731      0.681074    0.741181     -2.01154     0.824422   -0.363923
- -0.256242    0.626777   -0.171964     -0.544962    0.0312801   0.511189
- -0.983862   -0.724239   -0.516382     -0.0980682   2.76171    -1.13302
- -0.267138    0.333605   -0.121356      1.22106    -0.818869    0.943387
-  ⋮                                 ⋱                           ⋮
-  1.66475     0.472479   -0.183441      1.2447      0.134755    0.753172
- -0.8757     -0.973089   -0.558428      0.141847   -0.379535    0.607302
- -0.157392    0.631304   -0.54518       1.77496    -2.13202    -0.48395
-  0.35504    -0.816248   -0.409547  …   0.0170573  -0.678147   -0.28966
- -0.166725   -0.493589    0.068753     -1.202       1.19069    -2.22396
-  0.0425969  -1.20375     0.173463     -0.227487    1.50817    -0.436831
-  1.24449     0.899385   -1.54272       0.474964   -0.722716    0.694785
-  0.418353    0.71747    -1.26546       0.5119      0.594369    0.495401
-  0.460503   -0.679736    1.04913   …   0.098671   -0.253889    0.15625</code></pre><p>Note that the transpose function can return a lazy transpose object, so we first collect the transpose into a dense matrix. Then we transpose it again to get the efficient representation of the matrix.</p><p>We can compare the performance using the BenchmarkTools.jl package. First for the original matrix:</p><pre><code class="language-julia hljs">using BenchmarkTools
+  0.569103    -0.572703    2.04015    …   2.38724    -1.79157     -0.483749
+  0.284643     0.96732    -0.345987       0.697145    1.00715      1.29109
+ -0.481803    -1.89721     1.75139       -0.165515   -0.512473     0.246366
+  0.611911     0.480895   -0.788452       1.00341     0.528262    -0.746233
+ -0.290336    -0.0417326  -0.940317       0.474075   -0.501898    -0.655479
+  0.719494    -1.62963    -0.144641   …   0.54131     0.650681     0.499304
+  0.72001     -0.434434    0.0208486     -1.48768     0.736207     0.0672174
+  1.7379      -0.707015    0.942097      -0.143722   -0.519723    -0.685782
+ -0.989506     0.815961    0.118295      -0.154191    0.676287    -0.0681789
+ -0.610417     2.11971     0.273257       0.775999   -0.759986    -1.05379
+  ⋮                                   ⋱                            ⋮
+  0.0131238   -0.606748   -0.417502       1.73902     0.536505    -0.398225
+  0.316045     0.613792   -0.759963       1.77759    -0.703302    -0.0292438
+  1.74787     -0.747718   -1.56019        1.75807     0.769521    -0.720544
+  0.0253511   -0.834633    0.839275   …   1.56597     0.0684447    1.16957
+  0.249439    -0.37902    -1.18282       -2.22829    -0.00911151  -0.602772
+  0.285534     1.68226     1.85355        1.03112    -0.80914     -0.274778
+ -0.00576825   0.277116    1.1126         1.79327    -0.885376    -0.460043
+ -0.689498     0.247279   -0.698052       0.17015     0.801894    -0.528155
+ -0.706        0.512454   -0.84737    …  -0.0483964  -0.277531     0.340646</code></pre><p>Note that the transpose function can return a lazy transpose object, so we first collect the transpose into a dense matrix. Then we transpose it again to get the efficient representation of the matrix.</p><p>We can compare the performance using the BenchmarkTools.jl package. First for the original matrix:</p><pre><code class="language-julia hljs">using BenchmarkTools
 solver = createLinearSolver(Kaczmarz, A; reg = L2Regularization(0.0001), iterations=100)
 @benchmark solve!(solver, b) samples = 100</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">BenchmarkTools.Trial: 100 samples with 1 evaluation per sample.
- Range <span class="sgr90">(</span><span class="sgr36"><span class="sgr1">min</span></span> … <span class="sgr35">max</span><span class="sgr90">):  </span><span class="sgr36"><span class="sgr1">28.407 ms</span></span> … <span class="sgr35">28.548 ms</span>  <span class="sgr90">┊</span> GC <span class="sgr90">(</span>min … max<span class="sgr90">): </span>0.00% … 0.00%
- Time  <span class="sgr90">(</span><span class="sgr34"><span class="sgr1">median</span></span><span class="sgr90">):     </span><span class="sgr34"><span class="sgr1">28.457 ms              </span></span><span class="sgr90">┊</span> GC <span class="sgr90">(</span>median<span class="sgr90">):    </span>0.00%
- Time  <span class="sgr90">(</span><span class="sgr32"><span class="sgr1">mean</span></span> ± <span class="sgr32">σ</span><span class="sgr90">):   </span><span class="sgr32"><span class="sgr1">28.461 ms</span></span> ± <span class="sgr32">26.056 μs</span>  <span class="sgr90">┊</span> GC <span class="sgr90">(</span>mean ± σ<span class="sgr90">):  </span>0.00% ± 0.00%
+ Range <span class="sgr90">(</span><span class="sgr36"><span class="sgr1">min</span></span> … <span class="sgr35">max</span><span class="sgr90">):  </span><span class="sgr36"><span class="sgr1">31.332 ms</span></span> … <span class="sgr35"> 33.669 ms</span>  <span class="sgr90">┊</span> GC <span class="sgr90">(</span>min … max<span class="sgr90">): </span>0.00% … 0.00%
+ Time  <span class="sgr90">(</span><span class="sgr34"><span class="sgr1">median</span></span><span class="sgr90">):     </span><span class="sgr34"><span class="sgr1">31.443 ms               </span></span><span class="sgr90">┊</span> GC <span class="sgr90">(</span>median<span class="sgr90">):    </span>0.00%
+ Time  <span class="sgr90">(</span><span class="sgr32"><span class="sgr1">mean</span></span> ± <span class="sgr32">σ</span><span class="sgr90">):   </span><span class="sgr32"><span class="sgr1">31.538 ms</span></span> ± <span class="sgr32">291.462 μs</span>  <span class="sgr90">┊</span> GC <span class="sgr90">(</span>mean ± σ<span class="sgr90">):  </span>0.00% ± 0.00%
 
-             ▁ ▃    ▄▄█<span class="sgr34"> </span>▃<span class="sgr32"> </span> ▁  ▆      ▃                         
-  ▄▁▆▄▄▄▄▆▁▁▄█▇█▁▇▄▇███<span class="sgr34">▆</span>█<span class="sgr32">▇</span>▇█▆▄█▁▆▆▄▄▆█▇▆▁▁▆▁▄▁▁▁▁▄▁▁▁▁▁▁▁▁▁▁▄ ▄
-  28.4 ms<span class="sgr90">         Histogram: frequency by time</span>        28.5 ms <span class="sgr1">&lt;</span>
+   ▂▆▃█ <span class="sgr34"> </span>▁▁  <span class="sgr32"> </span>                                                  
+  ▄████▄<span class="sgr34">▆</span>██▇▃<span class="sgr32">▁</span>▄▁▅▆▃▄▃▁▄▄▄▃▁▁▁▁▃▃▁▁▁▁▄▃▁▁▁▁▁▁▁▁▁▁▃▁▁▁▁▃▁▁▁▁▁▁▁▃ ▃
+  31.3 ms<span class="sgr90">         Histogram: frequency by time</span>         32.4 ms <span class="sgr1">&lt;</span>
 
  Memory estimate<span class="sgr90">: </span><span class="sgr33">17.31 KiB</span>, allocs estimate<span class="sgr90">: </span><span class="sgr33">505</span>.</code></pre><p>And then for the efficient matrix:</p><pre><code class="language-julia hljs">solver_eff = createLinearSolver(Kaczmarz, A_eff; reg = L2Regularization(0.0001), iterations=100)
 @benchmark solve!(solver_eff, b) samples = 100</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">BenchmarkTools.Trial: 100 samples with 1 evaluation per sample.
- Range <span class="sgr90">(</span><span class="sgr36"><span class="sgr1">min</span></span> … <span class="sgr35">max</span><span class="sgr90">):  </span><span class="sgr36"><span class="sgr1">1.861 ms</span></span> … <span class="sgr35"> 2.061 ms</span>  <span class="sgr90">┊</span> GC <span class="sgr90">(</span>min … max<span class="sgr90">): </span>0.00% … 0.00%
- Time  <span class="sgr90">(</span><span class="sgr34"><span class="sgr1">median</span></span><span class="sgr90">):     </span><span class="sgr34"><span class="sgr1">1.885 ms              </span></span><span class="sgr90">┊</span> GC <span class="sgr90">(</span>median<span class="sgr90">):    </span>0.00%
- Time  <span class="sgr90">(</span><span class="sgr32"><span class="sgr1">mean</span></span> ± <span class="sgr32">σ</span><span class="sgr90">):   </span><span class="sgr32"><span class="sgr1">1.887 ms</span></span> ± <span class="sgr32">21.242 μs</span>  <span class="sgr90">┊</span> GC <span class="sgr90">(</span>mean ± σ<span class="sgr90">):  </span>0.00% ± 0.00%
+ Range <span class="sgr90">(</span><span class="sgr36"><span class="sgr1">min</span></span> … <span class="sgr35">max</span><span class="sgr90">):  </span><span class="sgr36"><span class="sgr1">1.749 ms</span></span> … <span class="sgr35"> 1.991 ms</span>  <span class="sgr90">┊</span> GC <span class="sgr90">(</span>min … max<span class="sgr90">): </span>0.00% … 0.00%
+ Time  <span class="sgr90">(</span><span class="sgr34"><span class="sgr1">median</span></span><span class="sgr90">):     </span><span class="sgr34"><span class="sgr1">1.770 ms              </span></span><span class="sgr90">┊</span> GC <span class="sgr90">(</span>median<span class="sgr90">):    </span>0.00%
+ Time  <span class="sgr90">(</span><span class="sgr32"><span class="sgr1">mean</span></span> ± <span class="sgr32">σ</span><span class="sgr90">):   </span><span class="sgr32"><span class="sgr1">1.777 ms</span></span> ± <span class="sgr32">28.175 μs</span>  <span class="sgr90">┊</span> GC <span class="sgr90">(</span>mean ± σ<span class="sgr90">):  </span>0.00% ± 0.00%
 
-          █    ▃▁▁▃▃▁ ▁  ▃<span class="sgr34">█</span>▁<span class="sgr32"> </span>▃▆  ▁ ▁    ▃                     
-  ▄▁▁▁▄▁▄▇█▄▄▇▇██████▄█▄▇█<span class="sgr34">█</span>█<span class="sgr32">▇</span>██▁▇█▄█▇▇▇▄█▄▇▇▁▁▁▁▁▁▄▄▄▁▁▄▁▁▁▄ ▄
-  1.86 ms<span class="sgr90">        Histogram: frequency by time</span>        1.92 ms <span class="sgr1">&lt;</span>
+            ▃█▂▆<span class="sgr34"> </span>▃  <span class="sgr32"> </span>                                         
+  ▄▄▅▄██▇▅▇█████<span class="sgr34">█</span>█▅█<span class="sgr32">▄</span>█▅▇▅▄█▁▁▁▁▁▄▁▁▁▁▄▁▁▅▁▅▁▄▄▁▁▄▁▁▁▁▅▁▁▄▁▁▄ ▄
+  1.75 ms<span class="sgr90">        Histogram: frequency by time</span>        1.83 ms <span class="sgr1">&lt;</span>
 
- Memory estimate<span class="sgr90">: </span><span class="sgr33">17.34 KiB</span>, allocs estimate<span class="sgr90">: </span><span class="sgr33">507</span>.</code></pre><p>We can also combine the efficient matrix with a weighting matrix, as is shown in the <a href="../weighting/">Weighting</a> example.</p><p>Custom operators need to implement the <code>dot_with_matrix_row</code> function to be used with the Kaczmarz solver. Ideally, such an implementation is allocation free.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../gpu_acceleration/">« GPU Acceleration</a><a class="docs-footer-nextpage" href="../callbacks/">Callbacks »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.15.0 on <span class="colophon-date" title="Thursday 6 November 2025 17:12">Thursday 6 November 2025</span>. Using Julia version 1.12.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ Memory estimate<span class="sgr90">: </span><span class="sgr33">17.34 KiB</span>, allocs estimate<span class="sgr90">: </span><span class="sgr33">507</span>.</code></pre><p>We can also combine the efficient matrix with a weighting matrix, as is shown in the <a href="../weighting/">Weighting</a> example.</p><p>Custom operators need to implement the <code>dot_with_matrix_row</code> function to be used with the Kaczmarz solver. Ideally, such an implementation is allocation free.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../gpu_acceleration/">« GPU Acceleration</a><a class="docs-footer-nextpage" href="../callbacks/">Callbacks »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Thursday 18 December 2025 08:56">Thursday 18 December 2025</span>. Using Julia version 1.12.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
