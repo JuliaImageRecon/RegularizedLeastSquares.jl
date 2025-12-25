@@ -24,11 +24,11 @@ jobs:
     steps:
         # Checkout the repository.
       - name: Clone source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
         # Checkout custom rules
       - name: Checkout custom rules
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: JuliaComputing/semgrep-rules-julia
           ref: main
