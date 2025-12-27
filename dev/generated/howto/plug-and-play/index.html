@@ -5,19 +5,19 @@ x = randn(16)
 b = A*x;</code></pre><p>For the documentation we will just use the identity function as a placeholder for the PnP prior.</p><pre><code class="language-julia hljs">model = identity</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">identity (generic function with 1 method)</code></pre><p>In practice, you would replace this with a neural network:</p><pre><code class="language-julia hljs">using Flux
 model = Flux.loadmodel!(model, ...)</code></pre><p>The model can then be used together with the <code>PnPRegularization</code> term:</p><pre><code class="language-julia hljs">reg = PnPRegularization(1.0; model = model, shape = [16]);</code></pre><p>Since models often expect a specific input range, we can use the <code>MinMaxTransform</code> to normalize the input:</p><pre><code class="language-julia hljs">reg = PnPRegularization(1.0; model = model, shape = [16], input_transform = RegularizedLeastSquares.MinMaxTransform);</code></pre><p>Custom input transforms can be implemented by passing something callable as the <code>input_transform</code> keyword argument. For more details see the PnPRegularization documentation.</p><p>The regularization term can then be used in the solver:</p><pre><code class="language-julia hljs">solver = createLinearSolver(Kaczmarz, A; reg = reg, iterations = 32)
 x_approx = solve!(solver, b)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">16-element Vector{Float64}:
- -1.0962568362117253
- -0.31992231393628257
- -0.13538296981719666
-  1.4461607172097009
-  0.0913345091834259
-  0.7627597898482361
- -1.1677881744892264
-  0.3081249174826515
- -1.913788189505484
-  0.36524331196008575
-  0.5884484873955196
- -0.010486567121097856
-  1.4907262483288464
- -0.5922641823654922
-  0.1936818998275176
- -0.41023120686164427</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../callbacks/">« Callbacks</a><a class="docs-footer-nextpage" href="../../../API/solvers/">Solvers »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Saturday 27 December 2025 11:28">Saturday 27 December 2025</span>. Using Julia version 1.12.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+  0.8032433810455986
+  0.2499294822749707
+  1.6551137137020577
+  0.9100496084231173
+ -1.2347940443886
+  1.3399545268728252
+ -1.0778544300010877
+  0.9883810624708744
+  0.887782235207317
+ -1.1295144167930344
+  1.9879853030695254
+  0.26466952852503467
+  0.3247652184793879
+ -0.3123305843221159
+ -0.34564164791093477
+ -0.0035304933310271736</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../callbacks/">« Callbacks</a><a class="docs-footer-nextpage" href="../../../API/solvers/">Solvers »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Saturday 27 December 2025 11:29">Saturday 27 December 2025</span>. Using Julia version 1.12.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
