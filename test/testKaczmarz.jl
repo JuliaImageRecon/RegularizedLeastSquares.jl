@@ -82,7 +82,7 @@ Random.seed!(12345)
 
       solver = Kaczmarz
       S = createLinearSolver(solver, d * A, iterations=200, reg=reg)
-      S_weighted = createLinearSolver(solver, *(ProdOp, w, A), iterations=200, reg=reg)
+      S_weighted = createLinearSolver(solver, w ∘ A, iterations=200, reg=reg)
       x_approx = solve!(S, d * b)
       x_weighted = solve!(S_weighted, d * b)
       #@info "Testing solver $solver ...: $x  == $x_approx"
