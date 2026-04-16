@@ -27,7 +27,7 @@ RegularizedLeastSquaresCUDAExt = "CUDA"
 RegularizedLeastSquaresGPUArraysExt = ["GPUArrays", "KernelAbstractions"]
 
 [compat]
-CUDA = "4, 5"
+CUDA = "4, 5, 6.0"
 FFTW = "1.0"
 GPUArrays = "11"
 IterativeSolvers = "0.9"
