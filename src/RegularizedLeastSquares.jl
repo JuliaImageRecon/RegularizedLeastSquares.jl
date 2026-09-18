@@ -108,11 +108,15 @@ function solve!(solver::AbstractLinearSolver, b; callbacks = (_, _) -> nothing, 
 
 
   init!(solver, b; kwargs...)
-  foreach(cb -> cb(solver, 0), callbacks)
+  iteration = 0
+  foreach(cb -> cb(solver, iteration), callbacks)
 
-  for (iteration, _) = enumerate(solver)
+  for (_, _) = enumerate(solver)
+    iteration +=1
     foreach(cb -> cb(solver, iteration), callbacks)
   end
+  iteration +=1
+  foreach(cb -> cb(solver, iteration), callbacks)
 
   return solversolution(solver)
 end
