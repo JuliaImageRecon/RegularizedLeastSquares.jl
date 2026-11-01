@@ -111,22 +111,30 @@ function init!(solver::CGNR, state::CGNRState{T, Tc, vecTc}, b::vecTc; x0 = 0) w
   state.βl  = 0     #temporary scalar
   state.ζl  = 0     #temporary scalar
   state.iteration = 0
-  if all(x0 .== 0)
-    state.x .= 0
-  else
-    solver.A === nothing && error("providing x0 requires solver.A to be defined")
-    state.x .= x0
-    mul!(b, solver.A, solver.x, -1, 1)
-  end
+
+  # normalization of regularization parameters (before λ is used for the start residual)
+  solver.L2 = normalize(solver, solver.normalizeReg, solver.L2, solver.A, b)
 
   #x₀ = Aᶜ*rl, where ᶜ denotes complex conjugation
   initCGNR(state.x₀, solver.A, b)
 
+  # with a start value x0 the residual of the normal equation is Aᶜ*b - (AᶜA + λI)*x0; computed
+  # with the normal operator, so it works without A and leaves b unchanged
+  if all(x0 .== 0)
+    state.x .= 0
+  else
+    state.x .= x0
+    mul!(state.vl, solver.AHA, state.x)
+    state.x₀ .-= state.vl
+    λ_ = λ(solver.L2)
+    if λ_ > 0
+      state.x₀ .-= λ_ .* state.x
+    end
+    state.vl .= 0
+  end
+
   state.z0 = norm(state.x₀)
   copyto!(state.pl, state.x₀)
-
-  # normalization of regularization parameters
-  solver.L2 = normalize(solver, solver.normalizeReg, solver.L2, solver.A, b)
 end
 
 initCGNR(x₀, A, b) = mul!(x₀, adjoint(A), b)
