@@ -236,6 +236,25 @@ function testVerboseSolvers(; arrayType=Array, elType=Float32)
     end
 end
 
+# CGNR started from x0 converges to the same (regularized) least-squares solution and leaves the
+# data unchanged, with the forward operator and with only the normal operator
+function testCGNRStartValue(; arrayType=Array, elType=Float64)
+    A = randn(elType, 20, 8)   # well conditioned: CG takes at most 8 steps here
+    b = randn(elType, 20)
+    x0 = randn(elType, 8)
+    for λ in (zero(elType), elType(0.5))
+        x_ls = (A' * A + λ * I) \ (A' * b)
+        S = createLinearSolver(CGNR, arrayType(A); reg=L2Regularization(λ), iterations=50)
+        b_d = arrayType(b)
+        x_approx = Array(solve!(S, b_d; x0=arrayType(x0)))
+        @test x_approx ≈ x_ls rtol = sqrt(eps(elType))
+        @test Array(b_d) == b
+
+        S = createLinearSolver(CGNR, nothing; AHA=arrayType(A' * A), reg=L2Regularization(λ), iterations=50)
+        x_approx = Array(solve!(S, arrayType(A' * b); x0=arrayType(x0)))
+        @test x_approx ≈ x_ls rtol = sqrt(eps(elType))
+    end
+end
 
 @testset "Test Solvers" begin
     @testset "$arrayType" begin
@@ -254,6 +273,10 @@ end
 
             @testset "General Convex Solver: $elType" begin
                 testConvexLinearSolver(; arrayType, elType)
+            end
+
+            @testset "CGNR with start value: $elType" begin
+                testCGNRStartValue(; arrayType, elType)
             end
         end
     end
