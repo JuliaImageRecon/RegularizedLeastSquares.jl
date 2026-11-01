@@ -25,6 +25,11 @@ RegularizedLeastSquares.CGNR
 RegularizedLeastSquares.Kaczmarz
 ```
 
+## OSSART
+```@docs
+RegularizedLeastSquares.OSSART
+```
+
 ## FISTA
 ```@docs
 RegularizedLeastSquares.FISTA

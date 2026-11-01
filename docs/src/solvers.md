@@ -4,6 +4,7 @@ RegularizedLeastSquares.jl provides a variety of solvers, which are used in fiel
 | Solver | Regularization |
 |--------|----------------------|
 | `Kaczmarz` (Also called Algebraic reconstruction technique) | $l_2^2$ and one additional term |
+| Ordered-subset simultaneous algebraic reconstruction technique (`OSSART`, also SIRT and SART) | constraints and one additional term, also $l_2^2$ (applied after each iteration, a heuristic) |
 | Conjugate Gradients Normal Residual method (`CGNR`) | $l_2^2$ |
 | Fast Iterative Shrinkage Thresholding Algorithm (`FISTA`) | Any one term |
 | Optimal Iterative Shrinkage Thresholding Algorithm (`OptISTA`)| Any one term |

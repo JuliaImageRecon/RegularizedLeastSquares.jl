@@ -1,7 +1,7 @@
 name = "RegularizedLeastSquares"
 uuid = "1e9c538a-f78c-5de5-8ffb-0b6dbe892d23"
 authors = ["Tobias Knopp <tobias@knoppweb.de>", "Niklas Hackelberg <niklas.hackelberg@tuhh.de>", "Jakob Asslaender <jakob.asslaender@nyumc.org>"]
-version = "0.16.12"
+version = "0.17.0"
 
 [deps]
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
@@ -32,7 +32,7 @@ FFTW = "1.0"
 GPUArrays = "11"
 IterativeSolvers = "0.9"
 KernelAbstractions = "0.9"
-LinearOperatorCollection = "2"
+LinearOperatorCollection = "2.5"
 LinearOperators = "2.3.3"
 OhMyThreads = "0.8.3"
 ShiftedArrays = "2.0.0"

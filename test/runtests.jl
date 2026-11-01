@@ -9,6 +9,7 @@ arrayType = isTypeDefined ? arrayType : Array
 @testset "RegularizedLeastSquares" begin
   include("testCreation.jl")
   include("testKaczmarz.jl")
+  include("testOSSART.jl")
   include("testProxMaps.jl")
   include("testSolvers.jl")
   include("testRegularization.jl")

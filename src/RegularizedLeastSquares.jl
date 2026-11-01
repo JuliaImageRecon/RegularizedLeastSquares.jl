@@ -192,6 +192,7 @@ iterate(solver::AbstractLinearSolver) = iterate(solver, solverstate(solver))
 
 include("Utils.jl")
 include("Kaczmarz.jl")
+include("OSSART.jl")
 #include("DAXKaczmarz.jl")
 #include("DAXConstrained.jl")
 include("CGNR.jl")

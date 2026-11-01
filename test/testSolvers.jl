@@ -48,7 +48,7 @@ function testComplexLinearAHASolver(; arrayType=Array, elType=Float32)
     AHA = A' * A
     b = AHA * x
 
-    solvers = filter(s -> s ∉ [DirectSolver, PseudoInverse, Kaczmarz], linearSolverListReal())
+    solvers = filter(s -> s ∉ [DirectSolver, PseudoInverse, Kaczmarz, OSSART], linearSolverListReal())
 
     @testset for solver in solvers
         @test try
