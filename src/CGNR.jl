@@ -53,8 +53,9 @@ operators such as `normalOperator(A)` can be passed explicitly via `AHA`.
 returns a new `CGNR` whose operators, regularization and state live on `target` (e.g. `CuArray`,
 `ROCArray` or `JLArray`; `Array` gives an independent CPU copy). Initialized and partially iterated
 solvers keep their progress, including frame states created by matrix-valued `init!`/`solve!`
-(`SequentialState`, `MultiThreadingState`) and their active flags. The result shares no arrays with the
-source solver (arrays the target leaves in place are copied), and the source solver is not modified.
+(`SequentialState`, `MultiThreadingState`) and their active flags. Arrays the target would leave in place are
+copied, so the result shares no data or workspace with the source solver; only read-only host index
+vectors of `DiagOp`/`DiagNormalOp` may be shared. The source solver is not modified.
 
 Supported operators are dense arrays and LinearOperatorCollection.jl operators with Adapt rules. An
 `AHA` of type `NormalOp` whose parent is `A` (the default), or the inner operand `M` of a weighted
