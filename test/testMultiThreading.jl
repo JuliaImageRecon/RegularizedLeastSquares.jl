@@ -5,7 +5,7 @@ function testMultiThreadingSolver(; arrayType=Array, scheduler=MultiDataState)
 
   solvers = linearSolverList()
   @testset "$(solvers[i])" for i = 1:length(solvers)
-    S = createTestSolver(solvers[i], A, arrayType; iterations=100)
+    S = createLinearSolver(solvers[i], arrayType(A), iterations=100)
 
     x_sequential = hcat([Array(solve!(S, arrayType(b[:, j]))) for j = 1:size(b, 2)]...)
     @test x_sequential ≈ x rtol = 0.1
@@ -16,6 +16,13 @@ function testMultiThreadingSolver(; arrayType=Array, scheduler=MultiDataState)
     # Does sequential/normal reco still works after multi-threading
     x_vec = Array(solve!(S, arrayType(b[:, 1])))
     @test x_vec ≈ x[:, 1] rtol = 0.1
+  end
+
+  @testset "CGNR via Adapt" begin
+    # built on the CPU and moved to arrayType with Adapt.adapt
+    S = Adapt.adapt(arrayType, createLinearSolver(CGNR, A, iterations=100))
+    @test Array(solve!(S, arrayType(b), scheduler=scheduler)) ≈ x rtol = 0.1
+    @test Array(solve!(S, arrayType(b[:, 1]))) ≈ x[:, 1] rtol = 0.1
   end
 end
 
