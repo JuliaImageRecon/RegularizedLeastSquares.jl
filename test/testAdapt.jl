@@ -51,6 +51,14 @@ LO.storage_type(op::ReplayOp) = typeof(op.Mv)
 Adapt.adapt_structure(to, op::ReplayOp) = ReplayOp(Adapt.adapt(to, op.Mv),
   Dict{Symbol, Any}(:nodes => Adapt.adapt(to, op.plan_args[:nodes]), :kwargs => Dict{Symbol, Any}(:m => 4)))
 
+# Operator whose Adapt rule passes its workspace through unchanged
+struct KeepWorkspaceOp{T, V <: AbstractVector{T}} <: LO.AbstractLinearOperator{T}
+  Mv::V
+  tmp::V
+end
+LO.storage_type(op::KeepWorkspaceOp) = typeof(op.Mv)
+Adapt.adapt_structure(to, op::KeepWorkspaceOp) = KeepWorkspaceOp(Adapt.adapt(to, op.Mv), op.tmp)
+
 function testCGNRAdaptSolve(target, T, mode)
   A, b, x0, w = adaptFixture(T)
   operator = mode == :weighted ? ProdOp(WeightingOp(w), A) : A
@@ -168,6 +176,11 @@ function testCGNRPartialAdaptors()
   @test Adapt.adapt(JLArray, solver).A.plan_args[:nodes] isa JLArray{Float32}
   err = try Adapt.adapt(Float32ToFloat64Adaptor(), solver) catch e e end
   @test err isa ArgumentError && occursin("nodes", sprint(showerror, err))
+
+  keep = KeepWorkspaceOp(zeros(ComplexF32, 4), zeros(ComplexF32, 4))
+  solver = CGNR(keep; AHA = Matrix{ComplexF32}(I, 4, 4), iterations = 2)
+  err = try Adapt.adapt(Array, solver) catch e e end
+  @test err isa ArgumentError && occursin("share memory", sprint(showerror, err))
 end
 
 function testCGNRAdaptSharing(target)
@@ -191,20 +204,18 @@ function testCGNRAdaptSharing(target)
   @test matvec(moved.AHA, v) ≈ matvec(moved.A', Array(moved.A * target(v))) rtol = 1e-4
   @test source.AHA * v == source_action
 
-  # explicit normalOperator of a weighted product: shares M, keeps its own W'W snapshot
+  # explicit normalOperator of a weighted product: shares the adapted M, keeps its own W'W snapshot
   P = ProdOp(WeightingOp(copy(w)), copy(M))
   source = CGNR(P; AHA = normalOperator(P), iterations = 4)
   source_action = source.AHA * v
   moved = Adapt.adapt(target, source)
   @test moved.AHA.parent === moved.A.B
   @test matvec(moved.AHA, v) ≈ source_action rtol = 1e-4
-  if target !== Array   # on the same backend the read-only matrix M may be shared with the source
-    moved.A.B .*= 2
-    @test matvec(moved.AHA, v) ≈ 4 .* source_action rtol = 1e-4
-    moved.A.A.weights .*= 2
-    @test matvec(moved.AHA, v) ≈ 4 .* source_action rtol = 1e-4
-    @test source.AHA * v == source_action
-  end
+  moved.A.B .*= 2
+  @test matvec(moved.AHA, v) ≈ 4 .* source_action rtol = 1e-4
+  moved.A.A.weights .*= 2
+  @test matvec(moved.AHA, v) ≈ 4 .* source_action rtol = 1e-4
+  @test source.AHA * v == source_action
 
   # explicit custom normal operators keep their own action
   custom_dense = M' * M + 2I
@@ -215,6 +226,24 @@ function testCGNRAdaptSharing(target)
   moved = Adapt.adapt(target, CGNR(P; AHA = custom_normal, iterations = 4))
   @test moved.AHA.parent === moved.A.B
   @test matvec(moved.AHA, v) ≈ custom_normal * v rtol = 1e-4
+
+  # mutable workspaces (ProdNormalOp.tmp, DiagNormalOp.y) are rebuilt, also on the same backend
+  workspace(H) = hasfield(typeof(H), :tmp) ? H.tmp : H.y
+  # (normalOperator(D) shares D's children, so A and AHA use separately built DiagOps)
+  Dw() = DiagOp(WeightingOp(Float32[1, 2]), WeightingOp(Float32[3, 4]))
+  for (Aw, H) in ((Float32[2 0; 0 3], normalOperator(ProdOp(Float32[2 0; 0 3], Float32[1 0; 0 1]))),
+                  (Dw(), normalOperator(Dw())))
+    rhs = Float32.(1:size(H, 1))
+    action = H * rhs
+    fill!(workspace(H), -77)
+    source = CGNR(Aw; AHA = H, iterations = 2)
+    moved = Adapt.adapt(target, source)
+    @test workspace(moved.AHA) !== workspace(H) && onTarget(workspace(moved.AHA), target)
+    init!(moved, target(rhs)); iterate(moved)
+    @test all(==(-77), workspace(H))
+    @test matvec(moved.AHA, rhs) ≈ action rtol = 1e-5
+    @test H * rhs ≈ action rtol = 1e-5
+  end
 
   # wrapped dense arrays
   At = Matrix(transpose(M))

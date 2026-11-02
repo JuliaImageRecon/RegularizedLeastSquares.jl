@@ -51,9 +51,10 @@ operators such as `normalOperator(A)` can be passed explicitly via `AHA`.
     Adapt.adapt(target, solver::CGNR)
 
 returns a new `CGNR` whose operators, regularization and state live on `target` (e.g. `CuArray`,
-`ROCArray` or `JLArray`; `Array` gives a CPU solver with its own state). Initialized and partially iterated
+`ROCArray` or `JLArray`; `Array` gives an independent CPU copy). Initialized and partially iterated
 solvers keep their progress, including frame states created by matrix-valued `init!`/`solve!`
-(`SequentialState`, `MultiThreadingState`) and their active flags. The source solver is not modified.
+(`SequentialState`, `MultiThreadingState`) and their active flags. The result shares no arrays with the
+source solver (arrays the target leaves in place are copied), and the source solver is not modified.
 
 Supported operators are dense arrays and LinearOperatorCollection.jl operators with Adapt rules. An
 `AHA` of type `NormalOp` whose parent is `A` (the default), or the inner operand `M` of a weighted
@@ -236,7 +237,19 @@ end
 
 adaptError(msg) = throw(ArgumentError("cannot adapt CGNR: " * msg))
 
-arrayFamily(x::AbstractArray) = (p = parent(x); p === x ? Base.typename(typeof(x)).wrapper : arrayFamily(p))
+baseArray(x::AbstractArray) = (p = parent(x); p === x ? x : baseArray(p))
+arrayFamily(x::AbstractArray) = Base.typename(typeof(baseArray(x))).wrapper
+
+# Wraps the user's adaptor and copies every numeric array it leaves in place (e.g. `Array` on a CPU
+# solver), so that operators rebuilt by their Adapt rules get their own workspaces instead of sharing
+# them, and the closures capturing them, with the source solver.
+struct CGNRFreshArrays{TO}
+  to::TO
+end
+function Adapt.adapt_storage(a::CGNRFreshArrays, x)
+  y = Adapt.adapt(a.to, x)
+  return y === x && x isa AbstractArray{<:Number} ? copy(x) : y
+end
 typeFamily(S::Type) = Base.typename(Base.unwrap_unionall(S)).wrapper
 
 cgnrStates(state::CGNRState) = [state]
@@ -252,7 +265,7 @@ function Adapt.adapt_structure(to, solver::CGNR)
   x′ = Adapt.adapt(to, x)
   supported = x′ isa AbstractVector && eltype(x′) == eltype(x) && (to isa Type ? x′ isa to : x′ !== x)
   supported || adaptError("unsupported Adapt target $to: Adapt.adapt returned $(typeof(x′)) for a state vector of type $(typeof(x))")
-  ctx = CGNRAdaptContext(to, arrayFamily(x′), IdDict{Any, Any}(), IdDict{Any, Any}())
+  ctx = CGNRAdaptContext(CGNRFreshArrays(to), arrayFamily(x′), IdDict{Any, Any}(), IdDict{Any, Any}())
 
   A = adaptComponent(ctx, solver.A, "A")
   AHA = adaptNormal(ctx, solver.A, A, solver.AHA)
@@ -299,7 +312,7 @@ end
 function adaptVector(ctx::CGNRAdaptContext, v, name)
   v′ = Adapt.adapt(ctx.to, v)
   checkArray(ctx, v, v′, name)
-  return v′ === v ? copy(v) : v′
+  return v′
 end
 
 adaptState(ctx::CGNRAdaptContext, state::CGNRState) =
@@ -331,7 +344,7 @@ adaptReg(ctx::CGNRAdaptContext, reg) = adaptError("unsupported regularization te
 
 # Validation of an adapted operator graph against its source, node by node.
 # Records src => dst; returns false if the pair was already checked. Operators shared in the source must
-# stay shared, arrays are read-only operands and may be adapted more than once.
+# stay shared; an array shared by several source operators may be adapted into separate copies.
 function visit!(ctx::CGNRAdaptContext, src, dst, path)
   if haskey(ctx.visited, src)
     src isa AbstractLinearOperator && ctx.visited[src] !== dst &&
@@ -346,7 +359,10 @@ function checkArray(ctx::CGNRAdaptContext, src::AbstractArray, dst, path; host =
   (dst isa AbstractArray && eltype(dst) == eltype(src)) ||
     adaptError("$path: array of type $(typeof(src)) was adapted to $(typeof(dst)) (element type must be preserved)")
   visit!(ctx, src, dst, path)
-  host || arrayFamily(dst) === ctx.family ||
+  host && return nothing
+  baseArray(dst) !== baseArray(src) ||
+    adaptError("$path: array of type $(typeof(src)) would share memory with the source solver")
+  arrayFamily(dst) === ctx.family ||
     adaptError("$path: array of type $(typeof(dst)) is not on the target backend $(ctx.family)")
   return nothing
 end
