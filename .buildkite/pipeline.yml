@@ -8,6 +8,8 @@ steps:
     command: |
       julia --color=yes --project -e '
       using Pkg
+      # Temporary: unreleased LinearOperatorCollection.jl Adapt rules, see .github/workflows/ci.yml
+      Pkg.add(url="https://github.com/JuliaImageRecon/LinearOperatorCollection.jl", rev="5e781dfce8d1a02a651ab13e078308a2b7731839")
       Pkg.add("TestEnv")
       using TestEnv
       TestEnv.activate();
@@ -26,6 +28,8 @@ steps:
     command: |
       julia --color=yes --project -e '
       using Pkg
+      # Temporary: unreleased LinearOperatorCollection.jl Adapt rules, see .github/workflows/ci.yml
+      Pkg.add(url="https://github.com/JuliaImageRecon/LinearOperatorCollection.jl", rev="5e781dfce8d1a02a651ab13e078308a2b7731839")
       Pkg.add("TestEnv")
       using TestEnv
       TestEnv.activate();

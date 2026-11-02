@@ -4,6 +4,7 @@ authors = ["Tobias Knopp <tobias@knoppweb.de>", "Niklas Hackelberg <niklas.hacke
 version = "0.16.13"
 
 [deps]
+Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 IterativeSolvers = "42fd0dbc-a981-5370-80f2-aaf504508153"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -27,10 +28,12 @@ RegularizedLeastSquaresCUDAExt = "CUDA"
 RegularizedLeastSquaresGPUArraysExt = ["GPUArrays", "KernelAbstractions"]
 
 [compat]
+Adapt = "4"
 CUDA = "4, 5, 6"
 FFTW = "1.0"
 GPUArrays = "11"
 IterativeSolvers = "0.9"
+JLArrays = "0.3"
 KernelAbstractions = "0.9"
 LinearOperatorCollection = "2"
 LinearOperators = "2.3.3"
@@ -41,9 +44,10 @@ VectorizationBase = "0.19, 0.21"
 julia = "1.10"
 
 [extras]
+JLArrays = "27aeb0d3-9eb9-45fb-866b-73c2ecf80fcb"
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Random", "FFTW"]
+test = ["Test", "Random", "FFTW", "JLArrays"]
