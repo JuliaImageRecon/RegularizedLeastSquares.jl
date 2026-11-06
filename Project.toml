@@ -30,6 +30,7 @@ RegularizedLeastSquaresGPUArraysExt = ["GPUArrays", "KernelAbstractions"]
 CUDA = "4, 5, 6"
 FFTW = "1.0"
 GPUArrays = "11"
+InteractiveUtils = "1.10"
 IterativeSolvers = "0.9"
 KernelAbstractions = "0.9"
 LinearOperatorCollection = "2"
