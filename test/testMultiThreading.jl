@@ -30,8 +30,10 @@ function testMultiThreadingSolver(; arrayType=Array, scheduler=MultiDataState)
     S = createLinearSolver(CGNR, A, iterations=100)
     init!(S, b; scheduler=scheduler)
     iterate(S)
+    S.state.active[2] = false   # a frame the scheduler no longer iterates
     S_adapted = Adapt.adapt(adaptType, S)
     @test S_adapted.state isa scheduler
+    @test S_adapted.state.active == [true, false, true, true]
     @test S_adapted.state.states[1].iteration == 1
     for _ in S end
     for _ in S_adapted end
