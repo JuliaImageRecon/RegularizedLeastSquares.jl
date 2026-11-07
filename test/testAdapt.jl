@@ -110,6 +110,12 @@ function testCGNRAdaptElementTypes()
   replay = ReplayOp(zeros(ComplexF32, 4), Dict{Symbol, Any}(:nodes => rand(adaptRng, Float32, 2, 4), :kwargs => Dict{Symbol, Any}(:m => 4)))
   solver = CGNR(replay; AHA = Matrix{ComplexF32}(I, 4, 4), iterations = 2)
   @test Adapt.adapt(JLArray, solver).A.plan_args[:nodes] isa JLArray{Float32}
+
+  # an error thrown while rebuilding an operator propagates unchanged: here LinearOperators cannot
+  # combine the moved weighting with an `opEye` that has no Adapt rule
+  B = Float32[2 0; 0 3]
+  nested = ProdOp(WeightingOp(Float32[1, 2]), opEye(Float32, 2))
+  @test_throws LO.LinearOperatorException Adapt.adapt(JLArray, CGNR(nested; AHA = B' * B, iterations = 2))
 end
 
 function testCGNRAdaptSharing(target)
