@@ -22,6 +22,16 @@ solver = createLinearSolver(CGNR, Array(A); reg = L2Regularization(0.0001), iter
 x_cpu = solve!(solver, Array(b))
 isapprox(Array(x_approx), x_cpu)
 
+# ## Moving a CGNR Solver with Adapt.jl
+# A `CGNR` solver can also be adapted to the target backend with [Adapt.jl](https://github.com/JuliaGPU/Adapt.jl) before solving:
+using Adapt
+cpu_solver = createLinearSolver(CGNR, Array(A); reg = L2Regularization(0.0001), iterations=32);
+gpu_solver = Adapt.adapt(gpu, cpu_solver)
+x_adapted = solve!(gpu_solver, b)
+isapprox(Array(x_adapted), x_cpu)
+
+# Each operator of the solver must support Adapt.jl. Other solvers do not support `Adapt.adapt` yet.
+
 # ## Matrix-Free Operators
 # A special case is the usage of matrix-free operators. Since these operators do not have a concrete matrix representation, their GPU support depends on their implementation.
 # Since not all multiplications within a solver approximation are in-place, the operator also needs to support the `*` operation and construct an appropriate result vector.

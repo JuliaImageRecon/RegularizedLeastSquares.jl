@@ -41,6 +41,13 @@ creates an `CGNR` object for the forward operator `A` or normal operator `AHA`.
   * `iterations::Int`                                   - maximum number of iterations
   * `relTol::Real`                                      - tolerance for stopping criterion
 
+# Moving a solver to another array backend
+
+    Adapt.adapt(target, solver::CGNR)
+
+adapts the operators, regularization and state of the solver to `target` (e.g. `CuArray`). Adapt the solver to the
+target backend before solving; each operator must support Adapt.jl. Only `CGNR` supports `Adapt.adapt` so far.
+
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
 CGNR(; AHA, kwargs...) = CGNR(nothing; AHA = AHA, kwargs...)
@@ -191,3 +198,17 @@ function converged(::CGNR, state::CGNRState)
 end
 
 @inline done(solver::CGNR, state::CGNRState) = converged(solver, state) || state.iteration >= min(solver.iterations, size(solver.AHA, 2))
+
+function Adapt.adapt_structure(to, solver::CGNR)
+  A = Adapt.adapt(to, solver.A)
+  AHA = Adapt.adapt(to, solver.AHA)
+  L2 = Adapt.adapt(to, solver.L2)
+  # adapt each term, not the vector itself, which would become an array of terms on the target
+  constr = map(reg -> Adapt.adapt(to, reg), solver.constr)
+  normalizeReg = Adapt.adapt(to, solver.normalizeReg)
+  state = Adapt.adapt(to, solver.state)
+  return CGNR(A, AHA, L2, constr, normalizeReg, solver.iterations, state)
+end
+
+Adapt.adapt_structure(to, state::CGNRState) = CGNRState(Adapt.adapt(to, state.x), Adapt.adapt(to, state.x₀), Adapt.adapt(to, state.pl), Adapt.adapt(to, state.vl),
+  state.αl, state.βl, state.ζl, state.iteration, state.relTol, state.z0)

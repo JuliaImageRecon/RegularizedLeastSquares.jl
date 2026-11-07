@@ -12,6 +12,7 @@ using VectorizationBase
 using VectorizationBase: shufflevector, zstridedpointer
 using OhMyThreads: @tasks, @local
 using LinearOperators: opEye
+import Adapt
 using StatsBase
 using LinearOperatorCollection
 using InteractiveUtils

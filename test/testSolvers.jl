@@ -19,6 +19,10 @@ function testRealLinearSolver(; arrayType=Array, elType=Float32)
             false
         end skip = arrayType != Array && solver <: AbstractDirectSolver #
     end
+
+    # CGNR built on the CPU and moved to adaptType with Adapt.adapt
+    S = Adapt.adapt(adaptType, createLinearSolver(CGNR, A, iterations=200))
+    @test Array(solve!(S, adaptType(b))) ≈ x rtol = 0.1
 end
 
 function testComplexLinearSolver(; arrayType=Array, elType=Float32)
@@ -40,6 +44,10 @@ function testComplexLinearSolver(; arrayType=Array, elType=Float32)
             false
         end skip = arrayType != Array && solver <: AbstractDirectSolver
     end
+
+    # CGNR built on the CPU and moved to adaptType with Adapt.adapt
+    S = Adapt.adapt(adaptType, createLinearSolver(CGNR, A, iterations=100))
+    @test Array(solve!(S, adaptType(b))) ≈ x rtol = 0.1
 end
 
 function testComplexLinearAHASolver(; arrayType=Array, elType=Float32)
@@ -62,6 +70,10 @@ function testComplexLinearAHASolver(; arrayType=Array, elType=Float32)
             false
         end
     end
+
+    # CGNR built on the CPU and moved to adaptType with Adapt.adapt
+    S = Adapt.adapt(adaptType, createLinearSolver(CGNR, nothing; AHA=AHA, iterations=100))
+    @test Array(solve!(S, adaptType(b))) ≈ x rtol = 0.1
 end
 
 function testConvexLinearSolver(; arrayType=Array, elType=Float32)
@@ -253,7 +265,34 @@ function testCGNRStartValue(; arrayType=Array, elType=Float64)
         S = createLinearSolver(CGNR, nothing; AHA=arrayType(A' * A), reg=L2Regularization(λ), iterations=50)
         x_approx = Array(solve!(S, arrayType(A' * b); x0=arrayType(x0)))
         @test x_approx ≈ x_ls rtol = sqrt(eps(elType))
+
+        # the same solvers built on the CPU and moved to adaptType with Adapt.adapt
+        S = Adapt.adapt(adaptType, createLinearSolver(CGNR, A; reg=L2Regularization(λ), iterations=50))
+        @test Array(solve!(S, adaptType(b); x0=adaptType(x0))) ≈ x_ls rtol = sqrt(eps(elType))
+        S = Adapt.adapt(adaptType, createLinearSolver(CGNR, nothing; AHA=A' * A, reg=L2Regularization(λ), iterations=50))
+        @test Array(solve!(S, adaptType(A' * b); x0=adaptType(x0))) ≈ x_ls rtol = sqrt(eps(elType))
     end
+end
+
+# A partly iterated CGNR with a normalized, auto-scaled L2 term and a transformed projection, moved with
+# Adapt.adapt, finishes with the same result as the CPU solver it was moved from
+function testCGNRAdaptResume(; elType=Float64)
+    A = randn(elType, 20, 8)
+    b = randn(elType, 20)
+    L2 = AutoScaledRegularization(L2Regularization(elType(0.1)))
+    L2.factor = elType(0.5)   # a populated auto-scaling cache
+    Q = Matrix(qr(randn(elType, 8, 8)).Q)
+    S = createLinearSolver(CGNR, A; reg=[L2, TransformedRegularization(PositiveRegularization(), Q)],
+        normalizeReg=MeasurementBasedNormalization(), iterations=6)
+    init!(S, b)
+    iterate(S)
+    S_adapted = Adapt.adapt(adaptType, S)
+    @test S_adapted.state.x isa adaptType
+    @test S_adapted.constr[1].trafo isa adaptType
+    @test λ(S_adapted.L2) == λ(S.L2)
+    for _ in S end
+    for _ in S_adapted end
+    @test Array(solversolution(S_adapted)) ≈ solversolution(S) rtol = 1e-4
 end
 
 @testset "Test Solvers" begin
@@ -277,6 +316,10 @@ end
 
             @testset "CGNR with start value: $elType" begin
                 testCGNRStartValue(; arrayType, elType)
+            end
+
+            @testset "CGNR resumed after Adapt.adapt: $elType" begin
+                testCGNRAdaptResume(; elType)
             end
         end
     end
