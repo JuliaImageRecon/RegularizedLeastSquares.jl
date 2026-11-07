@@ -26,6 +26,8 @@ struct MaskedRegularization{S, R<:AbstractRegularization} <: AbstractNestedRegul
   MaskedRegularization(reg::R, mask) where {S, R<:AbstractNestedRegularization{S}} = new{S,R}(reg, mask)
 end
 innerreg(reg::MaskedRegularization) = reg.reg
+# the mask is a host `Vector{Bool}`
+Adapt.adapt_structure(to, reg::MaskedRegularization) = MaskedRegularization(Adapt.adapt(to, reg.reg), reg.mask)
 
 
 function prox!(reg::MaskedRegularization, x::AbstractArray, args...)

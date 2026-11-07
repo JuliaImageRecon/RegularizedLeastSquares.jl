@@ -23,18 +23,14 @@ x_cpu = solve!(solver, Array(b))
 isapprox(Array(x_approx), x_cpu)
 
 # ## Moving a CGNR Solver with Adapt.jl
-# A `CGNR` solver can also be moved as a whole with [Adapt.jl](https://github.com/JuliaGPU/Adapt.jl). `Adapt.adapt` returns a new solver
-# whose operators, regularization and state all live on the target backend, and leaves the original solver untouched:
+# A `CGNR` solver can also be adapted to the target backend with [Adapt.jl](https://github.com/JuliaGPU/Adapt.jl) before solving:
 using Adapt
 cpu_solver = createLinearSolver(CGNR, Array(A); reg = L2Regularization(0.0001), iterations=32);
 gpu_solver = Adapt.adapt(gpu, cpu_solver)
 x_adapted = solve!(gpu_solver, b)
 isapprox(Array(x_adapted), x_cpu)
 
-# This works for dense matrices and for LinearOperatorCollection.jl operators that support Adapt.jl, including the default normal operator CGNR builds for them.
-# Initialized solvers keep their progress, including the multi-frame states created by matrix-valued `solve!`. Every operator of the solver must support
-# Adapt.jl: operators without an Adapt rule, such as closure-based `LinearOperator`s, are not moved.
-# Other solvers do not support `Adapt.adapt` yet; for them, construct the solver from operators that already live on the GPU, as shown below.
+# Each operator of the solver must support Adapt.jl. Other solvers do not support `Adapt.adapt` yet.
 
 # ## Matrix-Free Operators
 # A special case is the usage of matrix-free operators. Since these operators do not have a concrete matrix representation, their GPU support depends on their implementation.

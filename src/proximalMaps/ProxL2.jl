@@ -9,6 +9,7 @@ struct L2Regularization{T} <: AbstractParameterizedRegularization{T}
   λ::T
   L2Regularization(λ::T; kargs...) where T = new{T}(λ)
 end
+Adapt.adapt_structure(to, reg::L2Regularization) = L2Regularization(Adapt.adapt(to, reg.λ))
 
 """
     prox!(reg::L2Regularization, x, λ)

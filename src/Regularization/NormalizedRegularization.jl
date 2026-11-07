@@ -36,6 +36,7 @@ struct NormalizedRegularization{T, S, R} <: AbstractScaledRegularization{T, S}
 end
 innerreg(reg::NormalizedRegularization) = reg.reg
 scalefactor(reg::NormalizedRegularization) = reg.factor
+Adapt.adapt_structure(to, reg::NormalizedRegularization) = NormalizedRegularization(Adapt.adapt(to, reg.reg), reg.factor)
 
 function normalize(::MeasurementBasedNormalization, A, b::AbstractArray)
   return norm(b, 1)/length(b)
