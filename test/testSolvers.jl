@@ -274,17 +274,22 @@ function testCGNRStartValue(; arrayType=Array, elType=Float64)
     end
 end
 
-# A partly iterated CGNR with a normalized L2 term and a projection, moved with Adapt.adapt, finishes
-# with the same result as the CPU solver it was moved from
+# A partly iterated CGNR with a normalized, auto-scaled L2 term and a transformed projection, moved with
+# Adapt.adapt, finishes with the same result as the CPU solver it was moved from
 function testCGNRAdaptResume(; elType=Float64)
     A = randn(elType, 20, 8)
     b = randn(elType, 20)
-    S = createLinearSolver(CGNR, A; reg=[L2Regularization(elType(0.1)), PositiveRegularization()],
+    L2 = AutoScaledRegularization(L2Regularization(elType(0.1)))
+    L2.factor = elType(0.5)   # a populated auto-scaling cache
+    Q = Matrix(qr(randn(elType, 8, 8)).Q)
+    S = createLinearSolver(CGNR, A; reg=[L2, TransformedRegularization(PositiveRegularization(), Q)],
         normalizeReg=MeasurementBasedNormalization(), iterations=6)
     init!(S, b)
     iterate(S)
     S_adapted = Adapt.adapt(adaptType, S)
     @test S_adapted.state.x isa adaptType
+    @test S_adapted.constr[1].trafo isa adaptType
+    @test λ(S_adapted.L2) == λ(S.L2)
     for _ in S end
     for _ in S_adapted end
     @test Array(solversolution(S_adapted)) ≈ solversolution(S) rtol = 1e-4
