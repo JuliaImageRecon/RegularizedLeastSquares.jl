@@ -29,19 +29,6 @@ function adaptFixture(T, m = 12, n = 6; seed = 1234)
   return A, randn(rng, T, m), randn(rng, T, n), rand(rng, real(T), m) .+ real(T)(0.5)
 end
 
-struct NoopAdaptor end
-struct FloatOnlyAdaptor end   # moves floating point arrays only
-Adapt.adapt_storage(::FloatOnlyAdaptor, x::AbstractArray{<:AbstractFloat}) = JLArray(x)
-struct RealToComplexAdaptor end   # moves complex arrays, but also converts real arrays to complex
-Adapt.adapt_storage(::RealToComplexAdaptor, x::AbstractArray{ComplexF32}) = JLArray(x)
-Adapt.adapt_storage(::RealToComplexAdaptor, x::AbstractArray{Float32}) = JLArray(ComplexF32.(x))
-struct Float32ToFloat64Adaptor end
-Adapt.adapt_storage(::Float32ToFloat64Adaptor, x::AbstractArray{ComplexF32}) = JLArray(x)
-Adapt.adapt_storage(::Float32ToFloat64Adaptor, x::AbstractArray{Float32}) = JLArray(Float64.(x))
-
-struct CustomCGNRState <: RegularizedLeastSquares.AbstractSolverState{CGNR} end
-struct CustomProjection <: RegularizedLeastSquares.AbstractProjectionRegularization end
-
 # Operator that keeps constructor inputs to rebuild itself, like LinearOperatorCollection's NFFTOp
 struct ReplayOp{T, V <: AbstractVector{T}} <: LO.AbstractLinearOperator{T}
   Mv::V
@@ -50,14 +37,6 @@ end
 LO.storage_type(op::ReplayOp) = typeof(op.Mv)
 Adapt.adapt_structure(to, op::ReplayOp) = ReplayOp(Adapt.adapt(to, op.Mv),
   Dict{Symbol, Any}(:nodes => Adapt.adapt(to, op.plan_args[:nodes]), :kwargs => Dict{Symbol, Any}(:m => 4)))
-
-# Operator whose Adapt rule passes its workspace through unchanged
-struct KeepWorkspaceOp{T, V <: AbstractVector{T}} <: LO.AbstractLinearOperator{T}
-  Mv::V
-  tmp::V
-end
-LO.storage_type(op::KeepWorkspaceOp) = typeof(op.Mv)
-Adapt.adapt_structure(to, op::KeepWorkspaceOp) = KeepWorkspaceOp(Adapt.adapt(to, op.Mv), op.tmp)
 
 function testCGNRAdaptSolve(target, T, mode)
   A, b, x0, w = adaptFixture(T)
@@ -114,51 +93,9 @@ function testCGNRAdaptSolve(target, T, mode)
   @test snapshot(source.state) == before && λ(source.L2) == λ_before && rhs == rhs_copy
 end
 
-function testCGNRAdaptErrors(target)
-  A, b, _, w = adaptFixture(Float32)
-  solver = CGNR(A; iterations = 3)
-  for bad in (Int, AbstractArray, NoopAdaptor(), target{Float64})
-    @test_throws ArgumentError Adapt.adapt(bad, solver)
-  end
-  err = try Adapt.adapt(Int, solver) catch e e end
-  @test occursin("unsupported Adapt target", sprint(showerror, err))
-
-  P = ProdOp(WeightingOp(w), A)
-  @test_throws ArgumentError Adapt.adapt(target, CGNR(P; AHA = P' * P))                 # opaque product
-  @test_throws ArgumentError Adapt.adapt(target, CGNR(A; AHA = LinearOperator(A' * A)))  # closure operator
-  err = try Adapt.adapt(target, CGNR(P; AHA = P' * P)) catch e e end
-  @test occursin("no Adapt rule", sprint(showerror, err))
-
-  # unsupported operators nested in supported ones, as A, AHA and transform
-  n = 6
-  nested() = ProdOp(WeightingOp(rand(adaptRng, Float32, n) .+ 0.5f0), opEye(Float32, n))
-  B = A[1:n, :]
-  @test_throws ArgumentError Adapt.adapt(target, CGNR(nested(); AHA = B' * B))
-  err = try Adapt.adapt(target, CGNR(nested(); AHA = B' * B)) catch e e end
-  # same backend: the opaque child is caught by the graph check; cross backend: LinearOperators throws while rebuilding
-  @test occursin(target === Array ? "no Adapt rule" : "could not be adapted", sprint(showerror, err))
-  @test_throws ArgumentError Adapt.adapt(target, CGNR(B; AHA = nested()))
-  @test_throws ArgumentError Adapt.adapt(target, CGNR(B; reg = [L2Regularization(0.1f0), TransformedRegularization(RealRegularization(), nested())]))
-
-  # unsupported state and regularization terms
-  custom = CGNR(A; iterations = 3)
-  custom.state = CustomCGNRState()
-  @test_throws ArgumentError Adapt.adapt(target, custom)
-  s = CGNR(A; iterations = 3)
-  @test_throws ArgumentError Adapt.adapt(target, CGNR(s.A, s.AHA, s.L2, [CustomProjection()], s.normalizeReg, s.iterations, s.state))
-  @test_throws ArgumentError Adapt.adapt(target, CGNR(s.A, s.AHA, L2Regularization(fill(0.1f0, n)), s.constr, s.normalizeReg, s.iterations, s.state))
-
-  # an operator shared in a nested position cannot be split into separate copies
-  Psq = ProdOp(WeightingOp(rand(adaptRng, Float32, n) .+ 0.5f0), B)
-  shared = CGNR(Psq; reg = [L2Regularization(0.1f0), TransformedRegularization(RealRegularization(), Psq.A)])
-  err = try Adapt.adapt(target, shared) catch e e end
-  @test err isa ArgumentError && occursin("shared", sprint(showerror, err))
-end
-
-# Adaptors that only move or convert part of the graph (CPU only, they target JLArray)
-function testCGNRPartialAdaptors()
+# Operators with nodes of different element types, and retained constructor inputs (CPU only, they target JLArray)
+function testCGNRAdaptElementTypes()
   solver = CGNR(Int[1 0; 0 2]; AHA = Float32[1 0; 0 4], iterations = 2)
-  @test_throws ArgumentError Adapt.adapt(FloatOnlyAdaptor(), solver)
   moved = Adapt.adapt(JLArray, solver)
   @test moved.A isa JLArray{Int} && moved.AHA isa JLArray{Float32}
   @test Array(solve!(moved, JLArray(Float32[1, 2]))) ≈ solve!(deepcopy(solver), Float32[1, 2]) rtol = 2e-4
@@ -169,18 +106,10 @@ function testCGNRPartialAdaptors()
   @test LO.storage_type(moved.A) <: JLArray{ComplexF32} && LO.storage_type(moved.A.A) <: JLArray{Float32}
   b = randn(adaptRng, ComplexF32, 4)
   @test Array(solve!(moved, JLArray(b))) ≈ solve!(deepcopy(solver), b) rtol = 2e-4
-  @test_throws ArgumentError Adapt.adapt(RealToComplexAdaptor(), solver)
 
   replay = ReplayOp(zeros(ComplexF32, 4), Dict{Symbol, Any}(:nodes => rand(adaptRng, Float32, 2, 4), :kwargs => Dict{Symbol, Any}(:m => 4)))
   solver = CGNR(replay; AHA = Matrix{ComplexF32}(I, 4, 4), iterations = 2)
   @test Adapt.adapt(JLArray, solver).A.plan_args[:nodes] isa JLArray{Float32}
-  err = try Adapt.adapt(Float32ToFloat64Adaptor(), solver) catch e e end
-  @test err isa ArgumentError && occursin("nodes", sprint(showerror, err))
-
-  keep = KeepWorkspaceOp(zeros(ComplexF32, 4), zeros(ComplexF32, 4))
-  solver = CGNR(keep; AHA = Matrix{ComplexF32}(I, 4, 4), iterations = 2)
-  err = try Adapt.adapt(Array, solver) catch e e end
-  @test err isa ArgumentError && occursin("share memory", sprint(showerror, err))
 end
 
 function testCGNRAdaptSharing(target)
@@ -324,7 +253,6 @@ end
       for T in (Float32, ComplexF32), mode in (:dense, :normal, :weighted)
         @testset "solve $T $mode" begin testCGNRAdaptSolve(target, T, mode) end
       end
-      @testset "errors" begin testCGNRAdaptErrors(target) end
       @testset "sharing" begin testCGNRAdaptSharing(target) end
       @testset "regularization" begin testCGNRAdaptRegularization(target) end
       for scheduler in (SequentialState, MultiThreadingState)
@@ -332,5 +260,5 @@ end
       end
     end
   end
-  arrayType === Array && @testset "partial adaptors" begin testCGNRPartialAdaptors() end
+  arrayType === Array && @testset "element types" begin testCGNRAdaptElementTypes() end
 end

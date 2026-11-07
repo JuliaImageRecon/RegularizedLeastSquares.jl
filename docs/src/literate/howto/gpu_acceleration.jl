@@ -32,8 +32,8 @@ x_adapted = solve!(gpu_solver, b)
 isapprox(Array(x_adapted), x_cpu)
 
 # This works for dense matrices and for LinearOperatorCollection.jl operators that support Adapt.jl, including the default normal operator CGNR builds for them.
-# Initialized solvers keep their progress, including the multi-frame states created by matrix-valued `solve!`. Unsupported operators, such as closure-based
-# `LinearOperator`s, raise an `ArgumentError` instead of producing a solver that mixes backends.
+# Initialized solvers keep their progress, including the multi-frame states created by matrix-valued `solve!`. Every operator of the solver must support
+# Adapt.jl: operators without an Adapt rule, such as closure-based `LinearOperator`s, are not moved.
 # Other solvers do not support `Adapt.adapt` yet; for them, construct the solver from operators that already live on the GPU, as shown below.
 
 # ## Matrix-Free Operators
