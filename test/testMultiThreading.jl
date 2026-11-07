@@ -17,6 +17,13 @@ function testMultiThreadingSolver(; arrayType=Array, scheduler=MultiDataState)
     x_vec = Array(solve!(S, arrayType(b[:, 1])))
     @test x_vec ≈ x[:, 1] rtol = 0.1
   end
+
+  @testset "CGNR via Adapt" begin
+    # built on the CPU and moved to arrayType with Adapt.adapt
+    S = Adapt.adapt(arrayType, createLinearSolver(CGNR, A, iterations=100))
+    @test Array(solve!(S, arrayType(b), scheduler=scheduler)) ≈ x rtol = 0.1
+    @test Array(solve!(S, arrayType(b[:, 1]))) ≈ x[:, 1] rtol = 0.1
+  end
 end
 
 @testset "Test MultiThreading Support" begin

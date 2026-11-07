@@ -1,7 +1,7 @@
 using RegularizedLeastSquares, LinearAlgebra, RegularizedLeastSquares.LinearOperatorCollection
 # Packages for testing only
 using Random, Test
-using FFTW
+using FFTW, Adapt, JLArrays
 
 isTypeDefined = @isdefined arrayType
 arrayType = isTypeDefined ? arrayType : Array
@@ -13,4 +13,5 @@ arrayType = isTypeDefined ? arrayType : Array
   include("testSolvers.jl")
   include("testRegularization.jl")
   include("testMultiThreading.jl")
+  include("testAdapt.jl")
 end

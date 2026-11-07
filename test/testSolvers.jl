@@ -19,6 +19,10 @@ function testRealLinearSolver(; arrayType=Array, elType=Float32)
             false
         end skip = arrayType != Array && solver <: AbstractDirectSolver #
     end
+
+    # CGNR built on the CPU and moved to arrayType with Adapt.adapt
+    S = Adapt.adapt(arrayType, createLinearSolver(CGNR, A, iterations=200))
+    @test Array(solve!(S, arrayType(b))) ≈ x rtol = 0.1
 end
 
 function testComplexLinearSolver(; arrayType=Array, elType=Float32)
@@ -40,6 +44,10 @@ function testComplexLinearSolver(; arrayType=Array, elType=Float32)
             false
         end skip = arrayType != Array && solver <: AbstractDirectSolver
     end
+
+    # CGNR built on the CPU and moved to arrayType with Adapt.adapt
+    S = Adapt.adapt(arrayType, createLinearSolver(CGNR, A, iterations=100))
+    @test Array(solve!(S, arrayType(b))) ≈ x rtol = 0.1
 end
 
 function testComplexLinearAHASolver(; arrayType=Array, elType=Float32)
@@ -62,6 +70,10 @@ function testComplexLinearAHASolver(; arrayType=Array, elType=Float32)
             false
         end
     end
+
+    # CGNR built on the CPU and moved to arrayType with Adapt.adapt
+    S = Adapt.adapt(arrayType, createLinearSolver(CGNR, nothing; AHA=AHA, iterations=100))
+    @test Array(solve!(S, arrayType(b))) ≈ x rtol = 0.1
 end
 
 function testConvexLinearSolver(; arrayType=Array, elType=Float32)
@@ -253,6 +265,12 @@ function testCGNRStartValue(; arrayType=Array, elType=Float64)
         S = createLinearSolver(CGNR, nothing; AHA=arrayType(A' * A), reg=L2Regularization(λ), iterations=50)
         x_approx = Array(solve!(S, arrayType(A' * b); x0=arrayType(x0)))
         @test x_approx ≈ x_ls rtol = sqrt(eps(elType))
+
+        # the same solvers built on the CPU and moved to arrayType with Adapt.adapt
+        S = Adapt.adapt(arrayType, createLinearSolver(CGNR, A; reg=L2Regularization(λ), iterations=50))
+        @test Array(solve!(S, arrayType(b); x0=arrayType(x0))) ≈ x_ls rtol = sqrt(eps(elType))
+        S = Adapt.adapt(arrayType, createLinearSolver(CGNR, nothing; AHA=A' * A, reg=L2Regularization(λ), iterations=50))
+        @test Array(solve!(S, arrayType(A' * b); x0=arrayType(x0))) ≈ x_ls rtol = sqrt(eps(elType))
     end
 end
 
