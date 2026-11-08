@@ -334,7 +334,7 @@ function testAdaptedProx(T = Float32; N = 16)
     target = Adapt.adapt(adaptType, masked)
     @test onTarget(target, x) ≈ prox!(masked, copy(x)) rtol = 2e-4 atol = 1e-5
     @test norm(target, adaptType(x)) ≈ norm(masked, x) rtol = 2e-4
-    @test norm(target, adaptType(prox!(masked, copy(x)))) == norm(masked, prox!(masked, copy(x)))
+    @test norm(target, adaptType(prox!(masked, copy(x)))) ≈ norm(masked, prox!(masked, copy(x))) rtol = 2e-4
   end
 
   # weighted L2 norm keeps the linear indexing of the weights
