@@ -317,9 +317,12 @@ function testAdaptedProx(T = Float32; N = 16)
   targetParams = tvTarget.params
   @test all(b -> b isa adaptType, (targetParams.pq, targetParams.rs, targetParams.pqOld, targetParams.xTmp))
   @test map(Array, (targetParams.pq, targetParams.rs, targetParams.pqOld, targetParams.xTmp)) == snapshot
+  @test RegularizedLeastSquares.LinearOperators.storage_type(targetParams.∇) <: adaptType
+  @test Array(targetParams.∇ * adaptType(x)) ≈ params.∇ * x rtol = 2e-4 atol = 1e-5
   y = onTarget(tvTarget, x)
   @test tvTarget.params === targetParams
-  @test tv.params === params && all(map(==, buffers, snapshot))
+  @test tv.params === params && all(map(===, (params.pq, params.rs, params.pqOld, params.xTmp), buffers))
+  @test all(map(==, buffers, snapshot))
   @test y ≈ prox!(tv, copy(x)) rtol = 2e-4 atol = 1e-5
 
   l21 = L21Regularization(λ; slices = 4)
