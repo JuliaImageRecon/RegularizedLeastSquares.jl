@@ -32,6 +32,11 @@ isapprox(Array(x_adapted), x_cpu)
 
 # Each operator of the solver must support Adapt.jl. Other solvers do not support `Adapt.adapt` yet.
 
+# The built-in regularization terms can be adapted on their own. This includes the internal cache of an already used `TVRegularization`. Masks and image geometry stay on the host:
+tv = TVRegularization(0.01f0; shape = (4, 4))
+gpu_tv = Adapt.adapt(gpu, tv)
+prox!(gpu_tv, gpu(rand(Float32, 16)));
+
 # ## Matrix-Free Operators
 # A special case is the usage of matrix-free operators. Since these operators do not have a concrete matrix representation, their GPU support depends on their implementation.
 # Since not all multiplications within a solver approximation are in-place, the operator also needs to support the `*` operation and construct an appropriate result vector.
