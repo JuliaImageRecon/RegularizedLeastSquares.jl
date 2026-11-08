@@ -37,6 +37,16 @@ tv = TVRegularization(0.01f0; shape = (4, 4))
 gpu_tv = Adapt.adapt(gpu, tv)
 prox!(gpu_tv, gpu(rand(Float32, 16)));
 
+# Projection and plug-and-play terms adapt their function, model and `input_transform` with the Adapt.jl rules of these objects. A closure moves the arrays it captures, while a callable type that holds arrays needs its own `Adapt.adapt_structure`. Global variables are not moved, and for a target of the same backend, such as `Array`, arrays are shared as Adapt.jl does:
+struct Weighting{V}
+  w::V
+end
+(f::Weighting)(x) = x .* f.w
+Adapt.@adapt_structure Weighting
+pnp = PlugAndPlayRegularization(0.5f0; model = Weighting(rand(Float32, 4, 4)), shape = [4, 4])
+gpu_pnp = Adapt.adapt(gpu, pnp)
+prox!(gpu_pnp, gpu(rand(Float32, 16)));
+
 # ## Matrix-Free Operators
 # A special case is the usage of matrix-free operators. Since these operators do not have a concrete matrix representation, their GPU support depends on their implementation.
 # Since not all multiplications within a solver approximation are in-place, the operator also needs to support the `*` operation and construct an appropriate result vector.
