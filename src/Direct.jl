@@ -27,7 +27,7 @@ creates a `DirectSolver` for `A` that solves the L2-regularized normal equations
 
 adapts `A`, the L2 term, the projections and the state of the solver to `target` (e.g. `CuArray`). The LU factorization
 is computed at each solve on the array type of `A`, so solving on `target` requires `lu` for that array type.
-`A` must support Adapt.jl, otherwise `Adapt.adapt` throws or leaves it unchanged, and arrays already on `target` may be shared with the original solver.
+`A` and the regularization terms must support Adapt.jl, otherwise `Adapt.adapt` throws or leaves them unchanged, and arrays already on `target` may be shared with the original solver.
 """
 function DirectSolver(A; reg::Vector{<:AbstractRegularization} = [L2Regularization(zero(real(eltype(A))))], normalizeReg::AbstractRegularizationNormalization = NoNormalization())
   reg = normalize(DirectSolver, normalizeReg, reg, A, nothing)
@@ -137,7 +137,8 @@ creates a `PseudoInverse` solver that computes the SVD of `A` once and solves th
     Adapt.adapt(target, solver::PseudoInverse)
 
 adapts the stored SVD factors, the L2 term, the projections and the state of the solver to `target` (e.g. `CuArray`).
-The SVD is not recomputed. Arrays already on `target` may be shared with the original solver.
+The SVD is not recomputed. The regularization terms must support Adapt.jl, otherwise `Adapt.adapt` throws or leaves them
+unchanged, and arrays already on `target` may be shared with the original solver.
 """
 function PseudoInverse(A; reg::Vector{<:AbstractRegularization} = [L2Regularization(zero(real(eltype(A))))], normalizeReg::AbstractRegularizationNormalization = NoNormalization())
   reg = normalize(PseudoInverse, normalizeReg, reg, A, nothing)
