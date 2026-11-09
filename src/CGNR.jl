@@ -46,7 +46,7 @@ creates an `CGNR` object for the forward operator `A` or normal operator `AHA`.
     Adapt.adapt(target, solver::CGNR)
 
 adapts the operators, regularization and state of the solver to `target` (e.g. `CuArray`). Adapt the solver to the
-target backend before solving; each operator must support Adapt.jl. Only `CGNR` supports `Adapt.adapt` so far.
+target backend before solving; each operator must support Adapt.jl. Of the solvers, `CGNR` and `ADMM` support `Adapt.adapt` so far.
 
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
