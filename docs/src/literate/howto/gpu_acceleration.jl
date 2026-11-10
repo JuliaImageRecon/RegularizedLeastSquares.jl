@@ -30,7 +30,7 @@ gpu_solver = Adapt.adapt(gpu, cpu_solver)
 x_adapted = solve!(gpu_solver, b)
 isapprox(Array(x_adapted), x_cpu)
 
-# Each operator of the solver must support Adapt.jl. `FISTA`, `OptISTA`, `POGM`, `DirectSolver` and `PseudoInverse` can be adapted in the same way, the proximal solvers also after some iterations; `PseudoInverse` moves its stored SVD without recomputing it, and `DirectSolver` needs `lu` on the target array type to solve. Other solvers do not support `Adapt.adapt` yet.
+# Each operator of the solver must support Adapt.jl. `FISTA`, `OptISTA`, `POGM`, `ADMM`, `DirectSolver` and `PseudoInverse` can be adapted in the same way, `FISTA`, `OptISTA`, `POGM` and `ADMM` also after some iterations; `PseudoInverse` moves its stored SVD without recomputing it, and `DirectSolver` needs `lu` on the target array type to solve. Other solvers do not support `Adapt.adapt` yet.
 
 # The built-in regularization terms can be adapted on their own. This includes the internal cache of an already used `TVRegularization`. Masks and image geometry stay on the host:
 tv = TVRegularization(0.01f0; shape = (4, 4))
