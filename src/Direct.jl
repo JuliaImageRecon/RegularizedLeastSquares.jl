@@ -167,9 +167,11 @@ function PseudoInverse(A; reg::Vector{<:AbstractRegularization} = [L2Regularizat
   return PseudoInverse(A, x, b, L2, normalizeReg, other)
 end
 function PseudoInverse(A::AbstractMatrix, x, b, l2, norm, proj)
-  u, s, v = svd(A)
-  temp = SVD(u, s, v)
-  return PseudoInverse(temp, l2, norm, proj, DirectSolverState(x, b))
+  return PseudoInverse(svd(A), l2, norm, proj, DirectSolverState(x, b))
+end
+
+function PseudoInverse(P::AbstractLinearOperator, x, b, l2, norm, proj)
+  return PseudoInverse(svd(Matrix(P)), l2, norm, proj, DirectSolverState(x, b))
 end
 
 function Adapt.adapt_structure(to, solver::PseudoInverse)
@@ -201,7 +203,7 @@ function iterate(solver::PseudoInverse, state::DirectSolverState)
 
   tmp = adjoint(svd.U)*state.b
   tmp .*= D
-  x = svd.Vt * tmp
+  x = svd.V * tmp
 
   for p in solver.proj
     prox!(p, x)
