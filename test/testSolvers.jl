@@ -295,6 +295,39 @@ function testCGNRAdaptResume(; elType=Float64)
     @test Array(solversolution(S_adapted)) ≈ solversolution(S) rtol = 1e-4
 end
 
+# FISTA, OptISTA and POGM with an L1 term and a transformed projection, partly iterated and moved with Adapt.adapt,
+# finish with the same result as the CPU solvers they were moved from
+function testProxAdaptResume(; elType=Float64)
+    rT = real(elType)
+    A = randn(elType, 20, 8)
+    Q = Matrix{elType}(qr(randn(rT, 8, 8)).Q)
+    # measurements of an image that is positive after Q, so the projected solution does not collapse to zero
+    b = A * Q' * rand(rT, 8)
+    reg() = [L1Regularization(rT(1e-3)), TransformedRegularization(PositiveRegularization(), Q)]
+    vectors(state) = filter(f -> getfield(state, f) isa AbstractVector, fieldnames(typeof(state)))
+    for (solver, kw) in ((FISTA, (; restart=:gradient)), (OptISTA, (;)), (POGM, (; restart=:gradient)))
+        for (S, rhs) in ((createLinearSolver(solver, A; reg=reg(), iterations=10, kw...), b),
+                         (createLinearSolver(solver, nothing; AHA=A' * A, reg=reg(), iterations=10, kw...), A' * b))
+            init!(S, rhs)
+            for _ in 1:3
+                iterate(S)
+            end
+            S_adapted = Adapt.adapt(adaptType, S)
+            state = S_adapted.state
+            @test isnothing(S.A) ? isnothing(S_adapted.A) : S_adapted.A isa adaptType
+            @test S_adapted.AHA isa adaptType
+            @test S_adapted.proj[1].trafo isa adaptType
+            @test all(f -> getfield(state, f) isa adaptType, vectors(state))
+            # scalar state and solver settings are carried unchanged
+            @test all(f -> f in vectors(state) || isequal(getfield(state, f), getfield(S.state, f)), fieldnames(typeof(state)))
+            @test all(f -> f in (:A, :AHA, :reg, :proj, :state) || isequal(getfield(S_adapted, f), getfield(S, f)), fieldnames(typeof(S)))
+            for _ in S end
+            for _ in S_adapted end
+            @test Array(solversolution(S_adapted)) ≈ solversolution(S) rtol = 1e-4
+        end
+    end
+end
+
 # DirectSolver and PseudoInverse with an L2 term and a transformed projection, moved with Adapt.adapt. DirectSolver
 # factorizes at each solve, so only its fields are checked; PseudoInverse solves with its stored SVD factors.
 function testDirectAdapt(; elType=Float64)
@@ -350,6 +383,10 @@ end
 
             @testset "CGNR resumed after Adapt.adapt: $elType" begin
                 testCGNRAdaptResume(; elType)
+            end
+
+            @testset "FISTA, OptISTA and POGM resumed after Adapt.adapt: $T" for T in (elType, complex(elType))
+                testProxAdaptResume(; elType=T)
             end
 
             @testset "DirectSolver and PseudoInverse after Adapt.adapt: $T" for T in (elType, complex(elType))
