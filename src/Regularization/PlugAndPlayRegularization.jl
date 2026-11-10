@@ -23,6 +23,7 @@ struct PlugAndPlayRegularization{T, M, I} <: AbstractParameterizedRegularization
     PlugAndPlayRegularization(λ::T; model::M, shape, input_transform::I=RegularizedLeastSquares.MinMaxTransform, ignoreIm = false, kargs...) where {T, M, I} = new{T, M, I}(model, λ, shape, input_transform, ignoreIm)
 end
 PlugAndPlayRegularization(model, shape; kwargs...) = PlugAndPlayRegularization(one(Float32); kwargs..., model = model, shape = shape)
+Adapt.adapt_structure(to, reg::PlugAndPlayRegularization) = PlugAndPlayRegularization(reg.λ; model = Adapt.adapt(to, reg.model), shape = reg.shape, input_transform = Adapt.adapt(to, reg.input_transform), ignoreIm = reg.ignoreIm)
 
 function prox!(self::PlugAndPlayRegularization, x::AbstractArray{Complex{T}}, λ::T) where {T <: Real}
     if self.ignoreIm

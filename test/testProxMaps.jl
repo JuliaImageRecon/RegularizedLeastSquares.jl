@@ -343,6 +343,43 @@ function testAdaptedProx(T = Float32; N = 16)
     l2 = L2Regularization(weights)
     @test norm(Adapt.adapt(adaptType, l2), adaptType(x)) ≈ norm(l2, x) rtol = 2e-4
   end
+
+  # functions are adapted with their Adapt rules, a closure moves the arrays it captures
+  scale = rand(real(T), N * N)
+  proj = ProjectionRegularization(projFunc = y -> y .* scale)
+  @test Adapt.adapt(adaptType, proj).projFunc.scale isa adaptType
+  for reg in (ProjectionRegularization(), proj)
+    @test onTarget(Adapt.adapt(adaptType, reg), x) ≈ prox!(reg, copy(x)) rtol = 2e-4 atol = 1e-5
+  end
+
+  model = let m = rand(real(T), N, N); y -> y .* m end
+  clamped(y) = RegularizedLeastSquares.ClampedScalingTransform(y, real(T)(-1), real(T)(1))
+  for input_transform in (RegularizedLeastSquares.MinMaxTransform, RegularizedLeastSquares.IdentityTransform, RegularizedLeastSquares.ZTransform, clamped), ignoreIm in (false, true)
+    pnp = PlugAndPlayRegularization(real(T)(0.5); model, shape = [N, N], input_transform, ignoreIm)
+    target = Adapt.adapt(adaptType, pnp)
+    @test target.model.m isa adaptType
+    @test onTarget(target, x) ≈ prox!(pnp, copy(x)) rtol = 2e-4 atol = 1e-5
+  end
+
+  # a retained clamped transform restores its masked values by linear index, also on the target
+  xr = real.(x)
+  tf = RegularizedLeastSquares.ClampedScalingTransform(xr, real(T)(-0.5), real(T)(0.5))
+  y = RegularizedLeastSquares.transform(tf, xr)
+  expected = y .* (tf.v_max - tf.v_min) .+ tf.v_min
+  expected[tf.mask] = xr[tf.mask]
+  for z in (y, reshape(y, N, N))
+    @test RegularizedLeastSquares.inverse_transform(tf, z) ≈ reshape(expected, size(z))
+    @test Array(RegularizedLeastSquares.inverse_transform(Adapt.adapt(adaptType, tf), adaptType(z))) ≈ reshape(expected, size(z)) rtol = 2e-4 atol = 1e-5
+  end
+  @test_throws DimensionMismatch RegularizedLeastSquares.inverse_transform(tf, y[1:end-1])
+  @test_throws DimensionMismatch RegularizedLeastSquares.inverse_transform(Adapt.adapt(adaptType, tf), adaptType(y[1:end-1]))
+
+  # a factory that retains a transform moves its arrays with it
+  retained = RegularizedLeastSquares.ClampedScalingTransform(reshape(xr, N, N), real(T)(-0.5), real(T)(0.5))
+  pnp = PlugAndPlayRegularization(real(T)(0.5); model, shape = [N, N], input_transform = y -> retained)
+  target = Adapt.adapt(adaptType, pnp)
+  @test target.input_transform.retained.mask isa adaptType && target.input_transform.retained.x isa adaptType
+  @test onTarget(target, x) ≈ prox!(pnp, copy(x)) rtol = 2e-4 atol = 1e-5
 end
 
 @testset "Proximal Maps" begin

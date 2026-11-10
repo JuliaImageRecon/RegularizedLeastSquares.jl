@@ -345,6 +345,36 @@ function testADMMAdaptResume(; elType=Float64)
     @test_throws Exception Adapt.adapt(adaptType, S)
 end
 
+# DirectSolver and PseudoInverse with an L2 term and a transformed projection, moved with Adapt.adapt. DirectSolver
+# factorizes at each solve, so only its fields are checked; PseudoInverse solves with its stored SVD factors.
+function testDirectAdapt(; elType=Float64)
+    rT = real(elType)
+    A = randn(elType, 20, 8)
+    b = randn(elType, 20)
+    Q = Matrix{elType}(qr(randn(rT, 8, 8)).Q)
+    reg() = [L2Regularization(rT(0.1)), TransformedRegularization(PositiveRegularization(), Q)]
+    fields(S) = (S.state.x, S.state.b, S.proj[1].trafo, S isa DirectSolver ? (S.A,) : (S.svd.U, S.svd.S, S.svd.Vt))
+
+    S = createLinearSolver(DirectSolver, A; reg=reg(), normalizeReg=MeasurementBasedNormalization())
+    source = deepcopy(fields(S))
+    S_adapted = Adapt.adapt(adaptType, S)
+    @test all(v -> v isa adaptType, (S_adapted.A, S_adapted.state.x, S_adapted.state.b, S_adapted.proj[1].trafo))
+    @test λ(S_adapted.l2) == λ(S.l2)
+    @test S_adapted.normalizeReg isa MeasurementBasedNormalization
+    @test isequal(fields(S), source)
+
+    S = createLinearSolver(PseudoInverse, A; reg=reg())
+    source = deepcopy(fields(S))
+    S_adapted = Adapt.adapt(adaptType, S)
+    F = S_adapted.svd
+    @test all(v -> v isa adaptType, (F.U, F.S, F.Vt, S_adapted.state.x, S_adapted.state.b, S_adapted.proj[1].trafo))
+    @test (Array(F.U), Array(F.S), Array(F.Vt)) == (S.svd.U, S.svd.S, S.svd.Vt)
+    @test λ(S_adapted.l2) == λ(S.l2)
+    @test isequal(fields(S), source)
+    @test Array(solve!(S_adapted, adaptType(b))) ≈ solve!(S, b) rtol = 1e-4
+    @test (S.svd.U, S.svd.S, S.svd.Vt) == source[4]
+end
+
 @testset "Test Solvers" begin
     @testset "$arrayType" begin
         for elType in [Float32, Float64]
@@ -374,6 +404,10 @@ end
 
             @testset "ADMM resumed after Adapt.adapt: $T" for T in (elType, complex(elType))
                 testADMMAdaptResume(; elType=T)
+            end
+
+            @testset "DirectSolver and PseudoInverse after Adapt.adapt: $T" for T in (elType, complex(elType))
+                testDirectAdapt(; elType=T)
             end
         end
     end
