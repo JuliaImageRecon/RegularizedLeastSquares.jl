@@ -111,7 +111,7 @@ function solve!(solver::AbstractLinearSolver, b; callbacks = (_, _) -> nothing, 
   iteration = 0
   foreach(cb -> cb(solver, iteration), callbacks)
 
-  for (_, _) = enumerate(solver)
+  for _ in solver
     iteration +=1
     foreach(cb -> cb(solver, iteration), callbacks)
   end
