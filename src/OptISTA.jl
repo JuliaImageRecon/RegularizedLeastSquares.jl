@@ -31,6 +31,16 @@ mutable struct OptISTAState{rT <: Real, vecT <: Union{AbstractVector{rT}, Abstra
   rel_res_norm::rT
 end
 
+function Adapt.adapt_structure(to, solver::OptISTA)
+  # adapt each projection term, not the vector itself, which would become an array of terms on the target
+  proj = map(reg -> Adapt.adapt(to, reg), solver.proj)
+  return OptISTA(Adapt.adapt(to, solver.A), Adapt.adapt(to, solver.AHA), Adapt.adapt(to, solver.reg), proj,
+    solver.normalizeReg, solver.verbose, solver.iterations, Adapt.adapt(to, solver.state))
+end
+
+Adapt.adapt_structure(to, state::OptISTAState) = OptISTAState(Adapt.adapt(to, state.x), Adapt.adapt(to, state.x₀), Adapt.adapt(to, state.y), Adapt.adapt(to, state.z), Adapt.adapt(to, state.zᵒˡᵈ), Adapt.adapt(to, state.res),
+  state.ρ, state.θ, state.θᵒˡᵈ, state.θn, state.α, state.β, state.γ, state.iteration, state.relTol, state.norm_x₀, state.rel_res_norm)
+
 """
     OptISTA(A; AHA=A'*A, reg=L1Regularization(zero(real(eltype(AHA)))), normalizeReg=NoNormalization(), iterations=50, verbose = false, rho=0.95 / power_iterations(AHA), theta=1, relTol=eps(real(eltype(AHA))))
     OptISTA( ; AHA=,     reg=L1Regularization(zero(real(eltype(AHA)))), normalizeReg=NoNormalization(), iterations=50, verbose = false, rho=0.95 / power_iterations(AHA), theta=1, relTol=eps(real(eltype(AHA))))
