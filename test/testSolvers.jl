@@ -295,6 +295,56 @@ function testCGNRAdaptResume(; elType=Float64)
     @test Array(solversolution(S_adapted)) ≈ solversolution(S) rtol = 1e-4
 end
 
+# A partly iterated ADMM with varying rho, a transformed L1 term and a transformed projection, moved with
+# Adapt.adapt, finishes with the same result as the CPU solver it was moved from
+function testADMMAdaptResume(; elType=Float64)
+    rT = real(elType)
+    A = randn(elType, 20, 8)
+    Q1, Q2 = (Matrix{elType}(qr(randn(rT, 8, 8)).Q) for _ in 1:2)
+    # measurements of images that are positive after Q2, so the projected solution does not collapse to zero
+    B = A * Q2' * rand(rT, 8, 2)
+    b = B[:, 1]
+    reg = [TransformedRegularization(L1Regularization(rT(1e-3)), Q1), L1Regularization(rT(1e-3)), TransformedRegularization(PositiveRegularization(), Q2)]
+    regTrafo = [randn(elType, 8, 8), Matrix{elType}(I, 8, 8)]
+    kwargs = (; reg, regTrafo, rho=1e6, vary_rho=:balance, iterations=50)
+    for (S, rhs) in ((createLinearSolver(ADMM, A; kwargs...), b), (createLinearSolver(ADMM, nothing; AHA=A' * A, kwargs...), A' * b))
+        init!(S, rhs)
+        for _ in 1:10
+            S.state.ρ != S.rho && break
+            iterate(S)
+        end
+        @test S.state.ρ != S.rho
+        S_adapted = Adapt.adapt(adaptType, S)
+        state, cgVars = S_adapted.state, S_adapted.state.cgStateVars
+        @test S_adapted.AHA isa adaptType
+        @test all(t -> t isa adaptType, S_adapted.regTrafo)
+        @test S_adapted.reg[1].trafo isa adaptType
+        @test S_adapted.proj[1].trafo isa adaptType
+        @test all(v -> v isa adaptType, (state.x, state.xᵒˡᵈ, state.β, state.β_y, cgVars.u, cgVars.r, cgVars.c))
+        @test all(v -> v isa adaptType, [state.z; state.zᵒˡᵈ; state.u; state.uᵒˡᵈ])
+        @test λ(S_adapted.reg[1]) == λ(S.reg[1])
+        # rho and the convergence values stay on the host as independent copies
+        for f in (:ρ, :rᵏ, :sᵏ, :ɛᵖʳⁱ, :ɛᵈᵘᵃ, :Δ)
+            @test getfield(state, f) isa Vector && isequal(getfield(state, f), getfield(S.state, f)) && getfield(state, f) !== getfield(S.state, f)
+        end
+        ρ_adapted, ρ_source = copy(S_adapted.state.ρ), copy(S.state.ρ)
+        for _ in S_adapted end
+        @test S_adapted.state.ρ != ρ_adapted
+        @test S.state.ρ == ρ_source
+        for _ in S end
+        @test solversolution(S_adapted) isa adaptType
+        @test Array(solversolution(S_adapted)) ≈ solversolution(S) rtol = 1e-4
+    end
+    # a fresh solver solves vector and matrix right-hand sides on the target
+    S = createLinearSolver(ADMM, A; kwargs...)
+    S_adapted = Adapt.adapt(adaptType, S)
+    @test S_adapted.A isa adaptType
+    @test Array(solve!(S_adapted, adaptType(b))) ≈ solve!(S, b) rtol = 1e-4
+    @test Array(solve!(S_adapted, adaptType(B))) ≈ solve!(S, B) rtol = 1e-4
+    # a solver holding the states of several columns is not adapted
+    @test_throws Exception Adapt.adapt(adaptType, S)
+end
+
 # DirectSolver and PseudoInverse with an L2 term and a transformed projection, moved with Adapt.adapt. DirectSolver
 # factorizes at each solve, so only its fields are checked; PseudoInverse solves with its stored SVD factors.
 function testDirectAdapt(; elType=Float64)
@@ -350,6 +400,10 @@ end
 
             @testset "CGNR resumed after Adapt.adapt: $elType" begin
                 testCGNRAdaptResume(; elType)
+            end
+
+            @testset "ADMM resumed after Adapt.adapt: $T" for T in (elType, complex(elType))
+                testADMMAdaptResume(; elType=T)
             end
 
             @testset "DirectSolver and PseudoInverse after Adapt.adapt: $T" for T in (elType, complex(elType))
