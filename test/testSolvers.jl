@@ -1,8 +1,8 @@
 Random.seed!(12345)
 
-function testRealLinearSolver(; arrayType=Array, elType=Float32)
-    A = rand(elType, 3, 2)
-    x = rand(elType, 2)
+function testRealLinearSolver(; arrayType=Array, elType=Float32, shape=(3, 2))
+    A = rand(elType, shape...)
+    x = rand(elType, shape[2])
     b = A * x
 
     solvers = linearSolverListReal()
@@ -25,9 +25,9 @@ function testRealLinearSolver(; arrayType=Array, elType=Float32)
     @test Array(solve!(S, adaptType(b))) ≈ x rtol = 0.1
 end
 
-function testComplexLinearSolver(; arrayType=Array, elType=Float32)
-    A = rand(elType, 3, 2) + im * rand(elType, 3, 2)
-    x = rand(elType, 2) + im * rand(elType, 2)
+function testComplexLinearSolver(; arrayType=Array, elType=Float32, shape=(3, 2))
+    A = rand(elType, shape...) + im * rand(elType, shape...)
+    x = rand(elType, shape[2]) + im * rand(elType, shape[2])
     b = A * x
 
     solvers = linearSolverList()
@@ -408,15 +408,29 @@ function testDirectAdapt(; elType=Float64)
     @test (S.svd.U, S.svd.S, S.svd.Vt) == source[4]
 end
 
+# PseudoInverse has to store a valid factorization of A (U, S and Vt in the matching fields of the SVD) and
+# has to return the minimum norm least squares solution for tall and wide matrices
+function testPseudoInverseSVD(; elType=Float64)
+    @testset for shape in [(3, 2), (12, 6), (6, 12)]
+        A = randn(elType, shape...)
+        b = randn(elType, shape[1])
+        S = createLinearSolver(PseudoInverse, A)
+        F = S.svd
+        @test F.U * Diagonal(F.S) * F.Vt ≈ A
+        @test size(F.V) == (shape[2], minimum(shape))
+        @test solve!(S, b) ≈ pinv(A) * b rtol = 1e-3
+    end
+end
+
 @testset "Test Solvers" begin
     @testset "$arrayType" begin
         for elType in [Float32, Float64]
-            @testset "Real Linear Solver: $elType" begin
-                testRealLinearSolver(; arrayType, elType)
+            @testset "Real Linear Solver: $elType, $shape" for shape in [(3, 2), (12, 6)]
+                testRealLinearSolver(; arrayType, elType, shape)
             end
 
-            @testset "Complex Linear Solver: $elType" begin
-                testComplexLinearSolver(; arrayType, elType)
+            @testset "Complex Linear Solver: $elType, $shape" for shape in [(3, 2), (12, 6)]
+                testComplexLinearSolver(; arrayType, elType, shape)
             end
 
             @testset "Complex Linear Solver w/ AHA Interface: $elType" begin
@@ -441,6 +455,10 @@ end
 
             @testset "ADMM resumed after Adapt.adapt: $T" for T in (elType, complex(elType))
                 testADMMAdaptResume(; elType=T)
+            end
+
+            @testset "PseudoInverse SVD factors: $T" for T in (elType, complex(elType))
+                testPseudoInverseSVD(; elType=T)
             end
 
             @testset "DirectSolver and PseudoInverse after Adapt.adapt: $T" for T in (elType, complex(elType))
