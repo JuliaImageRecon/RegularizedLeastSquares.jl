@@ -127,7 +127,7 @@ Random.seed!(12345)
     end
 
     # Solvers built on the CPU and moved to adaptType with Adapt.adapt, fresh and after one iteration
-    arrayType == Array && @testset "Kaczmarz after Adapt.adapt" begin
+    @testset "Kaczmarz after Adapt.adapt" begin
       M = 12
       N = 8
       A = rand(M, N) + im * rand(M, N)
