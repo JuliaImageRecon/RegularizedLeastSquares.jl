@@ -125,5 +125,65 @@ Random.seed!(12345)
         @test norm(x - x_approx) / norm(x) ≈ 0 atol = 0.3
       end
     end
+
+    # Solvers built on the CPU and moved to adaptType with Adapt.adapt, fresh and after one iteration
+    arrayType == Array && @testset "Kaczmarz after Adapt.adapt" begin
+      M = 12
+      N = 8
+      A = rand(M, N) + im * rand(M, N)
+      x = rand(N) + im * rand(N)
+      b = A * x
+      # device arrays move and keep their values, host vectors are equal copies and all other fields are unchanged
+      function testAdaptedState(state, source, device, host)
+        for f in fieldnames(typeof(state))
+          v, v₀ = getfield(state, f), getfield(source, f)
+          if f in device
+            @test v isa adaptType && Array(v) == v₀
+          elseif f in host
+            @test v isa Vector && v == v₀ && v !== v₀
+          else
+            @test isequal(v, v₀)
+          end
+        end
+      end
+      for kw in ((;), (; shuffleRows=true), (; randomized=true), (; reg=L2Regularization(rand(N))), (; reg=[L2Regularization(0.1), L1Regularization(1e-3)]))
+        S = Adapt.adapt(adaptType, createLinearSolver(Kaczmarz, A; iterations=200, kw...))
+        @test Array(solve!(S, adaptType(b))) ≈ solve!(createLinearSolver(Kaczmarz, A; iterations=200, kw...), b) rtol = 1e-4
+
+        S = createLinearSolver(Kaczmarz, A; iterations=200, kw...)
+        init!(S, b)
+        iterate(S)
+        rng = copy(Random.default_rng())
+        S_adapted = Adapt.adapt(adaptType, S)
+        @test copy(Random.default_rng()) == rng
+        @test parent(S_adapted.A) isa adaptType
+        @test typeof(S_adapted.reg) == typeof(S.reg) && isequal(S_adapted.reg, S.reg)
+        @test Adapt.adapt(Array, λ(S_adapted.L2)) == λ(S.L2)
+        λ(S.L2) isa AbstractVector && @test λ(S_adapted.L2) isa adaptType
+        for f in (:denom, :rowindex, :rowIndexCycle, :probabilities)
+          @test getfield(S_adapted, f) isa Vector && getfield(S_adapted, f) == getfield(S, f) && getfield(S_adapted, f) !== getfield(S, f)
+        end
+        @test all(f -> isequal(getfield(S_adapted, f), getfield(S, f)), (:randomized, :subMatrixSize, :shuffleRows, :seed, :iterations))
+        testAdaptedState(S_adapted.state, S.state, (:u, :x, :vl), (:usedIndices,))
+        @test S_adapted.state.iteration == 1
+        # both continue from the same external random state without being reinitialized
+        Random.seed!(42); for _ in S end
+        Random.seed!(42); for _ in S_adapted end
+        @test Array(solversolution(S_adapted)) ≈ solversolution(S) rtol = 1e-4
+      end
+
+      # Greedy Kaczmarz only runs on the CPU: its state moves with Adapt.adapt and continues after moving back
+      S = createLinearSolver(Kaczmarz, A; iterations=200, greedy_randomized=true)
+      init!(S, b)
+      iterate(S)
+      S_adapted = Adapt.adapt(adaptType, S)
+      @test S_adapted.state isa RegularizedLeastSquares.GreedyKaczmarzState
+      testAdaptedState(S_adapted.state, S.state, (:u, :x, :vl, :norms, :r, :B, :diff_vec_sq, :r_probs), (:usedIndices, :U_k))
+      @test S_adapted.state.iteration == 1
+      S_cpu = Adapt.adapt(Array, S_adapted)
+      Random.seed!(42); for _ in S end
+      Random.seed!(42); for _ in S_cpu end
+      @test solversolution(S_cpu) ≈ solversolution(S)
+    end
   end
 end
