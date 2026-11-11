@@ -82,4 +82,21 @@
     @test its == [0, 1]
     @test X ≈ hcat(x_approx, 2 .* x_approx) rtol = 1e-4
   end
+
+  @testset "Multiple Measurements Callbacks: $scheduler" for scheduler in [SequentialState, MultiThreadingState]
+    # The schedulers must not report an additional iteration in which no state was iterated
+    B = hcat(b, 2 .* b)
+
+    its = Int[]
+    solve!(solver, B; scheduler, callbacks = (_, it) -> push!(its, it))
+    @test its == collect(0:iterations)
+
+    @testset "$solverType" for solverType in [DirectSolver, PseudoInverse]
+      direct = createLinearSolver(solverType, A)
+      empty!(its)
+      X = solve!(direct, B; scheduler, callbacks = (_, it) -> push!(its, it))
+      @test its == [0, 1]
+      @test X ≈ hcat(x, 2 .* x) rtol = 1e-4
+    end
+  end
 end
