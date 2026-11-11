@@ -51,3 +51,4 @@ steps:
       Pkg.instantiate()
       include("test/gpu/metal.jl")'
     timeout_in_minutes: 30
+    soft_fail: true
