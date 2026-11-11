@@ -34,3 +34,20 @@ steps:
       include("test/gpu/rocm.jl")'
     timeout_in_minutes: 30
     soft_fail: true
+
+  - label: "Apple GPUs -- RegularizedLeastSquares.jl"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "1.10"
+    agents:
+      queue: "metal"
+    command: |
+      julia --color=yes --project -e '
+      using Pkg
+      Pkg.add("TestEnv")
+      using TestEnv
+      TestEnv.activate();
+      Pkg.add("Metal")
+      Pkg.instantiate()
+      include("test/gpu/metal.jl")'
+    timeout_in_minutes: 30
