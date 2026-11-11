@@ -146,7 +146,8 @@ Random.seed!(12345)
           end
         end
       end
-      for kw in ((;), (; shuffleRows=true), (; randomized=true), (; reg=L2Regularization(rand(N))), (; reg=[L2Regularization(0.1), L1Regularization(1e-3)]))
+      for kw in ((;), (; shuffleRows=true), (; randomized=true), (; reg=L2Regularization(rand(N))), (; reg=[L2Regularization(0.1), L1Regularization(1e-3)]),
+                 (; randomized=true, reg=L2Regularization(0.1), normalizeReg=MeasurementBasedNormalization()))
         S = Adapt.adapt(adaptType, createLinearSolver(Kaczmarz, A; iterations=200, kw...))
         @test Array(solve!(S, adaptType(b))) ≈ solve!(createLinearSolver(Kaczmarz, A; iterations=200, kw...), b) rtol = 1e-4
 
@@ -163,7 +164,7 @@ Random.seed!(12345)
         for f in (:denom, :rowindex, :rowIndexCycle, :probabilities)
           @test getfield(S_adapted, f) isa Vector && getfield(S_adapted, f) == getfield(S, f) && getfield(S_adapted, f) !== getfield(S, f)
         end
-        @test all(f -> isequal(getfield(S_adapted, f), getfield(S, f)), (:randomized, :subMatrixSize, :shuffleRows, :seed, :iterations))
+        @test all(f -> isequal(getfield(S_adapted, f), getfield(S, f)), (:randomized, :subMatrixSize, :shuffleRows, :seed, :normalizeReg, :iterations))
         testAdaptedState(S_adapted.state, S.state, (:u, :x, :vl), (:usedIndices,))
         @test S_adapted.state.iteration == 1
         # both continue from the same external random state without being reinitialized
