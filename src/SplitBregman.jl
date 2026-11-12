@@ -75,6 +75,16 @@ This algorithm solves the constraint problem (Eq. (4.7) in [Tom Goldstein and St
 
 Like ADMM, SplitBregman differs from ISTA-type algorithms in the sense that the proximal operation is applied separately from the transformation to the space in which the penalty is applied. This is reflected by the interface which has `reg` and `regTrafo` as separate arguments. E.g., for a TV penalty, you should NOT set `reg=TVRegularization`, but instead use `reg=L1Regularization(λ), regTrafo=RegularizedLeastSquares.GradientOp(Float64; shape=(Nx,Ny,Nz))`.
 
+# Moving a solver to another array backend
+
+    Adapt.adapt(target, solver::SplitBregman)
+
+adapts the operators, regularization terms, `regTrafo`, the preconditioner and the state of the solver to `target` (e.g. `CuArray`),
+including the per-column states of a solver initialized with a matrix. An already iterated solver continues from its outer and inner
+iteration with its `rho`. The per-term convergence values stay on the host. Each operator and `regTrafo` must support Adapt.jl, otherwise
+`Adapt.adapt` throws or leaves it unchanged, and arrays already on `target` may be shared with the original solver. The default `opEye`
+`regTrafo` is left as is.
+
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
 SplitBregman(; AHA, kwargs...) = SplitBregman(nothing; kwargs..., AHA = AHA)
@@ -142,6 +152,24 @@ function SplitBregman(A
   state = SplitBregmanState(y, β, β_y, x, z, zᵒˡᵈ, u, rho, 1, 1, cgStateVars,rᵏ,sᵏ,ɛᵖʳⁱ,ɛᵈᵘᵃ,rT(0),rT(absTol),rT(relTol),rT(tolInner))
 
   return SplitBregman(A,reg,regTrafo,proj,AHA,precon,normalizeReg,verbose,iterations,iterationsInner,iterationsCG,state)
+end
+
+function Adapt.adapt_structure(to, solver::SplitBregman)
+  # adapt each term, not the vector itself, which would become an array of terms on the target
+  reg = map(r -> Adapt.adapt(to, r), solver.reg)
+  regTrafo = map(t -> Adapt.adapt(to, t), solver.regTrafo)
+  proj = map(p -> Adapt.adapt(to, p), solver.proj)
+  return SplitBregman(Adapt.adapt(to, solver.A), reg, regTrafo, proj, Adapt.adapt(to, solver.AHA), Adapt.adapt(to, solver.precon),
+    Adapt.adapt(to, solver.normalizeReg), solver.verbose, solver.iterations, solver.iterationsInner, solver.iterationsCG, Adapt.adapt(to, solver.state))
+end
+
+# rho and the convergence values are indexed per term on the host, so they are copied, not adapted
+function Adapt.adapt_structure(to, state::SplitBregmanState)
+  cgStateVars = CGStateVariables(Adapt.adapt(to, state.cgStateVars.u), Adapt.adapt(to, state.cgStateVars.r), Adapt.adapt(to, state.cgStateVars.c))
+  return SplitBregmanState(Adapt.adapt(to, state.y), Adapt.adapt(to, state.β), Adapt.adapt(to, state.β_y), Adapt.adapt(to, state.x),
+    map(v -> Adapt.adapt(to, v), state.z), map(v -> Adapt.adapt(to, v), state.zᵒˡᵈ), map(v -> Adapt.adapt(to, v), state.u),
+    copy(state.ρ), state.iteration, state.iter_cnt, cgStateVars, copy(state.rᵏ), copy(state.sᵏ), copy(state.ɛᵖʳⁱ), copy(state.ɛᵈᵘᵃ),
+    state.σᵃᵇˢ, state.absTol, state.relTol, state.tolInner)
 end
 
 function init!(solver::SplitBregman, state::SplitBregmanState{rT, rvecT, vecT}, b::otherT; kwargs...) where {rT, rvecT, vecT, otherT <: AbstractVector}

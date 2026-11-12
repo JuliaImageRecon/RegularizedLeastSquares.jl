@@ -15,4 +15,5 @@ adaptType = arrayType == Array ? JLArray : arrayType
   include("testSolvers.jl")
   include("testRegularization.jl")
   include("testMultiThreading.jl")
+  include("testCallbacks.jl")
 end

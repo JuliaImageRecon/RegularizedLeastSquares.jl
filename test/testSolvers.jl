@@ -1,8 +1,8 @@
 Random.seed!(12345)
 
-function testRealLinearSolver(; arrayType=Array, elType=Float32)
-    A = rand(elType, 3, 2)
-    x = rand(elType, 2)
+function testRealLinearSolver(; arrayType=Array, elType=Float32, shape=(3, 2))
+    A = rand(elType, shape...)
+    x = rand(elType, shape[2])
     b = A * x
 
     solvers = linearSolverListReal()
@@ -25,9 +25,9 @@ function testRealLinearSolver(; arrayType=Array, elType=Float32)
     @test Array(solve!(S, adaptType(b))) ≈ x rtol = 0.1
 end
 
-function testComplexLinearSolver(; arrayType=Array, elType=Float32)
-    A = rand(elType, 3, 2) + im * rand(elType, 3, 2)
-    x = rand(elType, 2) + im * rand(elType, 2)
+function testComplexLinearSolver(; arrayType=Array, elType=Float32, shape=(3, 2))
+    A = rand(elType, shape...) + im * rand(elType, shape...)
+    x = rand(elType, shape[2]) + im * rand(elType, shape[2])
     b = A * x
 
     solvers = linearSolverList()
@@ -285,6 +285,67 @@ function testCGNRFloat64λ(; arrayType=Array, elType=Float32)
     @test Array(x_approx) ≈ (A' * A + 0.5f0 * I) \ (A' * b) rtol = sqrt(eps(real(elType)))
 end
 
+# A SplitBregman moved with Adapt.adapt after some outer and inner iterations finishes with the same result as the
+# CPU solver it was moved from
+function testSplitBregmanAdaptResume(; elType=Float64)
+    rT = real(elType)
+    A = randn(elType, 20, 8)
+    Q1, Q2 = (Matrix{elType}(qr(randn(rT, 8, 8)).Q) for _ in 1:2)
+    # measurements of images that are positive after Q2, so the projected solution does not collapse to zero
+    B = A * Q2' * rand(rT, 8, 2)
+    b = B[:, 1]
+    reg = [TransformedRegularization(L1Regularization(rT(1e-3)), Q1), L1Regularization(rT(1e-3)), TransformedRegularization(PositiveRegularization(), Q2)]
+    regTrafo = [randn(elType, 8, 8), Matrix{elType}(I, 8, 8)]
+    precon = Diagonal(elType.(1 .+ rand(rT, 8)))
+    kwargs = (; reg, regTrafo, precon, iterations=2, iterationsInner=3)
+    for (S, rhs) in ((createLinearSolver(SplitBregman, A; kwargs...), b), (createLinearSolver(SplitBregman, nothing; AHA=A' * A, kwargs...), A' * b))
+        init!(S, rhs)
+        for _ in 1:10
+            S.state.iter_cnt > 1 && S.state.iteration > 1 && break
+            iterate(S)
+        end
+        @test S.state.iter_cnt > 1 && S.state.iteration > 1
+        iter_cnt, iteration = S.state.iter_cnt, S.state.iteration
+        S_adapted = Adapt.adapt(adaptType, S)
+        state, cgVars = S_adapted.state, S_adapted.state.cgStateVars
+        isnothing(S.A) || @test S_adapted.A isa adaptType
+        @test S_adapted.AHA isa adaptType
+        @test S_adapted.precon.diag isa adaptType
+        @test all(t -> t isa adaptType, S_adapted.regTrafo)
+        @test S_adapted.reg[1].trafo isa adaptType
+        @test S_adapted.proj[1].trafo isa adaptType
+        @test all(v -> v isa adaptType, (state.x, state.y, state.β, state.β_y, cgVars.u, cgVars.r, cgVars.c))
+        @test all(v -> v isa adaptType, [state.z; state.zᵒˡᵈ; state.u])
+        @test λ(S_adapted.reg[1]) == λ(S.reg[1])
+        @test (state.iter_cnt, state.iteration) == (iter_cnt, iteration)
+        # rho and the convergence values stay on the host as independent copies
+        for f in (:ρ, :rᵏ, :sᵏ, :ɛᵖʳⁱ, :ɛᵈᵘᵃ)
+            @test getfield(state, f) isa Vector && isequal(getfield(state, f), getfield(S.state, f)) && getfield(state, f) !== getfield(S.state, f)
+        end
+        x_source, r_source = copy(S.state.x), copy(S.state.rᵏ)
+        for _ in S_adapted end
+        @test S.state.x == x_source && S.state.rᵏ == r_source
+        for _ in S end
+        @test solversolution(S_adapted) isa adaptType
+        @test Array(solversolution(S_adapted)) ≈ solversolution(S) rtol = 1e-4
+    end
+    # a solver holding the states of several columns is adapted with them
+    S = createLinearSolver(SplitBregman, A; kwargs...)
+    init!(S, B)
+    iterate(S)
+    S_adapted = Adapt.adapt(adaptType, S)
+    @test S_adapted.state isa SequentialState
+    @test all(s -> s.x isa adaptType, S_adapted.state.states)
+    for _ in S_adapted end
+    for _ in S end
+    @test Array(solversolution(S_adapted)) ≈ solversolution(S) rtol = 1e-4
+    # a fresh solver solves vector and matrix right-hand sides on the target
+    S = createLinearSolver(SplitBregman, A; kwargs...)
+    S_adapted = Adapt.adapt(adaptType, S)
+    @test Array(solve!(S_adapted, adaptType(b))) ≈ solve!(S, b) rtol = 1e-4
+    @test Array(solve!(S_adapted, adaptType(B))) ≈ solve!(S, B) rtol = 1e-4
+end
+
 # A partly iterated CGNR with a normalized, auto-scaled L2 term and a transformed projection, moved with
 # Adapt.adapt, finishes with the same result as the CPU solver it was moved from
 function testCGNRAdaptResume(; elType=Float64)
@@ -419,15 +480,29 @@ function testDirectAdapt(; elType=Float64)
     @test (S.svd.U, S.svd.S, S.svd.Vt) == source[4]
 end
 
+# PseudoInverse has to store a valid factorization of A (U, S and Vt in the matching fields of the SVD) and
+# has to return the minimum norm least squares solution for tall and wide matrices
+function testPseudoInverseSVD(; elType=Float64)
+    @testset for shape in [(3, 2), (12, 6), (6, 12)]
+        A = randn(elType, shape...)
+        b = randn(elType, shape[1])
+        S = createLinearSolver(PseudoInverse, A)
+        F = S.svd
+        @test F.U * Diagonal(F.S) * F.Vt ≈ A
+        @test size(F.V) == (shape[2], minimum(shape))
+        @test solve!(S, b) ≈ pinv(A) * b rtol = 1e-3
+    end
+end
+
 @testset "Test Solvers" begin
     @testset "$arrayType" begin
         for elType in [Float32, Float64]
-            @testset "Real Linear Solver: $elType" begin
-                testRealLinearSolver(; arrayType, elType)
+            @testset "Real Linear Solver: $elType, $shape" for shape in [(3, 2), (12, 6)]
+                testRealLinearSolver(; arrayType, elType, shape)
             end
 
-            @testset "Complex Linear Solver: $elType" begin
-                testComplexLinearSolver(; arrayType, elType)
+            @testset "Complex Linear Solver: $elType, $shape" for shape in [(3, 2), (12, 6)]
+                testComplexLinearSolver(; arrayType, elType, shape)
             end
 
             @testset "Complex Linear Solver w/ AHA Interface: $elType" begin
@@ -442,6 +517,10 @@ end
                 testCGNRStartValue(; arrayType, elType)
             end
 
+            @testset "SplitBregman resumed after Adapt.adapt: $T" for T in (elType, complex(elType))
+                testSplitBregmanAdaptResume(; elType=T)
+            end
+
             @testset "CGNR resumed after Adapt.adapt: $elType" begin
                 testCGNRAdaptResume(; elType)
             end
@@ -452,6 +531,10 @@ end
 
             @testset "ADMM resumed after Adapt.adapt: $T" for T in (elType, complex(elType))
                 testADMMAdaptResume(; elType=T)
+            end
+
+            @testset "PseudoInverse SVD factors: $T" for T in (elType, complex(elType))
+                testPseudoInverseSVD(; elType=T)
             end
 
             @testset "DirectSolver and PseudoInverse after Adapt.adapt: $T" for T in (elType, complex(elType))
