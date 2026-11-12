@@ -12,9 +12,14 @@ end
 mutable struct DirectSolverState{vecT} <: AbstractSolverState{DirectSolver}
   x::vecT
   b::vecT
+  # Direct solvers perform a single "iteration". The flag marks if it has already been computed
+  done::Bool
 end
+DirectSolverState(x::vecT, b::vecT) where vecT = DirectSolverState(x, b, false)
 
-Adapt.adapt_structure(to, state::DirectSolverState) = DirectSolverState(Adapt.adapt(to, state.x), Adapt.adapt(to, state.b))
+Adapt.adapt_structure(to, state::DirectSolverState) = DirectSolverState(Adapt.adapt(to, state.x), Adapt.adapt(to, state.b), state.done)
+
+@inline done(solver::AbstractDirectSolver, state::DirectSolverState) = state.done
 
 """
     DirectSolver(A; reg, normalizeReg)
@@ -72,9 +77,16 @@ function init!(solver::DirectSolver, state::DirectSolverState{vecT}, b::vecT; x0
   solver.l2 = normalize(solver, solver.normalizeReg, solver.l2, solver.A, b)
   state.b .= b
   state.x .= x0
+  state.done = false
 end
 
+"""
+  iterate(solver::DirectSolver, state::DirectSolverState)
+
+computes the solution in a single iteration. Afterwards the solver is done and further calls return `nothing`.
+"""
 function iterate(solver::DirectSolver, state::DirectSolverState)
+  if done(solver, state) return nothing end
   A = solver.A
   λ_ = λ(solver.l2)
   lufact = lu(A'*A .+ λ_)
@@ -84,7 +96,8 @@ function iterate(solver::DirectSolver, state::DirectSolverState)
     prox!(p, x)
   end
   state.x .= x
-  return nothing
+  state.done = true
+  return state.x, state
 end
 
 #type for Gauß elimination
@@ -167,9 +180,11 @@ function PseudoInverse(A; reg::Vector{<:AbstractRegularization} = [L2Regularizat
   return PseudoInverse(A, x, b, L2, normalizeReg, other)
 end
 function PseudoInverse(A::AbstractMatrix, x, b, l2, norm, proj)
-  u, s, v = svd(A)
-  temp = SVD(u, s, v)
-  return PseudoInverse(temp, l2, norm, proj, DirectSolverState(x, b))
+  return PseudoInverse(svd(A), l2, norm, proj, DirectSolverState(x, b))
+end
+
+function PseudoInverse(P::AbstractLinearOperator, x, b, l2, norm, proj)
+  return PseudoInverse(svd(Matrix(P)), l2, norm, proj, DirectSolverState(x, b))
 end
 
 function Adapt.adapt_structure(to, solver::PseudoInverse)
@@ -189,9 +204,16 @@ end
 function init!(solver::PseudoInverse, state::DirectSolverState{vecT}, b::vecT; x0=0) where vecT <: AbstractVector
   solver.l2 = normalize(solver, solver.normalizeReg, solver.l2, solver.svd, b)
   state.b .= b
+  state.done = false
 end
 
+"""
+  iterate(solver::PseudoInverse, state::DirectSolverState)
+
+computes the solution in a single iteration. Afterwards the solver is done and further calls return `nothing`.
+"""
 function iterate(solver::PseudoInverse, state::DirectSolverState)
+  if done(solver, state) return nothing end
   # Inversion by using the pseudoinverse of the SVD
   svd = solver.svd
 
@@ -201,11 +223,12 @@ function iterate(solver::PseudoInverse, state::DirectSolverState)
 
   tmp = adjoint(svd.U)*state.b
   tmp .*= D
-  x = svd.Vt * tmp
+  x = svd.V * tmp
 
   for p in solver.proj
     prox!(p, x)
   end
   state.x = x
-  return nothing
+  state.done = true
+  return state.x, state
 end

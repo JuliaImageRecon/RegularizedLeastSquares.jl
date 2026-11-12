@@ -70,7 +70,8 @@ function iterate(solver::AbstractLinearSolver, state::SequentialState, activeIdx
       state.active[i] = false
     end
   end
-  return state.active, state
+  # Only report an iteration if at least one state actually performed one
+  return any(state.active) ? (state.active, state) : nothing
 end
 
 function iterate(solver::AbstractLinearSolver, state::MultiThreadingState, activeIdx)
@@ -80,7 +81,8 @@ function iterate(solver::AbstractLinearSolver, state::MultiThreadingState, activ
       state.active[i] = false
     end
   end
-  return state.active, state
+  # Only report an iteration if at least one state actually performed one
+  return any(state.active) ? (state.active, state) : nothing
 end
 
 solversolution(state::AbstractMatrixSolverState) = mapreduce(solversolution, hcat, state.states)
