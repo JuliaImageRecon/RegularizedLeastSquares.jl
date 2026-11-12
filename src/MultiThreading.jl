@@ -22,6 +22,12 @@ mutable struct MultiThreadingState{S, ST <: AbstractSolverState{S}} <: AbstractM
   MultiThreadingState(states::Vector{ST}) where {S, ST <: AbstractSolverState{S}} = new{S, ST}(states, fill(true, length(states)))
 end
 
+function Adapt.adapt_structure(to, state::Union{SequentialState, MultiThreadingState})
+  adapted = typeof(state).name.wrapper(map(s -> Adapt.adapt(to, s), state.states))
+  adapted.active .= state.active
+  return adapted
+end
+
 """
     init!(solver::AbstractLinearSolver, state::AbstractSolverState, b::AbstractMatrix; scheduler = SequentialState, kwargs...)
 

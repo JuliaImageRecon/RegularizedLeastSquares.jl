@@ -28,6 +28,8 @@ and Deblurring Problems", IEEE Trans. Image Process. 18(11), 2009
 * `shape::NTuple`           - size of the underlying image
 * `dims`                    - Dimension to perform the TV along. If `Integer`, the Condat algorithm is called, and the FDG algorithm otherwise.
 * `iterationsTV=20`         - number of FGP iterations
+
+`Adapt.adapt(target, reg)` moves an initialized internal cache to the array type `target`, while a fresh term stays uninitialized.
 """
 mutable struct TVRegularization{T,N,TI} <: AbstractParameterizedRegularization{T} where {N,TI<:Integer}
   λ::T
@@ -37,6 +39,9 @@ mutable struct TVRegularization{T,N,TI} <: AbstractParameterizedRegularization{T
   params::Union{TVParams, Nothing}
 end
 TVRegularization(λ; shape=(0,), dims=1:length(shape), iterationsTV=10, kargs...) = TVRegularization(λ, dims, shape, iterationsTV, nothing)
+# `dims` and `shape` are host metadata, an initialized cache (buffers and gradient operator) moves to the target
+Adapt.adapt_structure(to, reg::TVRegularization) = TVRegularization(reg.λ, reg.dims, reg.shape, reg.iterationsTV, Adapt.adapt(to, reg.params))
+Adapt.@adapt_structure TVParams
 
 function TVParams(shape, T::Type=Float64; dims=1:length(shape))
   return TVParams(Vector{T}(undef, prod(shape)); shape=shape, dims=dims)

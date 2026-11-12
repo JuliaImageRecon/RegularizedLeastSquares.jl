@@ -1,6 +1,8 @@
 export AbstractRegularization, AbstractParameterizedRegularization, AbstractProjectionRegularization, prox!, sink, sinktype, λ, findsink, findsinks
 
 abstract type AbstractRegularization end
+# Terms without arrays or operators stay as they are; terms holding them define their own method
+Adapt.adapt_structure(to, reg::AbstractRegularization) = reg
 innerreg(::AbstractRegularization) = nothing
 iterate(reg::AbstractRegularization, state = reg) = isnothing(state) ? nothing : (state, innerreg(state))
 Base.IteratorSize(::AbstractRegularization) = Base.SizeUnknown()

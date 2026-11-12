@@ -31,6 +31,7 @@ struct FixedScaledRegularization{T, S, R} <: AbstractScaledRegularization{T, S}
 end
 innerreg(reg::FixedScaledRegularization) = reg.reg
 scalefactor(reg::FixedScaledRegularization) = reg.factor
+Adapt.adapt_structure(to, reg::FixedScaledRegularization) = FixedScaledRegularization(Adapt.adapt(to, reg.reg), reg.factor)
 
 export FixedParameterRegularization
 """
@@ -45,6 +46,7 @@ struct FixedParameterRegularization{T, S, R} <: AbstractScaledRegularization{T, 
 end
 scalefactor(reg::FixedParameterRegularization) = 1.0
 innerreg(reg::FixedParameterRegularization) = reg.reg
+Adapt.adapt_structure(to, reg::FixedParameterRegularization) = FixedParameterRegularization(Adapt.adapt(to, reg.reg))
 # Drop any incoming λ and subsitute inner
 prox!(reg::FixedParameterRegularization, x, discard) = prox!(innerreg(reg), x, λ(innerreg(reg)))
 norm(reg::FixedParameterRegularization, x, discard) = norm(innerreg(reg), x, λ(innerreg(reg)))
@@ -58,6 +60,11 @@ mutable struct AutoScaledRegularization{T, S, R} <: AbstractScaledRegularization
 end
 initFactor!(reg::AutoScaledRegularization, x::AbstractArray) = reg.factor = maximum(abs.(x))
 innerreg(reg::AutoScaledRegularization) = reg.reg
+function Adapt.adapt_structure(to, reg::AutoScaledRegularization)
+  adapted = AutoScaledRegularization(Adapt.adapt(to, reg.reg))
+  adapted.factor = reg.factor
+  return adapted
+end
 # A bit hacky: Factor can only be computed once x is seen, therefore hide factor in λ and silently add it in prox!/norm calls
 scalefactor(reg::AutoScaledRegularization) = isnothing(reg.factor) ? 1.0 : reg.factor
 function prox!(reg::AutoScaledRegularization, x, λ)

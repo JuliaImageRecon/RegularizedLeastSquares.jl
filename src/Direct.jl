@@ -14,6 +14,21 @@ mutable struct DirectSolverState{vecT} <: AbstractSolverState{DirectSolver}
   b::vecT
 end
 
+Adapt.adapt_structure(to, state::DirectSolverState) = DirectSolverState(Adapt.adapt(to, state.x), Adapt.adapt(to, state.b))
+
+"""
+    DirectSolver(A; reg, normalizeReg)
+
+creates a `DirectSolver` for `A` that solves the L2-regularized normal equations with an LU factorization at each solve.
+
+# Moving a solver to another array backend
+
+    Adapt.adapt(target, solver::DirectSolver)
+
+adapts `A`, the L2 term, the projections and the state of the solver to `target` (e.g. `CuArray`). The LU factorization
+is computed at each solve on the array type of `A`, so solving on `target` requires `lu` for that array type.
+`A` and the regularization terms must support Adapt.jl, otherwise `Adapt.adapt` throws or leaves them unchanged, and arrays already on `target` may be shared with the original solver.
+"""
 function DirectSolver(A; reg::Vector{<:AbstractRegularization} = [L2Regularization(zero(real(eltype(A))))], normalizeReg::AbstractRegularizationNormalization = NoNormalization())
   reg = normalize(DirectSolver, normalizeReg, reg, A, nothing)
   idx = findsink(L2Regularization, reg)
@@ -39,6 +54,12 @@ function DirectSolver(A; reg::Vector{<:AbstractRegularization} = [L2Regularizati
   b = zeros(T, size(A,1))
 
   return DirectSolver(A, L2, normalizeReg, other, DirectSolverState(x, b))
+end
+
+function Adapt.adapt_structure(to, solver::DirectSolver)
+  # adapt each term, not the vector itself, which would become an array of terms on the target
+  proj = map(p -> Adapt.adapt(to, p), solver.proj)
+  return DirectSolver(Adapt.adapt(to, solver.A), Adapt.adapt(to, solver.l2), Adapt.adapt(to, solver.normalizeReg), proj, Adapt.adapt(to, solver.state))
 end
 
 function init!(solver::DirectSolver, state::DirectSolverState{vecT}, b::otherT; kwargs...) where {vecT, otherT <: AbstractVector}
@@ -106,6 +127,19 @@ mutable struct PseudoInverse{R, PR}  <: AbstractDirectSolver
   state::AbstractSolverState{<:AbstractDirectSolver}
 end
 
+"""
+    PseudoInverse(A; reg, normalizeReg)
+
+creates a `PseudoInverse` solver that computes the SVD of `A` once and solves the Tikhonov-regularized problem with its factors.
+
+# Moving a solver to another array backend
+
+    Adapt.adapt(target, solver::PseudoInverse)
+
+adapts the stored SVD factors, the L2 term, the projections and the state of the solver to `target` (e.g. `CuArray`).
+The SVD is not recomputed. The regularization terms must support Adapt.jl, otherwise `Adapt.adapt` throws or leaves them
+unchanged, and arrays already on `target` may be shared with the original solver.
+"""
 function PseudoInverse(A; reg::Vector{<:AbstractRegularization} = [L2Regularization(zero(real(eltype(A))))], normalizeReg::AbstractRegularizationNormalization = NoNormalization())
   reg = normalize(PseudoInverse, normalizeReg, reg, A, nothing)
   idx = findsink(L2Regularization, reg)
@@ -136,6 +170,14 @@ function PseudoInverse(A::AbstractMatrix, x, b, l2, norm, proj)
   u, s, v = svd(A)
   temp = SVD(u, s, v)
   return PseudoInverse(temp, l2, norm, proj, DirectSolverState(x, b))
+end
+
+function Adapt.adapt_structure(to, solver::PseudoInverse)
+  # move the stored factors as they are, without a new decomposition
+  F = solver.svd
+  svd = SVD(Adapt.adapt(to, F.U), Adapt.adapt(to, F.S), Adapt.adapt(to, F.Vt))
+  proj = map(p -> Adapt.adapt(to, p), solver.proj)
+  return PseudoInverse(svd, Adapt.adapt(to, solver.l2), Adapt.adapt(to, solver.normalizeReg), proj, Adapt.adapt(to, solver.state))
 end
 
 function init!(solver::PseudoInverse, state::DirectSolverState{vecT}, b::otherT; kwargs...) where {vecT, otherT <: AbstractVector}

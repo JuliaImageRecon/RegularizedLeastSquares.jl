@@ -34,6 +34,17 @@ mutable struct POGMState{rT <: Real, vecT <: Union{AbstractVector{rT}, AbstractV
   norm_x₀::rT
   rel_res_norm::rT
 end
+
+function Adapt.adapt_structure(to, solver::POGM)
+  # adapt each projection term, not the vector itself, which would become an array of terms on the target
+  proj = map(reg -> Adapt.adapt(to, reg), solver.proj)
+  return POGM(Adapt.adapt(to, solver.A), Adapt.adapt(to, solver.AHA), Adapt.adapt(to, solver.reg), proj,
+    solver.normalizeReg, solver.verbose, solver.restart, solver.iterations, Adapt.adapt(to, solver.state))
+end
+
+Adapt.adapt_structure(to, state::POGMState) = POGMState(Adapt.adapt(to, state.x), Adapt.adapt(to, state.x₀), Adapt.adapt(to, state.xᵒˡᵈ), Adapt.adapt(to, state.y), Adapt.adapt(to, state.z), Adapt.adapt(to, state.w), Adapt.adapt(to, state.res),
+  state.ρ, state.theta, state.thetaᵒˡᵈ, state.α, state.β, state.γ, state.γᵒˡᵈ, state.σ, state.σ_fac, state.iteration, state.relTol, state.norm_x₀, state.rel_res_norm)
+
 """
     POGM(A; AHA = A'*A, reg = L1Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), iterations = 50, verbose = false, rho = 0.95 / power_iterations(AHA), theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), restart = :none)
     POGM( ; AHA = ,     reg = L1Regularization(zero(real(eltype(AHA)))), normalizeReg = NoNormalization(), iterations = 50, verbose = false, rho = 0.95 / power_iterations(AHA), theta = 1, sigma_fac = 1, relTol = eps(real(eltype(AHA))), restart = :none)

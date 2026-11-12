@@ -9,6 +9,7 @@ struct L2Regularization{T} <: AbstractParameterizedRegularization{T}
   λ::T
   L2Regularization(λ::T; kargs...) where T = new{T}(λ)
 end
+Adapt.adapt_structure(to, reg::L2Regularization) = L2Regularization(Adapt.adapt(to, reg.λ))
 
 """
     prox!(reg::L2Regularization, x, λ)
@@ -27,9 +28,5 @@ returns the value of the L2-regularization term
 """
 norm(::L2Regularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::T) where {T <: Real} = λ*norm(x,2)^2
 function norm(::L2Regularization, x::Union{AbstractArray{T}, AbstractArray{Complex{T}}}, λ::AbstractArray{T}) where {T <: Real}
-  res = zero(real(eltype(x)))
-  for i in eachindex(x)
-    res+= λ[i]*abs2(x[i])
-  end
-  return res
+  return mapreduce((w, xi) -> w * abs2(xi), +, view(vec(λ), 1:length(x)), vec(x); init = zero(real(eltype(x))))
 end

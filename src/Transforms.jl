@@ -57,6 +57,7 @@ function ClampedScalingTransform(x, v_min, v_max)
     mask = (x .< v_min) .| (x .>= v_max)
     return ClampedScalingTransform(v_min, v_max, mask, x)
 end
+Adapt.adapt_structure(to, transform::ClampedScalingTransform) = ClampedScalingTransform(transform.v_min, transform.v_max, Adapt.adapt(to, transform.mask), Adapt.adapt(to, transform.x))
 
 function transform(transform::ClampedScalingTransform, x)
     return (clamp.(x, transform.v_min, transform.v_max) .- transform.v_min) ./ (transform.v_max - transform.v_min)
@@ -64,6 +65,7 @@ end
 
 function inverse_transform(transform::ClampedScalingTransform, x)
     out = x .* (transform.v_max - transform.v_min) .+ transform.v_min
-    out[transform.mask] = transform.x[transform.mask]
+    # restore the clamped values over linear indices, elementwise so that it also runs on GPU arrays
+    vec(out) .= ifelse.(vec(transform.mask), vec(transform.x), vec(out))
     return out
 end

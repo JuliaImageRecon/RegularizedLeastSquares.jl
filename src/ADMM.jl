@@ -73,6 +73,15 @@ Creates an `ADMM` object for the forward operator `A` or normal operator `AHA`.
 
 ADMM differs from ISTA-type algorithms in the sense that the proximal operation is applied separately from the transformation to the space in which the penalty is applied. This is reflected by the interface which has `reg` and `regTrafo` as separate arguments. E.g., for a TV penalty, you should NOT set `reg=TVRegularization`, but instead use `reg=L1Regularization(λ), regTrafo=RegularizedLeastSquares.GradientOp(Float64; shape=(Nx,Ny,Nz))`.
 
+# Moving a solver to another array backend
+
+    Adapt.adapt(target, solver::ADMM)
+
+adapts the operators, regularization terms, `regTrafo` and the single-column state of the solver to `target` (e.g. `CuArray`).
+An already iterated solver continues from its iteration and its current `rho`. The per-term convergence values stay on the host.
+Each operator and `regTrafo` must support Adapt.jl, otherwise `Adapt.adapt` throws or leaves it unchanged, and arrays already on `target`
+may be shared with the original solver. The default `opEye` `regTrafo` is left as is, and a solver initialized with a matrix (multi-column state) cannot be adapted.
+
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
 ADMM(; AHA, kwargs...) = ADMM(nothing; kwargs..., AHA = AHA)
@@ -138,6 +147,14 @@ function ADMM(A
   # normalization parameters
   reg = normalize(ADMM, normalizeReg, reg, A, nothing)
 
+  compositeAHA = compositeNormal(AHA, regTrafo, rho)
+
+  state = ADMMState(compositeAHA, β, β_y, x, xᵒˡᵈ, z, zᵒˡᵈ, u, uᵒˡᵈ, rho, 0, cgStateVars, rᵏ, sᵏ, ɛᵖʳⁱ, ɛᵈᵘᵃ, rT(0), Δ, rT(absTol), rT(relTol), rT(tolInner))
+
+  return ADMM(A, reg, regTrafo, proj, AHA, copy(rho), precon, normalizeReg, vary_rho, verbose, iterations, iterationsCG, state)
+end
+
+function compositeNormal(AHA, regTrafo, rho)
   compositeAHA = AHA
   for i ∈ eachindex(regTrafo)
     # Prepare compositeAHA += rho[i] * adjoint(regTrafo[i]) * regTrafo[i]
@@ -157,10 +174,24 @@ function ADMM(A
     )
     compositeAHA += normalTimesRho
   end
+  return compositeAHA
+end
 
-  state = ADMMState(compositeAHA, β, β_y, x, xᵒˡᵈ, z, zᵒˡᵈ, u, uᵒˡᵈ, rho, 0, cgStateVars, rᵏ, sᵏ, ɛᵖʳⁱ, ɛᵈᵘᵃ, rT(0), Δ, rT(absTol), rT(relTol), rT(tolInner))
-
-  return ADMM(A, reg, regTrafo, proj, AHA, copy(rho), precon, normalizeReg, vary_rho, verbose, iterations, iterationsCG, state)
+function Adapt.adapt_structure(to, solver::ADMM)
+  AHA = Adapt.adapt(to, solver.AHA)
+  # adapt each term, not the vector itself, which would become an array of terms on the target
+  reg = map(r -> Adapt.adapt(to, r), solver.reg)
+  regTrafo = map(t -> Adapt.adapt(to, t), solver.regTrafo)
+  proj = map(p -> Adapt.adapt(to, p), solver.proj)
+  # rho and the convergence values are indexed per term on the host, so they are copied, not adapted
+  s = solver.state
+  ρ = copy(s.ρ)
+  cgStateVars = CGStateVariables(Adapt.adapt(to, s.cgStateVars.u), Adapt.adapt(to, s.cgStateVars.r), Adapt.adapt(to, s.cgStateVars.c))
+  state = ADMMState(compositeNormal(AHA, regTrafo, ρ), Adapt.adapt(to, s.β), Adapt.adapt(to, s.β_y), Adapt.adapt(to, s.x), Adapt.adapt(to, s.xᵒˡᵈ),
+    map(v -> Adapt.adapt(to, v), s.z), map(v -> Adapt.adapt(to, v), s.zᵒˡᵈ), map(v -> Adapt.adapt(to, v), s.u), map(v -> Adapt.adapt(to, v), s.uᵒˡᵈ),
+    ρ, s.iteration, cgStateVars, copy(s.rᵏ), copy(s.sᵏ), copy(s.ɛᵖʳⁱ), copy(s.ɛᵈᵘᵃ), s.σᵃᵇˢ, copy(s.Δ), s.absTol, s.relTol, s.tolInner)
+  return ADMM(Adapt.adapt(to, solver.A), reg, regTrafo, proj, AHA, solver.rho, Adapt.adapt(to, solver.precon), Adapt.adapt(to, solver.normalizeReg),
+    solver.vary_ρ, solver.verbose, solver.iterations, solver.iterationsCG, state)
 end
 
 function init!(solver::ADMM, state::ADMMState{rT, rvecT, vecT}, b::otherT; kwargs...) where {rT, rvecT, vecT, otherT <: AbstractVector}

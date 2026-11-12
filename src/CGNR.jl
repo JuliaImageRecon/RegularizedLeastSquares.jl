@@ -41,6 +41,13 @@ creates an `CGNR` object for the forward operator `A` or normal operator `AHA`.
   * `iterations::Int`                                   - maximum number of iterations
   * `relTol::Real`                                      - tolerance for stopping criterion
 
+# Moving a solver to another array backend
+
+    Adapt.adapt(target, solver::CGNR)
+
+adapts the operators, regularization and state of the solver to `target` (e.g. `CuArray`). Adapt the solver to the
+target backend before solving; each operator must support Adapt.jl. Of the solvers, `CGNR`, `FISTA`, `OptISTA`, `POGM`, `ADMM`, `SplitBregman`, `DirectSolver` and `PseudoInverse` support `Adapt.adapt` so far.
+
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """
 CGNR(; AHA, kwargs...) = CGNR(nothing; AHA = AHA, kwargs...)
@@ -111,22 +118,30 @@ function init!(solver::CGNR, state::CGNRState{T, Tc, vecTc}, b::vecTc; x0 = 0) w
   state.βl  = 0     #temporary scalar
   state.ζl  = 0     #temporary scalar
   state.iteration = 0
-  if all(x0 .== 0)
-    state.x .= 0
-  else
-    solver.A === nothing && error("providing x0 requires solver.A to be defined")
-    state.x .= x0
-    mul!(b, solver.A, solver.x, -1, 1)
-  end
+
+  # normalization of regularization parameters (before λ is used for the start residual)
+  solver.L2 = normalize(solver, solver.normalizeReg, solver.L2, solver.A, b)
 
   #x₀ = Aᶜ*rl, where ᶜ denotes complex conjugation
   initCGNR(state.x₀, solver.A, b)
 
+  # with a start value x0 the residual of the normal equation is Aᶜ*b - (AᶜA + λI)*x0; computed
+  # with the normal operator, so it works without A and leaves b unchanged
+  if all(x0 .== 0)
+    state.x .= 0
+  else
+    state.x .= x0
+    mul!(state.vl, solver.AHA, state.x)
+    state.x₀ .-= state.vl
+    λ_ = λ(solver.L2)
+    if λ_ > 0
+      state.x₀ .-= λ_ .* state.x
+    end
+    state.vl .= 0
+  end
+
   state.z0 = norm(state.x₀)
   copyto!(state.pl, state.x₀)
-
-  # normalization of regularization parameters
-  solver.L2 = normalize(solver, solver.normalizeReg, solver.L2, solver.A, b)
 end
 
 initCGNR(x₀, A, b) = mul!(x₀, adjoint(A), b)
@@ -183,3 +198,17 @@ function converged(::CGNR, state::CGNRState)
 end
 
 @inline done(solver::CGNR, state::CGNRState) = converged(solver, state) || state.iteration >= min(solver.iterations, size(solver.AHA, 2))
+
+function Adapt.adapt_structure(to, solver::CGNR)
+  A = Adapt.adapt(to, solver.A)
+  AHA = Adapt.adapt(to, solver.AHA)
+  L2 = Adapt.adapt(to, solver.L2)
+  # adapt each term, not the vector itself, which would become an array of terms on the target
+  constr = map(reg -> Adapt.adapt(to, reg), solver.constr)
+  normalizeReg = Adapt.adapt(to, solver.normalizeReg)
+  state = Adapt.adapt(to, solver.state)
+  return CGNR(A, AHA, L2, constr, normalizeReg, solver.iterations, state)
+end
+
+Adapt.adapt_structure(to, state::CGNRState) = CGNRState(Adapt.adapt(to, state.x), Adapt.adapt(to, state.x₀), Adapt.adapt(to, state.pl), Adapt.adapt(to, state.vl),
+  state.αl, state.βl, state.ζl, state.iteration, state.relTol, state.z0)

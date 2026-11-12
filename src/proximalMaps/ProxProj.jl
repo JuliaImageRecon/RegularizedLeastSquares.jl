@@ -4,6 +4,7 @@ struct ProjectionRegularization <: AbstractProjectionRegularization
   projFunc::Function
 end
 ProjectionRegularization(; projFunc::Function=x->x, kargs...) = ProjectionRegularization(projFunc)
+Adapt.adapt_structure(to, reg::ProjectionRegularization) = ProjectionRegularization(Adapt.adapt(to, reg.projFunc))
 
 function prox!(reg::ProjectionRegularization, x::AbstractArray{Tc}) where {T, Tc <: Union{T, Complex{T}}}
   copyto!(x, reg.projFunc(x))

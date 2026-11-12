@@ -297,6 +297,91 @@ function testConversion()
   end
 end
 
+# terms adapted to `adaptType` give the CPU results without scalar indexing
+function testAdaptedProx(T = Float32; N = 16)
+  JLArrays.GPUArrays.allowscalar(false)
+  Random.seed!(1234)
+  x = randn(T, N * N)
+  λ = real(T)(0.05)
+  onTarget(reg, x) = Array(prox!(reg, adaptType(x)))
+
+  # TV: a fresh term stays uninitialized, an initialized cache moves and is reused, the source cache is untouched
+  tv = TVRegularization(λ; shape = (N, N), dims = 1:2)
+  @test isnothing(Adapt.adapt(adaptType, tv).params)
+  @test onTarget(Adapt.adapt(adaptType, tv), x) ≈ prox!(deepcopy(tv), copy(x)) rtol = 2e-4 atol = 1e-5
+  prox!(tv, copy(x))
+  params = tv.params
+  buffers = (params.pq, params.rs, params.pqOld, params.xTmp)
+  snapshot = copy.(buffers)
+  tvTarget = Adapt.adapt(adaptType, tv)
+  targetParams = tvTarget.params
+  @test all(b -> b isa adaptType, (targetParams.pq, targetParams.rs, targetParams.pqOld, targetParams.xTmp))
+  @test map(Array, (targetParams.pq, targetParams.rs, targetParams.pqOld, targetParams.xTmp)) == snapshot
+  @test RegularizedLeastSquares.LinearOperators.storage_type(targetParams.∇) <: adaptType
+  @test Array(targetParams.∇ * adaptType(x)) ≈ params.∇ * x rtol = 2e-4 atol = 1e-5
+  y = onTarget(tvTarget, x)
+  @test tvTarget.params === targetParams
+  @test tv.params === params && all(map(===, (params.pq, params.rs, params.pqOld, params.xTmp), buffers))
+  @test all(map(==, buffers, snapshot))
+  @test y ≈ prox!(tv, copy(x)) rtol = 2e-4 atol = 1e-5
+
+  l21 = L21Regularization(λ; slices = 4)
+  @test onTarget(Adapt.adapt(adaptType, l21), x) ≈ prox!(l21, copy(x)) rtol = 2e-4 atol = 1e-5
+
+  # masked terms, also with an empty mask
+  for reg in (L1Regularization(λ), PositiveRegularization()), mask in (isodd.(1:N * N), fill(false, N * N))
+    masked = MaskedRegularization(reg, mask)
+    target = Adapt.adapt(adaptType, masked)
+    @test onTarget(target, x) ≈ prox!(masked, copy(x)) rtol = 2e-4 atol = 1e-5
+    @test norm(target, adaptType(x)) ≈ norm(masked, x) rtol = 2e-4
+    @test norm(target, adaptType(prox!(masked, copy(x)))) ≈ norm(masked, prox!(masked, copy(x))) rtol = 2e-4
+  end
+
+  # weighted L2 norm keeps the linear indexing of the weights
+  w = rand(real(T), N * N)
+  for weights in (w, reshape(w, N, N))
+    l2 = L2Regularization(weights)
+    @test norm(Adapt.adapt(adaptType, l2), adaptType(x)) ≈ norm(l2, x) rtol = 2e-4
+  end
+
+  # functions are adapted with their Adapt rules, a closure moves the arrays it captures
+  scale = rand(real(T), N * N)
+  proj = ProjectionRegularization(projFunc = y -> y .* scale)
+  @test Adapt.adapt(adaptType, proj).projFunc.scale isa adaptType
+  for reg in (ProjectionRegularization(), proj)
+    @test onTarget(Adapt.adapt(adaptType, reg), x) ≈ prox!(reg, copy(x)) rtol = 2e-4 atol = 1e-5
+  end
+
+  model = let m = rand(real(T), N, N); y -> y .* m end
+  clamped(y) = RegularizedLeastSquares.ClampedScalingTransform(y, real(T)(-1), real(T)(1))
+  for input_transform in (RegularizedLeastSquares.MinMaxTransform, RegularizedLeastSquares.IdentityTransform, RegularizedLeastSquares.ZTransform, clamped), ignoreIm in (false, true)
+    pnp = PlugAndPlayRegularization(real(T)(0.5); model, shape = [N, N], input_transform, ignoreIm)
+    target = Adapt.adapt(adaptType, pnp)
+    @test target.model.m isa adaptType
+    @test onTarget(target, x) ≈ prox!(pnp, copy(x)) rtol = 2e-4 atol = 1e-5
+  end
+
+  # a retained clamped transform restores its masked values by linear index, also on the target
+  xr = real.(x)
+  tf = RegularizedLeastSquares.ClampedScalingTransform(xr, real(T)(-0.5), real(T)(0.5))
+  y = RegularizedLeastSquares.transform(tf, xr)
+  expected = y .* (tf.v_max - tf.v_min) .+ tf.v_min
+  expected[tf.mask] = xr[tf.mask]
+  for z in (y, reshape(y, N, N))
+    @test RegularizedLeastSquares.inverse_transform(tf, z) ≈ reshape(expected, size(z))
+    @test Array(RegularizedLeastSquares.inverse_transform(Adapt.adapt(adaptType, tf), adaptType(z))) ≈ reshape(expected, size(z)) rtol = 2e-4 atol = 1e-5
+  end
+  @test_throws DimensionMismatch RegularizedLeastSquares.inverse_transform(tf, y[1:end-1])
+  @test_throws DimensionMismatch RegularizedLeastSquares.inverse_transform(Adapt.adapt(adaptType, tf), adaptType(y[1:end-1]))
+
+  # a factory that retains a transform moves its arrays with it
+  retained = RegularizedLeastSquares.ClampedScalingTransform(reshape(xr, N, N), real(T)(-0.5), real(T)(0.5))
+  pnp = PlugAndPlayRegularization(real(T)(0.5); model, shape = [N, N], input_transform = y -> retained)
+  target = Adapt.adapt(adaptType, pnp)
+  @test target.input_transform.retained.mask isa adaptType && target.input_transform.retained.x isa adaptType
+  @test onTarget(target, x) ≈ prox!(pnp, copy(x)) rtol = 2e-4 atol = 1e-5
+end
+
 @testset "Proximal Maps" begin
   @testset "$arrayType" begin
     @testset "L2 Prox" testL2Prox(; arrayType)
@@ -312,4 +397,7 @@ end
     @testset "LLR Prox 3D: $arrayType" testLLR_3D(; arrayType)
   end
   @testset "Prox Lambda Conversion" testConversion()
+  @testset "Adapted Prox: $adaptType $T" for T in (Float32, ComplexF32)
+    testAdaptedProx(T)
+  end
 end
