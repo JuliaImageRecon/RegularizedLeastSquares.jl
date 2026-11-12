@@ -5,22 +5,22 @@ A = gpu(rand(Float32, 32, 16))
 x = gpu(rand(Float32, 16))
 b = A*x;</code></pre><p>Solvers adapt their states based on the type of the given measurement vector. This means that the solver will automatically switch to GPU acceleration if a GPU array is passed as the measurement vector.</p><pre><code class="language-julia hljs">solver = createLinearSolver(CGNR, A; reg = L2Regularization(0.0001), iterations=32);
 x_approx = solve!(solver, b)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">16-element Vector{Float32}:
- 0.63888735
- 0.7649768
- 0.137233
- 0.5372405
- 0.37846053
- 0.56414384
- 0.95825726
- 0.22500998
- 0.7675244
- 0.68981653
- 0.61448425
- 0.62428784
- 0.41713974
- 0.20051348
- 0.97427243
- 0.25055984</code></pre><p>This adaption does not include the operator. So if we want to compare with CPU result, we need to construct a new solver with a CPU operator.</p><pre><code class="language-julia hljs">solver = createLinearSolver(CGNR, Array(A); reg = L2Regularization(0.0001), iterations=32);
+ 0.14148785
+ 0.7033924
+ 0.87699914
+ 0.95843476
+ 0.44417214
+ 0.92356414
+ 0.02555638
+ 0.52980185
+ 0.97269547
+ 0.17114109
+ 0.44588813
+ 0.2555654
+ 0.7436719
+ 0.5728242
+ 0.651373
+ 0.878649</code></pre><p>This adaption does not include the operator. So if we want to compare with CPU result, we need to construct a new solver with a CPU operator.</p><pre><code class="language-julia hljs">solver = createLinearSolver(CGNR, Array(A); reg = L2Regularization(0.0001), iterations=32);
 x_cpu = solve!(solver, Array(b))
 isapprox(Array(x_approx), x_cpu)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre><h2 id="Moving-a-CGNR-Solver-with-Adapt.jl"><a class="docs-heading-anchor" href="#Moving-a-CGNR-Solver-with-Adapt.jl">Moving a CGNR Solver with Adapt.jl</a><a id="Moving-a-CGNR-Solver-with-Adapt.jl-1"></a><a class="docs-heading-anchor-permalink" href="#Moving-a-CGNR-Solver-with-Adapt.jl" title="Permalink"></a></h2><p>A <code>CGNR</code> solver can also be adapted to the target backend with <a href="https://github.com/JuliaGPU/Adapt.jl">Adapt.jl</a> before solving:</p><pre><code class="language-julia hljs">using Adapt
 cpu_solver = createLinearSolver(CGNR, Array(A); reg = L2Regularization(0.0001), iterations=32);
@@ -47,26 +47,26 @@ LinearOperators.storage_type(A)</code></pre><pre class="documenter-example-outpu
 reg = TVRegularization(0.01; shape=size(image))
 solver = createLinearSolver(FISTA, A; reg=reg, iterations=20)
 img_approx = solve!(solver,b);</code></pre><p>To visualize the reconstructed image, we need to reshape the result vector to the correct shape and convert it to a CPU array:</p><pre><code class="language-julia hljs">img_approx = reshape(Array(img_approx),size(image))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">32×32 Matrix{Float32}:
- 0.00114665   0.00120589   0.00131714   …  0.00177484  0.00170698  0.00165453
- 0.00123358   0.00130295   0.00143854      0.00201314  0.00194842  0.00189977
- 0.00141062   0.00151232   0.00170999      0.00250468  0.00239101  0.00232489
- 0.00169798   0.00186516   0.00219905      0.00332303  0.00301589  0.00286033
- 0.00219719   0.00247033   0.00303984      0.00454607  0.00388837  0.00353971
- 0.00309701   0.00352994   0.0043883    …  0.00611993  0.00511535  0.00448371
- 0.00459163   0.0052178    0.00625864      0.00819788  0.00674922  0.00582355
- 0.00675436   0.00748769   0.00831889      0.0091926   0.00834575  0.00744036
- 0.00905281   0.0099523    0.0103504       0.00948194  0.00943575  0.00892586
- 0.0129622    0.0108477    0.0111401       0.0106805   0.0106406   0.0102605
- ⋮                                      ⋱              ⋮           
- 0.00636639   0.00704126   0.00829723      0.00982856  0.00972404  0.00891653
- 0.00438812   0.00506459   0.00645723      0.00878015  0.00821719  0.00757468
- 0.00293555   0.00346734   0.00457529   …  0.00708308  0.00638253  0.00590879
- 0.00203455   0.00239292   0.0031813       0.0052406   0.0047      0.0044831
- 0.0014264    0.00165309   0.00215553      0.00391225  0.00361845  0.00353306
- 0.000997524  0.0011473    0.00146022      0.0032248   0.00302188  0.00294368
- 0.000733732  0.000846917  0.0010649       0.00285583  0.00267843  0.00258
- 0.00059399   0.000693958  0.000870911  …  0.00260351  0.00245657  0.00236118
- 0.000536587  0.000633357  0.000793749     0.00246581  0.00234343  0.00225886</code></pre><p>We will again use CairoMakie for visualization:</p><pre><code class="language-julia hljs">using CairoMakie
+ 0.00119667  0.00123909  0.00136678  …  0.00148501  0.00139946  0.00135747
+ 0.00149177  0.00153366  0.0016509      0.00171522  0.00158308  0.00150764
+ 0.00203268  0.00207058  0.00217892     0.00213827  0.0019355   0.00181378
+ 0.0028053   0.00286482  0.00303267     0.00271994  0.00242909  0.0022681
+ 0.00387512  0.00404172  0.00440299     0.0034585   0.0030365   0.00283842
+ 0.00530106  0.00566458  0.00623544  …  0.0044751   0.00384565  0.00356077
+ 0.00707608  0.00765575  0.00813243     0.00588361  0.0050134   0.00455244
+ 0.00919181  0.0100342   0.0112879      0.00743416  0.00655525  0.00591873
+ 0.0115854   0.0123185   0.0129953      0.00850243  0.00825599  0.00776055
+ 0.0137998   0.0145059   0.0144599      0.00880777  0.00966183  0.00998095
+ ⋮                                   ⋱              ⋮           
+ 0.0119713   0.0124483   0.0126928      0.00736927  0.0071556   0.00679527
+ 0.0113331   0.0117565   0.0114168      0.00671001  0.00605895  0.0053016
+ 0.00920377  0.00940486  0.00899623  …  0.00617894  0.00530353  0.0044771
+ 0.00664182  0.00680301  0.00677675     0.00612664  0.00485158  0.00401955
+ 0.00469124  0.00474067  0.0048384      0.00545809  0.00429975  0.00367721
+ 0.00347191  0.00340635  0.00340481     0.00465513  0.00381191  0.00339763
+ 0.00267492  0.00260641  0.00256515     0.00406781  0.0034345   0.00312379
+ 0.00219097  0.00216298  0.00214904  …  0.00371033  0.00316058  0.00288522
+ 0.00196785  0.00197082  0.00198506     0.00353228  0.00301165  0.00274956</code></pre><p>We will again use CairoMakie for visualization:</p><pre><code class="language-julia hljs">using CairoMakie
 function plot_image(figPos, img; title = &quot;&quot;, width = 150, height = 150)
   ax = CairoMakie.Axis(figPos; yreversed=true, title, width, height)
   hidedecorations!(ax)
@@ -79,4 +79,4 @@ samplingMask[sampledIndices] .= true
 plot_image(fig[1,2], image .* samplingMask, title = &quot;Sampled Image&quot;)
 plot_image(fig[1,3], img_approx, title = &quot;Reconstructed Image&quot;)
 resize_to_layout!(fig)
-fig</code></pre><img src="003ca96e.png" alt="Example block output" width="518" height="202"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../multi_threading/">« Multi-Threading</a><a class="docs-footer-nextpage" href="../efficient_kaczmarz/">Efficient Kaczmarz »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.20.0 on <span class="colophon-date" title="Thursday 12 November 2026 10:54">Thursday 12 November 2026</span>. Using Julia version 1.13.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+fig</code></pre><img src="68ae68a7.png" alt="Example block output" width="518" height="202"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../multi_threading/">« Multi-Threading</a><a class="docs-footer-nextpage" href="../efficient_kaczmarz/">Efficient Kaczmarz »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.20.0 on <span class="colophon-date" title="Thursday 12 November 2026 10:56">Thursday 12 November 2026</span>. Using Julia version 1.13.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
