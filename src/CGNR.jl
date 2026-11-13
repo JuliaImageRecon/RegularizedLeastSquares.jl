@@ -133,7 +133,7 @@ function init!(solver::CGNR, state::CGNRState{T, Tc, vecTc}, b::vecTc; x0 = 0) w
     state.x .= x0
     mul!(state.vl, solver.AHA, state.x)
     state.x₀ .-= state.vl
-    λ_ = λ(solver.L2)
+    λ_ = real(eltype(state.x))(λ(solver.L2))
     if λ_ > 0
       state.x₀ .-= λ_ .* state.x
     end
@@ -168,7 +168,7 @@ function iterate(solver::CGNR, state::CGNRState)
   state.ζl = norm(state.x₀)^2
   normvl = dot(state.pl, state.vl)
 
-  λ_ = λ(solver.L2)
+  λ_ = real(eltype(state.x))(λ(solver.L2))
   if λ_ > 0
     state.αl = state.ζl / (normvl + λ_ * norm(state.pl)^2)
   else

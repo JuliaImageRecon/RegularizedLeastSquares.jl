@@ -274,6 +274,17 @@ function testCGNRStartValue(; arrayType=Array, elType=Float64)
     end
 end
 
+# CGNR with Float32 data and a Float64 λ solves in Float32 (Metal has no Float64)
+function testCGNRFloat64λ(; arrayType=Array, elType=Float32)
+    A = randn(elType, 20, 8)
+    b = randn(elType, 20)
+    x0 = randn(elType, 8)
+    S = createLinearSolver(CGNR, arrayType(A); reg=L2Regularization(0.5), iterations=50)
+    x_approx = solve!(S, arrayType(b); x0=arrayType(x0))
+    @test eltype(x_approx) == elType
+    @test Array(x_approx) ≈ (A' * A + 0.5f0 * I) \ (A' * b) rtol = sqrt(eps(real(elType)))
+end
+
 # A SplitBregman moved with Adapt.adapt after some outer and inner iterations finishes with the same result as the
 # CPU solver it was moved from
 function testSplitBregmanAdaptResume(; elType=Float64)
@@ -529,6 +540,10 @@ end
             @testset "DirectSolver and PseudoInverse after Adapt.adapt: $T" for T in (elType, complex(elType))
                 testDirectAdapt(; elType=T)
             end
+        end
+
+        @testset "CGNR with a Float64 λ: $T" for T in (Float32, ComplexF32)
+            testCGNRFloat64λ(; arrayType, elType=T)
         end
     end
     testVerboseSolvers()
