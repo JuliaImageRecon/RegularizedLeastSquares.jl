@@ -53,6 +53,22 @@ mutable struct GreedyKaczmarzState{T, vecT <: AbstractArray{T}, matAHA <: Abstra
   r_probs::vecU
 end
 
+function Adapt.adapt_structure(to, solver::Kaczmarz)
+  # adapt each term, not the vector itself, which would become an array of terms on the target; as in the
+  # constructor, an empty list keeps the eltype AbstractRegularization
+  reg = identity.(AbstractRegularization[Adapt.adapt(to, r) for r in solver.reg])
+  # the denominators, row schedules and probabilities are indexed on the host, so they are copied, not adapted
+  return Kaczmarz(Adapt.adapt(to, solver.A), Adapt.adapt(to, solver.L2), reg, copy(solver.denom), copy(solver.rowindex),
+    copy(solver.rowIndexCycle), solver.randomized, solver.subMatrixSize, copy(solver.probabilities), solver.shuffleRows,
+    solver.seed, solver.normalizeReg, solver.iterations, Adapt.adapt(to, solver.state))
+end
+Adapt.adapt_structure(to, state::KaczmarzState) = KaczmarzState(Adapt.adapt(to, state.u), Adapt.adapt(to, state.x), Adapt.adapt(to, state.vl),
+  state.εw, state.τl, state.αl, state.iteration, copy(state.usedIndices))
+Adapt.adapt_structure(to, state::GreedyKaczmarzState) = GreedyKaczmarzState(Adapt.adapt(to, state.u), Adapt.adapt(to, state.x), Adapt.adapt(to, state.vl),
+  state.εw, state.τl, state.αl, state.iteration, copy(state.usedIndices), copy(state.U_k), state.theta, state.e_k, Adapt.adapt(to, state.norms),
+  state.norm_size, state.Fnorm, Adapt.adapt(to, state.r), Adapt.adapt(to, state.B), Adapt.adapt(to, state.diff_vec_sq), state.diff_numb,
+  state.diff_denom, Adapt.adapt(to, state.r_probs))
+
 """
     Kaczmarz(A; reg = L2Regularization(0), normalizeReg = NoNormalization(), randomized=false, subMatrixFraction=0.15, shuffleRows=false, seed=1234, iterations=10, greedy_randomized=false, theta=Nothing)
 
@@ -71,6 +87,14 @@ Creates a Kaczmarz object for the forward operator `A`.
   * `iterations::Int`                                     - number of iterations
   * `greedy_randomized::Bool`                             - use greedy randomized kaczmarz
   * `theta::Float64`                                      - set relaxation parameter theta
+
+# Moving a solver to another array backend
+
+    Adapt.adapt(target, solver::Kaczmarz)
+
+adapts the operator, the regularization terms and the state of the solver to `target` (e.g. `CuArray`), also after some
+iterations. The row denominators, row schedules and probabilities stay on the host. The operator must support Adapt.jl.
+Greedy Kaczmarz (`greedy_randomized=true`) only runs on the CPU: its state can be adapted, but iterating it with GPU arrays is not supported.
 
 See also [`createLinearSolver`](@ref), [`solve!`](@ref).
 """

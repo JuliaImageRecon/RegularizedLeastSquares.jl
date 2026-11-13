@@ -25,7 +25,7 @@ function testMultiThreadingSolver(; arrayType=Array, scheduler=MultiDataState)
     @test Array(solve!(S, adaptType(b[:, 1]))) ≈ x[:, 1] rtol = 0.1
   end
 
-  @testset "$solver resumed after Adapt.adapt" for solver in (CGNR, FISTA, OptISTA, POGM)
+  @testset "$solver resumed after Adapt.adapt" for solver in (CGNR, FISTA, OptISTA, POGM, Kaczmarz)
     # a partly iterated matrix solve keeps its scheduler state and progress when moved
     S = createLinearSolver(solver, A, iterations=100)
     init!(S, b; scheduler=scheduler)
